@@ -61,6 +61,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
+/* Marlin Imports */
+import org.apache.kafka.clients.mapr.GenericHFactory;
+import java.io.IOException;
+
 /**
  * A Kafka client that consumes records from a Kafka cluster.
  * <p>
@@ -435,18 +439,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private static final String JMX_PREFIX = "kafka.consumer";
 
     private String clientId;
-    private final ConsumerCoordinator coordinator;
-    private final Deserializer<K> keyDeserializer;
-    private final Deserializer<V> valueDeserializer;
-    private final Fetcher<K, V> fetcher;
+    private ConsumerCoordinator coordinator;
+    private Deserializer<K> keyDeserializer;
+    private Deserializer<V> valueDeserializer;
+    private Fetcher<K, V> fetcher;
 
-    private final Time time;
-    private final ConsumerNetworkClient client;
-    private final Metrics metrics;
-    private final SubscriptionState subscriptions;
-    private final Metadata metadata;
-    private final long retryBackoffMs;
+    private Time time;
+    private ConsumerNetworkClient client;
+    private Metrics metrics;
+    private SubscriptionState subscriptions;
+    private Metadata metadata;
+    private long retryBackoffMs;
     private long requestTimeoutMs;
+
     private boolean closed = false;
 
     // currentThread holds the threadId of the current thread accessing KafkaConsumer
@@ -454,6 +459,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
     private final AtomicInteger refcount = new AtomicInteger(0);
+
+    // MARLIN SPECIFIC
+    private final ConsumerConfig config;
+    private boolean isMarlin = false;
+    private boolean isMarlinClosed = false;
+    private Consumer<K, V> consumerDriver = null;
 
     /**
      * A consumer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -523,6 +534,68 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private KafkaConsumer(ConsumerConfig config,
                           Deserializer<K> keyDeserializer,
                           Deserializer<V> valueDeserializer) {
+        log.debug("Starting the Kafka consumer");
+        this.config = config;
+        this.keyDeserializer = keyDeserializer;
+        this.valueDeserializer = valueDeserializer;
+        this.closed = false;
+        this.isMarlin = false;
+        this.isMarlinClosed = false;
+
+        if (keyDeserializer == null) {
+          this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                                                              Deserializer.class);
+          this.keyDeserializer.configure(config.originals(), true);
+        } else {
+          config.ignore(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+          this.keyDeserializer = keyDeserializer;
+        }
+        if (valueDeserializer == null) {
+          this.valueDeserializer = config.getConfiguredInstance(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                                                                Deserializer.class);
+          this.valueDeserializer.configure(config.originals(), false);
+        } else {
+          config.ignore(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG);
+          this.valueDeserializer = valueDeserializer;
+        }
+    }
+
+    private void initializeConsumer(String topic) {
+      synchronized(this) {
+        if (isMarlinClosed) {
+          log.error("cannot initialize consumer. already closed.");
+          return;
+        }
+
+        if (consumerDriver != null) {
+          log.debug("initialized consumer already.");
+          return;
+        }
+
+        if (topic.startsWith("/") == true || topic.contains(":") == true) {
+          Consumer<K,V> ac;
+          GenericHFactory<Consumer<K, V>> consumerFactory = new GenericHFactory<Consumer<K, V>>();
+
+          ac =
+            consumerFactory.getImplementorInstance("com.mapr.fs.marlin.listener.MarlinListener",
+                                                   new Object [] {this.config,
+                                                                  this.keyDeserializer,
+                                                                  this.valueDeserializer},
+                                                   new Class[]
+                                                   {ConsumerConfig.class,
+                                                    Deserializer.class,
+                                                    Deserializer.class});
+          isMarlin = true;
+          consumerDriver = ac;
+        } else {
+          isMarlin = false;
+          consumerDriver = this;
+
+          List<InetSocketAddress> kafkaaddresses = ClientUtils.parseAndValidateAddresses(config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+          if (kafkaaddresses.size() == 0 || kafkaaddresses.get(0).equals("")) {
+            throw new KafkaException("Bootstrap servers not specified in configuration");
+          }
+
         try {
             log.debug("Starting the Kafka consumer");
             this.requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG);
@@ -622,6 +695,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             // now propagate the exception
             throw new KafkaException("Failed to construct kafka consumer", t);
         }
+        }
+      }
     }
 
     /**
@@ -633,12 +708,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @return The set of partitions currently assigned to this consumer
      */
     public Set<TopicPartition> assignment() {
+      if (consumerDriver == null) {
+        return (new HashSet<TopicPartition>());
+      } else if (isMarlin) {
+        return consumerDriver.assignment();
+      } else {
         acquire();
         try {
             return Collections.unmodifiableSet(new HashSet<>(this.subscriptions.assignedPartitions()));
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -647,12 +728,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @return The set of topics currently subscribed to
      */
     public Set<String> subscription() {
+      if (consumerDriver == null) {
+        return (new HashSet<String>());
+      } else if (isMarlin) {
+        return consumerDriver.subscription();
+      } else {
         acquire();
         try {
             return Collections.unmodifiableSet(new HashSet<>(this.subscriptions.subscription()));
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -685,6 +772,24 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(List<String> topics, ConsumerRebalanceListener listener) {
+      if (topics.size() == 0) {
+        // Since there aren't any topics in this case, we can ignore the ConsumerRebalanceListener
+        log.debug("Subscribing to empty topics list");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(topics.get(0));
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.subscribe(topics, listener);
+      } else {
         acquire();
         try {
             if (topics.isEmpty()) {
@@ -698,6 +803,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -740,6 +846,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Pattern pattern, ConsumerRebalanceListener listener) {
+      if (consumerDriver == null) {
+        initializeConsumer(pattern.toString());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.subscribe(pattern, listener);
+      } else {
         acquire();
         try {
             log.debug("Subscribed to pattern: {}", pattern);
@@ -748,6 +866,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -755,6 +874,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * also clears any partitions directly assigned through {@link #assign(List)}.
      */
     public void unsubscribe() {
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.unsubscribe();
+      } else {
         acquire();
         try {
             log.debug("Unsubscribed all topics or patterns and assigned partitions");
@@ -764,6 +891,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -779,6 +907,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void assign(List<TopicPartition> partitions) {
+      if (partitions.size() == 0) {
+        log.debug("assigning empty partitions list");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.get(0).topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.assign(partitions);
+      } else {
         acquire();
         try {
             log.debug("Subscribed to partition(s): {}", Utils.join(partitions, ", "));
@@ -790,6 +935,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -816,6 +962,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isMarlin) {
+        return consumerDriver.poll(timeout);
+      } else {
         acquire();
         try {
             if (timeout < 0)
@@ -848,6 +1001,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -906,12 +1060,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync() {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isMarlin) {
+        consumerDriver.commitSync();
+      } else {
         acquire();
         try {
             commitSync(subscriptions.allConsumed());
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -937,12 +1099,31 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync(final Map<TopicPartition, OffsetAndMetadata> offsets) {
+      if (offsets.size() == 0) {
+        log.debug("commitSync called with empty offsets");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        Set<TopicPartition> partitions = offsets.keySet();
+        initializeConsumer((partitions.iterator().next()).topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot commit");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.commitSync(offsets);
+      } else {
         acquire();
         try {
             coordinator.commitOffsetsSync(offsets);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -968,12 +1149,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(OffsetCommitCallback callback) {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isMarlin) {
+        commitAsync(callback);
+      } else {
         acquire();
         try {
             commitAsync(subscriptions.allConsumed(), callback);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -992,6 +1181,25 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, OffsetCommitCallback callback) {
+      if (offsets.size() == 0) {
+        log.debug("commitAsync with no offsets");
+        callback.onComplete(offsets, null /*exception*/);
+        return;
+      }
+
+      if (consumerDriver == null) {
+        Set<TopicPartition> partitions = offsets.keySet();
+        initializeConsumer((partitions.iterator().next()).topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot commit");
+        return;
+      }
+
+      if (isMarlin) {
+        commitAsync(offsets, callback);
+      } else {
         acquire();
         try {
             log.debug("Committing offsets: {} ", offsets);
@@ -999,6 +1207,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1008,9 +1217,22 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void seek(TopicPartition partition, long offset) {
-        if (offset < 0) {
-            throw new IllegalArgumentException("seek offset must not be a negative number");
-        }
+      if (offset < 0) {
+          throw new IllegalArgumentException("seek offset must not be a negative number");
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.seek(partition, offset);
+      } else {
         acquire();
         try {
             log.debug("Seeking to offset {} for partition {}", offset, partition);
@@ -1018,6 +1240,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1025,6 +1248,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * final offset in all partitions only when {@link #poll(long)} or {@link #position(TopicPartition)} are called.
      */
     public void seekToBeginning(TopicPartition... partitions) {
+      if (consumerDriver == null) {
+        initializeConsumer(partitions[0].topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.seekToBeginning(partitions);
+      } else {
         acquire();
         try {
             Collection<TopicPartition> parts = partitions.length == 0 ? this.subscriptions.assignedPartitions()
@@ -1036,6 +1271,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1043,6 +1279,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * final offset in all partitions only when {@link #poll(long)} or {@link #position(TopicPartition)} are called.
      */
     public void seekToEnd(TopicPartition... partitions) {
+      if (consumerDriver == null) {
+        initializeConsumer(partitions[0].topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.seekToEnd(partitions);
+      } else {
         acquire();
         try {
             Collection<TopicPartition> parts = partitions.length == 0 ? this.subscriptions.assignedPartitions()
@@ -1054,6 +1302,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1070,6 +1319,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
      */
     public long position(TopicPartition partition) {
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get position");
+        throw new NoOffsetForPartitionException("consumer closed, cannot get position");
+      }
+
+      if (isMarlin) {
+        return consumerDriver.position(partition);
+      } else {
         acquire();
         try {
             if (!this.subscriptions.isAssigned(partition))
@@ -1083,6 +1344,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1102,6 +1364,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public OffsetAndMetadata committed(TopicPartition partition) {
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get committed");
+        throw new NoOffsetForPartitionException("consumer closed, cannot get committed");
+      }
+
+      if (isMarlin) {
+        return consumerDriver.committed(partition);
+      } else {
         acquire();
         try {
             OffsetAndMetadata committed;
@@ -1120,6 +1394,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1127,7 +1402,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
+      if (consumerDriver == null) {
+        log.error("consumed not initialized, cannot get metrics");
+        return null;
+      }
+
+      if (isMarlin) {
+        return consumerDriver.metrics();
+      } else {
         return Collections.unmodifiableMap(this.metrics.metrics());
+      }
     }
 
     /**
@@ -1145,6 +1429,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public List<PartitionInfo> partitionsFor(String topic) {
+      if (consumerDriver == null) {
+        initializeConsumer(topic);
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get partitionsFor " + topic);
+        return null;
+      }
+
+      if (isMarlin) {
+        return consumerDriver.partitionsFor(topic);
+      } else {
         acquire();
         try {
             Cluster cluster = this.metadata.fetch();
@@ -1157,6 +1453,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1172,12 +1469,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<String, List<PartitionInfo>> listTopics() {
+      if (consumerDriver == null) {
+        log.error("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isMarlin) {
+        return consumerDriver.listTopics();
+      } else {
         acquire();
         try {
             return fetcher.getAllTopicMetadata(requestTimeoutMs);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1189,6 +1495,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void pause(TopicPartition... partitions) {
+     if (consumerDriver == null) {
+        initializeConsumer(partitions[0].topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot pause");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.pause(partitions);
+      } else {
         acquire();
         try {
             for (TopicPartition partition: partitions) {
@@ -1198,6 +1516,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1208,6 +1527,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void resume(TopicPartition... partitions) {
+     if (consumerDriver == null) {
+        initializeConsumer(partitions[0].topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot resume");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.resume(partitions);
+      } else {
         acquire();
         try {
             for (TopicPartition partition: partitions) {
@@ -1217,6 +1548,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1225,6 +1557,24 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void close() {
+     Consumer<K, V> consumerDriverToDelete = null;
+
+      synchronized(this) {
+        if (isMarlinClosed) {
+          return;
+        }
+        isMarlinClosed = true;
+        if (consumerDriver == null) {
+          return;
+        }
+
+        consumerDriverToDelete = consumerDriver;
+        consumerDriver = null;
+      }
+
+      if (isMarlin) {
+        consumerDriverToDelete.close();
+      } else {
         acquire();
         try {
             if (closed) return;
@@ -1232,6 +1582,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1240,7 +1591,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void wakeup() {
+      if (consumerDriver == null) {
+        log.error("consumed not initialized, cannot wakeup");
+        return;
+      }
+
+      if (closed || isMarlinClosed) {
+        log.error("Consumer closed, cannot wake up.");
+        return;
+      }
+
+      if (isMarlin) {
+        consumerDriver.wakeup();
+      } else {
         this.client.wakeup();
+      }
     }
 
     private void close(boolean swallowException) {

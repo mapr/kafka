@@ -56,6 +56,9 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/* Marlin Imports */
+import org.apache.kafka.clients.mapr.GenericHFactory;
+
 /**
  * A Kafka client that publishes records to the Kafka cluster.
  * <P>
@@ -127,22 +130,28 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private static final String JMX_PREFIX = "kafka.producer";
 
     private String clientId;
-    private final Partitioner partitioner;
-    private final int maxRequestSize;
-    private final long totalMemorySize;
-    private final Metadata metadata;
-    private final RecordAccumulator accumulator;
-    private final Sender sender;
-    private final Metrics metrics;
-    private final Thread ioThread;
-    private final CompressionType compressionType;
-    private final Sensor errors;
-    private final Time time;
-    private final Serializer<K> keySerializer;
-    private final Serializer<V> valueSerializer;
-    private final ProducerConfig producerConfig;
-    private final long maxBlockTimeMs;
-    private final int requestTimeoutMs;
+    private Partitioner partitioner;
+    private int maxRequestSize;
+    private long totalMemorySize;
+    private Metadata metadata;
+    private RecordAccumulator accumulator;
+    private Sender sender;
+    private Metrics metrics;
+    private Thread ioThread;
+    private CompressionType compressionType;
+    private Sensor errors;
+    private Time time;
+    private Serializer<K> keySerializer;
+    private Serializer<V> valueSerializer;
+    private ProducerConfig producerConfig;
+    private long maxBlockTimeMs;
+    private int requestTimeoutMs;
+
+    // For marlin we have added the following.
+    private final ProducerConfig config;
+    private boolean isMarlin;
+    private Producer<K, V> producerDriver;
+    private boolean closed;
 
     /**
      * A producer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -197,7 +206,69 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     @SuppressWarnings("unchecked")
     private KafkaProducer(ProducerConfig config, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
-        try {
+      log.debug("Starting the Kafka producer");
+      this.config = config;
+      this.closed = false;
+
+      if (keySerializer == null) {
+        this.keySerializer = config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                                                          Serializer.class);
+        this.keySerializer.configure(config.originals(), true);
+      } else {
+        config.ignore(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
+        this.keySerializer = keySerializer;
+      }
+      if (valueSerializer == null) {
+        this.valueSerializer = config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                                                            Serializer.class);
+        this.valueSerializer.configure(config.originals(), false);
+      } else {
+        config.ignore(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG);
+        this.valueSerializer = valueSerializer;
+      }
+    }
+
+    /**
+     * Given a topic name now we can decide if we want to initialize a
+     * KafkaProducer or a MarlinProducer.
+     */
+    private void initializeProducer(String topic) {
+      synchronized(this) {
+        if (closed) {
+          log.error("cannot initialize producer.  already closed.");
+          return;
+        }
+
+        if (producerDriver != null) {
+          log.debug("already initlialized producer.");
+          return;
+        }
+
+        if (topic.startsWith("/") == true || topic.contains(":") == true) {
+          Producer<K,V> ap;
+          GenericHFactory<Producer<K, V>> producerFactory = new GenericHFactory<Producer<K, V>>();
+          ap =
+            producerFactory.getImplementorInstance("com.mapr.fs.marlin.producer.MarlinProducer",
+                                                   new Object [] {this.config,
+                                                                  this.keySerializer,
+                                                                  this.valueSerializer},
+                                                   new Class[]  {ProducerConfig.class,
+                                                                 Serializer.class,
+                                                                 Serializer.class});
+          producerDriver = ap;
+          isMarlin = true;
+        } else {
+
+          producerDriver = this;    // Set it to this, which is a kafka producer
+          isMarlin = false;
+
+          List<InetSocketAddress> kafkaaddresses =
+            ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
+          if (kafkaaddresses.size() == 0 || kafkaaddresses.get(0).equals("")) {
+            throw new KafkaException("Bootstrap servers not specified in configuration");
+          }
+
+          try {
             log.trace("Starting the Kafka producer");
             Map<String, Object> userProvidedConfigs = config.originals();
             this.producerConfig = config;
@@ -320,6 +391,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             // now propagate the exception
             throw new KafkaException("Failed to construct kafka producer", t);
         }
+        }
+      }
     }
 
     private static int parseAcks(String acksString) {
@@ -407,6 +480,20 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
+
+      if (producerDriver == null) {
+        initializeProducer(record.topic());
+      }
+
+      if (producerDriver == null) {
+        if (callback != null)
+          callback.onCompletion(null, new IllegalStateException("producer closed, cannot send"));
+        return new FutureFailure(new ApiException("producer closed, cannot send"));
+      }
+
+      if (isMarlin) {
+        return producerDriver.send(record, callback);
+      } else {
         try {
             // first make sure the metadata for the topic is available
             long waitedOnMetadataMs = waitOnMetadata(record.topic(), this.maxBlockTimeMs);
@@ -458,6 +545,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             this.errors.record();
             throw e;
         }
+      }
     }
 
     /**
@@ -537,7 +625,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public void flush() {
-        log.trace("Flushing accumulated records in producer.");
+      log.trace("Flushing accumulated records in producer.");
+      if (producerDriver == null) {
+        log.error("producer not initialized, cannot flush.");
+        return;
+      }
+
+      if (isMarlin) {
+        producerDriver.flush();
+      } else {
         this.accumulator.beginFlush();
         this.sender.wakeup();
         try {
@@ -545,6 +641,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         } catch (InterruptedException e) {
             throw new InterruptException("Flush interrupted.", e);
         }
+      }
     }
 
     /**
@@ -553,12 +650,25 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public List<PartitionInfo> partitionsFor(String topic) {
+      if (producerDriver == null) {
+        initializeProducer(topic);
+      }
+
+      if (producerDriver == null)  {
+        log.error("producer closed, cannot get partitionsFor " + topic);
+        return null;
+      }
+
+      if (isMarlin) {
+        return producerDriver.partitionsFor(topic);
+      } else {
         try {
             waitOnMetadata(topic, this.maxBlockTimeMs);
         } catch (InterruptedException e) {
             throw new InterruptException(e);
         }
         return this.metadata.fetch().partitionsForTopic(topic);
+      }
     }
 
     /**
@@ -566,7 +676,16 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
+      if (producerDriver == null) {
+        log.error("producer not initialized, cannot get metrics");
+        return null;
+      }
+
+      if (isMarlin) {
+        return producerDriver.metrics();
+      } else {
         return Collections.unmodifiableMap(this.metrics.metrics());
+      }
     }
 
     /**
@@ -607,8 +726,26 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     private void close(long timeout, TimeUnit timeUnit, boolean swallowException) {
+      Producer<K, V> producerDriverToClose = null;
+
+      synchronized(this) {
+        if (closed)
+          return;
+
+        closed = true;
+        if (producerDriver == null) {
+          return;
+        }
+
+        producerDriverToClose = producerDriver;
+        producerDriver = null;
+      }
+
+      if (isMarlin) {
+        producerDriverToClose.close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      } else {
         if (timeout < 0)
-            throw new IllegalArgumentException("The timeout cannot be negative.");
+          throw new IllegalArgumentException("The timeout cannot be negative.");
 
         log.info("Closing the Kafka producer with timeoutMillis = {} ms.", timeUnit.toMillis(timeout));
         // this will keep track of the first encountered exception
@@ -654,6 +791,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         log.debug("The Kafka producer has closed.");
         if (firstException.get() != null && !swallowException)
             throw new KafkaException("Failed to close kafka producer", firstException.get());
+      }
     }
 
     /**
