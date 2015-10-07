@@ -200,8 +200,23 @@ public class ProducerConfig extends AbstractConfig {
     public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
+    /** MARLIN SPECIFIC SETTINGS **/
+    /** <code>marlin.buffer.time</code> **/
+    public static final String MARLIN_BUFFER_TIME_CONFIG = "marlin.buffer.max.time.ms";
+    private static final String MARLIN_BUFFER_TIME_DOC = "Messages are buffered in the producer at most the specified time.  A thread "
+                                                       + "will flush all messages that have been buffered more than the specified time. "
+                                                       + "The default value is 3000 (3 seconds).";
+    /** <code>marlin.parallel.flushers.per.partition</code> **/
+    public static final String MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG = "marlin.parallel.flushers.per.partition";
+    private static final String MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC = "This enables parallel flushers per partition.  By default, "
+                                                                           + "it is enabled.  If enabled, messages even within a single "
+                                                                           + "partition may be delivered out-of-order.";
+    /** <code>marlin.partitioner.class</code> **/
+    public static final String MARLIN_PARTITIONER_CLASS_CONFIG = "marlin.partitioner.class";
+    private static final String MARLIN_PARTITIONER_CLASS_DOC = "Marlin's partitioner class that implements <code>MarlinPartitioner</code> interface.";
+
     static {
-        CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, Importance.HIGH, CommonClientConfigs.BOOSTRAP_SERVERS_DOC)
+        CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, "", Importance.HIGH, CommonClientConfigs.BOOSTRAP_SERVERS_DOC)
                                 .define(BUFFER_MEMORY_CONFIG, Type.LONG, 32 * 1024 * 1024L, atLeast(0L), Importance.HIGH, BUFFER_MEMORY_DOC)
                                 .define(RETRIES_CONFIG, Type.INT, 0, between(0, Integer.MAX_VALUE), Importance.HIGH, RETRIES_DOC)
                                 .define(ACKS_CONFIG,
@@ -285,8 +300,13 @@ public class ProducerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
-
+                                .withClientSaslSupport()
+                                .define(MARLIN_BUFFER_TIME_CONFIG, Type.LONG, 3000L, atLeast(0L), Importance.HIGH, MARLIN_BUFFER_TIME_DOC)
+                                .define(MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG,
+                                        Type.BOOLEAN, true, Importance.HIGH, MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
+                                .define(MARLIN_PARTITIONER_CLASS_CONFIG, Type.CLASS,
+                                        "org.apache.kafka.clients.producer.DefaultMarlinPartitioner",
+                                        Importance.MEDIUM, MARLIN_PARTITIONER_CLASS_DOC);
     }
 
     public static Map<String, Object> addSerializerToConfig(Map<String, Object> configs,
