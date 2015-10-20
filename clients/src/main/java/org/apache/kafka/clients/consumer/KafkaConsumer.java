@@ -1180,7 +1180,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
-        commitAsync(callback);
+        consumerDriver.commitAsync(callback);
       } else {
         acquire();
         try {
@@ -1225,7 +1225,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
-        commitAsync(offsets, callback);
+        consumerDriver.commitAsync(offsets, callback);
       } else {
         acquire();
         try {
