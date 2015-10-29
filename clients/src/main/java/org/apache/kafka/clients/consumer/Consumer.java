@@ -137,6 +137,11 @@ public interface Consumer<K, V> extends Closeable {
     public Map<String, List<PartitionInfo>> listTopics();
 
     /**
+     * @see KafkaConsumer#listTopics(String)
+     */
+    public Map<String, List<PartitionInfo>> listTopics(String stream);
+
+    /**
      * @see KafkaConsumer#pause(TopicPartition...)
      */
     public void pause(TopicPartition... partitions);

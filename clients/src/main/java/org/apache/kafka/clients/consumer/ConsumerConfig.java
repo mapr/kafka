@@ -162,6 +162,12 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
+    /** <code>marlin.consumer.default.stream</code> **/
+    public static final String MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG = "marlin.consumer.default.stream";
+    private static final String MARLIN_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
+      + "if the topic name does not specify the stream.  For example, if consumer subscribes to exampleTopic and this parameter "
+      + "is set to /exampleStream, then the consumer will subscribe to /exampleStream:exampleTopic.  If consumer subscribes to "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
@@ -296,7 +302,6 @@ public class ConsumerConfig extends AbstractConfig {
                                         9 * 60 * 1000,
                                         Importance.MEDIUM,
                                         CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_DOC)
-
                                 // security support
                                 .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
                                         Type.STRING,
@@ -304,8 +309,11 @@ public class ConsumerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
-
+                                .withClientSaslSupport()
+                                .define(MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        Importance.MEDIUM,
+                                        MARLIN_CONSUMER_DEFAULT_STREAM_DOC);
     }
 
     public static Map<String, Object> addDeserializerToConfig(Map<String, Object> configs,

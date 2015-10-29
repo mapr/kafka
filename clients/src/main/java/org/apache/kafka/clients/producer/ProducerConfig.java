@@ -215,6 +215,13 @@ public class ProducerConfig extends AbstractConfig {
     public static final String MARLIN_PARTITIONER_CLASS_CONFIG = "marlin.partitioner.class";
     private static final String MARLIN_PARTITIONER_CLASS_DOC = "Marlin's partitioner class that implements <code>MarlinPartitioner</code> interface.";
 
+    /** <code>marlin.producer.default.stream</code> **/
+    public static final String MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG = "marlin.producer.default.stream";
+    private static final String MARLIN_PRODUCER_DEFAULT_STREAM_DOC = "The default stream the producer should send the messages to, "
+      + "if the topic name does not specify the stream.  For example, if producer sends a message to exampleTopic and this parameter "
+      + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If producer sends a message to "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, "", Importance.HIGH, CommonClientConfigs.BOOSTRAP_SERVERS_DOC)
                                 .define(BUFFER_MEMORY_CONFIG, Type.LONG, 32 * 1024 * 1024L, atLeast(0L), Importance.HIGH, BUFFER_MEMORY_DOC)
@@ -301,12 +308,26 @@ public class ProducerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(MARLIN_BUFFER_TIME_CONFIG, Type.LONG, 3000L, atLeast(0L), Importance.HIGH, MARLIN_BUFFER_TIME_DOC)
+                                .define(MARLIN_BUFFER_TIME_CONFIG,
+                                        Type.LONG,
+                                        3000L,
+                                        atLeast(0L),
+                                        Importance.HIGH,
+                                        MARLIN_BUFFER_TIME_DOC)
                                 .define(MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG,
-                                        Type.BOOLEAN, true, Importance.HIGH, MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
-                                .define(MARLIN_PARTITIONER_CLASS_CONFIG, Type.CLASS,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.HIGH,
+                                        MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
+                                .define(MARLIN_PARTITIONER_CLASS_CONFIG,
+                                        Type.CLASS,
                                         "org.apache.kafka.clients.producer.DefaultMarlinPartitioner",
-                                        Importance.MEDIUM, MARLIN_PARTITIONER_CLASS_DOC);
+                                        Importance.MEDIUM,
+                                        MARLIN_PARTITIONER_CLASS_DOC)
+                                .define(MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        Importance.MEDIUM,
+                                        MARLIN_PRODUCER_DEFAULT_STREAM_DOC);
     }
 
     public static Map<String, Object> addSerializerToConfig(Map<String, Object> configs,
