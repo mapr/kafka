@@ -281,6 +281,12 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
         return partitions;
     }
 
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+      throw new KafkaException("listTopics(String) is not supported");
+    }
+
+
     public void updatePartitions(String topic, List<PartitionInfo> partitions) {
         ensureNotClosed();
         this.partitions.put(topic, partitions);

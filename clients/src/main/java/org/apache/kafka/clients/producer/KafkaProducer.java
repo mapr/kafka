@@ -152,6 +152,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private boolean isMarlin;
     private Producer<K, V> producerDriver;
     private boolean closed;
+    private String defaultStream = null;
 
     /**
      * A producer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -225,6 +226,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
       } else {
         config.ignore(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG);
         this.valueSerializer = valueSerializer;
+      }
+
+      defaultStream = null;
+      try {
+        defaultStream = config.getString(ProducerConfig.MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG);
+      } catch (Exception e) {}
+
+      if (defaultStream != null) {
+        initializeProducer(defaultStream + ":");  // Just to be safe, add a ":", which will make it marlin!
       }
     }
 
@@ -403,6 +413,25 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         }
     }
 
+    private ProducerRecord<K, V> addDefaultStreamNameIfNeeded(ProducerRecord<K, V> record) {
+      if (defaultStream == null || record.topic().startsWith("/")) {
+        return record;
+      }
+
+      ProducerRecord<K, V> newRecord = null;
+      if (record.partition() == null) {
+        newRecord = new ProducerRecord(defaultStream + ":" + record.topic(),
+                                       record.key(),
+                                       record.value());
+      } else {
+        newRecord = new ProducerRecord(defaultStream + ":" + record.topic(),
+                                       record.partition(),
+                                       record.key(),
+                                       record.value());
+      }
+      return newRecord;
+    }
+
     /**
      * Asynchronously send a record to a topic. Equivalent to <code>send(record, null)</code>.
      * See {@link #send(ProducerRecord, Callback)} for details.
@@ -492,6 +521,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
       }
 
       if (isMarlin) {
+        record = addDefaultStreamNameIfNeeded(record);
         return producerDriver.send(record, callback);
       } else {
         try {
