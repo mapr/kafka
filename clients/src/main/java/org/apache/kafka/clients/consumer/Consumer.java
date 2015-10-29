@@ -175,6 +175,11 @@ public interface Consumer<K, V> extends Closeable {
      */
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions);
 
+		/**
+     * @see KafkaConsumer#listTopics(String)
+     */
+    public Map<String, List<PartitionInfo>> listTopics(String stream);
+
     /**
      * @see KafkaConsumer#close()
      */
