@@ -582,6 +582,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private boolean isMarlin = false;
     private boolean isMarlinClosed = false;
     private Consumer<K, V> consumerDriver = null;
+    private String defaultStream = null;
 
     /**
      * A consumer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -688,6 +689,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } else {
           config.ignore(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG);
           this.valueDeserializer = valueDeserializer;
+        }
+
+        defaultStream = null;
+        try {
+          defaultStream = config.getString(ConsumerConfig.MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG);
+        } catch (Exception e) {}
+
+        if (defaultStream != null) {
+          initializeConsumer(defaultStream + ":");  // Just to be safe, add a ":", which will make it marlin!
         }
     }
 
@@ -886,6 +896,104 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.retryBackoffMs = retryBackoffMs;
         this.requestTimeoutMs = requestTimeoutMs;
         this.assignors = assignors;
+		}
+
+    private boolean useDefaultStreamName(String topicname) {
+      return (!topicname.startsWith("/"));
+    }
+
+    private String addDefaultStreamNameToTopicName(String topicname) {
+      return (defaultStream + ":" + topicname);
+    }
+
+    private TopicPartition addDefaultStreamNameToTopicPartition(TopicPartition tp) {
+      return new TopicPartition(addDefaultStreamNameToTopicName(tp.topic()), tp.partition());
+    }
+
+    private TopicPartition getNewTopicPartitionWithDefaultStream(TopicPartition tp) {
+      if (defaultStream != null && useDefaultStreamName(tp.topic())) {
+        return addDefaultStreamNameToTopicPartition(tp);
+      }
+      return tp;
+    }
+
+    private String getNewTopicNameWithDefaultStream(String topic) {
+      if (defaultStream != null && useDefaultStreamName(topic)) {
+        return addDefaultStreamNameToTopicName(topic);
+      }
+      return topic;
+    }
+
+    private boolean checkIfPartitionsNeedDefaultStream(Collection<TopicPartition> partitions) {
+      boolean needDefault = false;
+      if (defaultStream != null) {
+        for (TopicPartition tp : partitions) {
+          if (useDefaultStreamName(tp.topic())) {
+            needDefault = true;
+            break;
+          }
+        }
+      }
+      return needDefault;
+    }
+
+    private boolean checkIfTopicsNeedDefaultStream(Collection<String> topics) {
+      boolean needDefault = false;
+      if (defaultStream != null) {
+        for (String topic : topics) {
+          if (useDefaultStreamName(topic)) {
+            needDefault = true;
+            break;
+          }
+        }
+      }
+      return needDefault;
+    }
+
+    private List<TopicPartition> getNewPartitionListWithDefaultStream(List<TopicPartition> partitions) {
+      if (checkIfPartitionsNeedDefaultStream(partitions)) {
+        List<TopicPartition> newPartitions = new ArrayList<TopicPartition>(partitions.size());
+        for (TopicPartition partition : partitions) {
+          if (useDefaultStreamName(partition.topic())) {
+            partition = addDefaultStreamNameToTopicPartition(partition);
+          }
+          newPartitions.add(partition);
+        }
+        return newPartitions;
+      } else {
+        return partitions;
+      }
+    }
+
+    private Map<TopicPartition, OffsetAndMetadata> getNewPartitionMapWithDefaultStream(Map<TopicPartition, OffsetAndMetadata> offsets) {
+      if (checkIfPartitionsNeedDefaultStream(offsets.keySet())) {
+        Map<TopicPartition, OffsetAndMetadata> newOffsets = new HashMap<TopicPartition, OffsetAndMetadata>();
+        for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
+          TopicPartition tp = entry.getKey();
+          if (useDefaultStreamName(tp.topic())) {
+            tp = addDefaultStreamNameToTopicPartition(tp);
+          }
+          newOffsets.put(tp, entry.getValue());
+        }
+        return newOffsets;
+      } else {
+        return offsets;
+      }
+    }
+
+    private Collection<String> getNewTopicCollectionWithDefaultStream(Collection<String> topics) {
+      if (checkIfTopicsNeedDefaultStream(topics)) {
+        List<String> newTopics = new ArrayList<String>(topics.size());
+        for (String topic : topics) {
+          if (useDefaultStreamName(topic)) {
+            topic = addDefaultStreamNameToTopicName(topic);
+          }
+          newTopics.add(topic);
+        }
+        return newTopics;
+      } else {
+        return topics;
+      }
     }
 
     /**
@@ -981,6 +1089,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        topics = getNewTopicCollectionWithDefaultStream(topics);
         consumerDriver.subscribe(topics, listener);
       } else {
         acquireAndEnsureOpen();
@@ -1068,6 +1177,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
         consumerDriver.subscribe(pattern, listener);
       } else {
         acquireAndEnsureOpen();
@@ -1170,6 +1280,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        partitions = getNewPartitionListWithDefaultStream(partitions);
         consumerDriver.assign(partitions);
       } else {
         acquireAndEnsureOpen();
@@ -1413,7 +1524,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
-        consumerDriver.commitSync(offsets);
+        Map<TopicPartition, OffsetAndMetadata> newoffsets = getNewPartitionMapWithDefaultStream(offsets);
+        consumerDriver.commitSync(newoffsets);
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1507,7 +1619,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
-        consumerDriver.commitAsync(offsets, callback);
+        Map<TopicPartition, OffsetAndMetadata> newOffsets = getNewPartitionMapWithDefaultStream(offsets);
+        consumerDriver.commitAsync(newOffsets, callback);
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1543,6 +1656,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
         consumerDriver.seek(partition, offset);
       } else {
         acquireAndEnsureOpen();
@@ -1576,6 +1690,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
         consumerDriver.seekToBeginning(partitions);
       } else {
         acquireAndEnsureOpen();
@@ -1615,6 +1730,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
         consumerDriver.seekToEnd(partitions);
       } else {
         acquireAndEnsureOpen();
@@ -1661,6 +1777,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
         return consumerDriver.position(partition);
       } else {
         acquireAndEnsureOpen();
@@ -1709,6 +1826,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
         return consumerDriver.committed(partition);
       } else {
         acquireAndEnsureOpen();
@@ -1766,6 +1884,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+        topic = getNewTopicNameWithDefaultStream(topic);
         return consumerDriver.partitionsFor(topic);
       } else {
         acquireAndEnsureOpen();
@@ -1805,7 +1924,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
-        return consumerDriver.listTopics();
+        if (defaultStream == null) {
+          throw new KafkaException("Cannot get listTopics() without default stream name");
+        }
+        return consumerDriver.listTopics(defaultStream);
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1813,6 +1935,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * Get metadata about partitions for all topics of the stream. This method will issue a remote
+     * call to the server.
+     *
+     * @return The map of topics and its partitions
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+      if (consumerDriver == null) {
+        initializeConsumer(stream + ":");
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isMarlin) {
+        return consumerDriver.listTopics(stream);
+      } else {
+        throw new KafkaException("Unsupported method for KafkaConsumer");
       }
     }
 
@@ -1836,6 +1982,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
         consumerDriver.pause(partitions);
       } else {
         acquireAndEnsureOpen();
@@ -1869,6 +2016,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isMarlin) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
         consumerDriver.resume(partitions);
       } else {
         acquireAndEnsureOpen();
