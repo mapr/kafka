@@ -326,6 +326,7 @@ public class ProducerConfig extends AbstractConfig {
                                         MARLIN_PARTITIONER_CLASS_DOC)
                                 .define(MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
+                                        "",
                                         Importance.MEDIUM,
                                         MARLIN_PRODUCER_DEFAULT_STREAM_DOC);
     }

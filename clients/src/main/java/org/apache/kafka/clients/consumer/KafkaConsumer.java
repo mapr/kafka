@@ -564,6 +564,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         defaultStream = null;
         try {
           defaultStream = config.getString(ConsumerConfig.MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG);
+          if (defaultStream == "") defaultStream = null;
         } catch (Exception e) {}
 
         if (defaultStream != null) {
