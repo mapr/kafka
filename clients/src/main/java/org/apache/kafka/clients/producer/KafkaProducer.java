@@ -231,6 +231,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
       defaultStream = null;
       try {
         defaultStream = config.getString(ProducerConfig.MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG);
+        if (defaultStream == "") defaultStream = null;
       } catch (Exception e) {}
 
       if (defaultStream != null) {

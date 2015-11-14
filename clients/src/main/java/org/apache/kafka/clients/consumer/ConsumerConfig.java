@@ -312,6 +312,7 @@ public class ConsumerConfig extends AbstractConfig {
                                 .withClientSaslSupport()
                                 .define(MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
+                                        "",
                                         Importance.MEDIUM,
                                         MARLIN_CONSUMER_DEFAULT_STREAM_DOC);
     }
