@@ -1644,6 +1644,31 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * Get metadata about partitions for all topics of the stream that matches the pattern.  If the pattern does not contain a stream name,
+     * and the default stream name is specified, then the default stream is used.
+     *
+     * @return The map of topics and its partitions
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+      if (consumerDriver == null) {
+        initializeConsumer(pattern  ":");
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isMarlin) {
+        pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
+        return consumerDriver.listTopics(pattern);
+      } else {
+        throw new KafkaException("Unsupported method for KafkaConsumer");
+      }
+    }
+
+    /**
      * Suspend fetching from the requested partitions. Future calls to {@link #poll(long)} will not return
      * any records from these partitions until they have been resumed using {@link #resume(TopicPartition...)}.
      * Note that this method does not affect partition subscription. In particular, it does not cause a group
