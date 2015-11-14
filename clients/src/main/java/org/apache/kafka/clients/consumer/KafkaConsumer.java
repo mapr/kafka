@@ -56,6 +56,8 @@ import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
@@ -1774,7 +1776,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
       if (consumerDriver == null) {
         log.error("consumer closed, cannot get position");
-        throw new NoOffsetForPartitionException("consumer closed, cannot get position");
+        throw new NoOffsetForPartitionException(partition);
       }
 
       if (isMarlin) {
@@ -1823,7 +1825,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
       if (consumerDriver == null) {
         log.error("consumer closed, cannot get committed");
-        throw new NoOffsetForPartitionException("consumer closed, cannot get committed");
+        throw new NoOffsetForPartitionException(partition);
       }
 
       if (isMarlin) {
