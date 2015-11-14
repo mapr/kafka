@@ -1679,7 +1679,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
       if (consumerDriver == null) {
-        initializeConsumer(pattern  ":");
+        initializeConsumer(pattern.toString() + ":");
       }
 
       if (consumerDriver == null) {
