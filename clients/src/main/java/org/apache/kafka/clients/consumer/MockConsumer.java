@@ -303,6 +303,11 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
       throw new KafkaException("listTopics(String) is not supported");
     }
 
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+      throw new KafkaException("listTopics(Pattern) is not supported");
+    }
+
     public synchronized void updatePartitions(String topic, List<PartitionInfo> partitions) {
         ensureNotClosed();
         this.partitions.put(topic, partitions);
