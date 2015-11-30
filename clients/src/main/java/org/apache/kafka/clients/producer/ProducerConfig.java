@@ -200,24 +200,24 @@ public class ProducerConfig extends AbstractConfig {
     public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
-    /** MARLIN SPECIFIC SETTINGS **/
-    /** <code>marlin.buffer.time</code> **/
-    public static final String MARLIN_BUFFER_TIME_CONFIG = "marlin.buffer.max.time.ms";
-    private static final String MARLIN_BUFFER_TIME_DOC = "Messages are buffered in the producer at most the specified time.  A thread "
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>streams.buffer.max.time.ms</code> **/
+    public static final String STREAMS_BUFFER_TIME_CONFIG = "streams.buffer.max.time.ms";
+    private static final String STREAMS_BUFFER_TIME_DOC = "Messages are buffered in the producer at most the specified time.  A thread "
                                                        + "will flush all messages that have been buffered more than the specified time. "
                                                        + "The default value is 3000 (3 seconds).";
-    /** <code>marlin.parallel.flushers.per.partition</code> **/
-    public static final String MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG = "marlin.parallel.flushers.per.partition";
-    private static final String MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC = "This enables parallel flushers per partition.  By default, "
+    /** <code>streams.parallel.flushers.per.partition</code> **/
+    public static final String STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG = "streams.parallel.flushers.per.partition";
+    private static final String STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_DOC = "This enables parallel flushers per partition.  By default, "
                                                                            + "it is enabled.  If enabled, messages even within a single "
                                                                            + "partition may be delivered out-of-order.";
-    /** <code>marlin.partitioner.class</code> **/
-    public static final String MARLIN_PARTITIONER_CLASS_CONFIG = "marlin.partitioner.class";
-    private static final String MARLIN_PARTITIONER_CLASS_DOC = "Marlin's partitioner class that implements <code>MarlinPartitioner</code> interface.";
+    /** <code>streams.partitioner.class</code> **/
+    public static final String STREAMS_PARTITIONER_CLASS_CONFIG = "streams.partitioner.class";
+    private static final String STREAMS_PARTITIONER_CLASS_DOC = "Streams partitioner class that implements <code>StreamsPartitioner</code> interface.";
 
-    /** <code>marlin.producer.default.stream</code> **/
-    public static final String MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG = "marlin.producer.default.stream";
-    private static final String MARLIN_PRODUCER_DEFAULT_STREAM_DOC = "The default stream the producer should send the messages to, "
+    /** <code>streams.producer.default.stream</code> **/
+    public static final String STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG = "streams.producer.default.stream";
+    private static final String STREAMS_PRODUCER_DEFAULT_STREAM_DOC = "The default stream the producer should send the messages to, "
       + "if the topic name does not specify the stream.  For example, if producer sends a message to exampleTopic and this parameter "
       + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If producer sends a message to "
       + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
@@ -308,27 +308,27 @@ public class ProducerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(MARLIN_BUFFER_TIME_CONFIG,
+                                .define(STREAMS_BUFFER_TIME_CONFIG,
                                         Type.LONG,
                                         3000L,
                                         atLeast(0L),
                                         Importance.HIGH,
-                                        MARLIN_BUFFER_TIME_DOC)
-                                .define(MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG,
+                                        STREAMS_BUFFER_TIME_DOC)
+                                .define(STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG,
                                         Type.BOOLEAN,
                                         true,
                                         Importance.HIGH,
-                                        MARLIN_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
-                                .define(MARLIN_PARTITIONER_CLASS_CONFIG,
+                                        STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
+                                .define(STREAMS_PARTITIONER_CLASS_CONFIG,
                                         Type.CLASS,
-                                        "org.apache.kafka.clients.producer.DefaultMarlinPartitioner",
+                                        "org.apache.kafka.clients.producer.DefaultStreamsPartitioner",
                                         Importance.MEDIUM,
-                                        MARLIN_PARTITIONER_CLASS_DOC)
-                                .define(MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG,
+                                        STREAMS_PARTITIONER_CLASS_DOC)
+                                .define(STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
                                         "",
                                         Importance.MEDIUM,
-                                        MARLIN_PRODUCER_DEFAULT_STREAM_DOC);
+                                        STREAMS_PRODUCER_DEFAULT_STREAM_DOC);
     }
 
     public static Map<String, Object> addSerializerToConfig(Map<String, Object> configs,
