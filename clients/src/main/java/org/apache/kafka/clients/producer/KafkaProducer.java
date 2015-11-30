@@ -79,7 +79,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.ensureExtended;
 
-/* Marlin Imports */
+/* Streams Imports */
 import org.apache.kafka.clients.mapr.GenericHFactory;
 
 /**
@@ -257,9 +257,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private ApiVersions apiVersions;
     private final TransactionManager transactionManager;
 
-    // For marlin we have added the following.
+    // For streams we have added the following.
     private final ProducerConfig config;
-    private boolean isMarlin;
+    private boolean isStreams;
     private Producer<K, V> producerDriver;
     private boolean closed;
     private String defaultStream = null;
@@ -360,12 +360,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
       defaultStream = null;
       try {
-        defaultStream = config.getString(ProducerConfig.MARLIN_PRODUCER_DEFAULT_STREAM_CONFIG);
+        defaultStream = config.getString(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG);
         if (defaultStream == "") defaultStream = null;
       } catch (Exception e) {}
 
       if (defaultStream != null) {
-        initializeProducer(defaultStream + ":");  // Just to be safe, add a ":", which will make it marlin!
+        initializeProducer(defaultStream + ":");  // Just to be safe, add a ":", which will make it streams!
       }
     }
 
@@ -397,11 +397,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                                                                  Serializer.class,
                                                                  Serializer.class});
           producerDriver = ap;
-          isMarlin = true;
+          isStreams = true;
         } else {
 
           producerDriver = this;    // Set it to this, which is a kafka producer
-          isMarlin = false;
+          isStreams = false;
 
           List<InetSocketAddress> kafkaaddresses =
             ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
@@ -878,7 +878,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return new FutureFailure(new ApiException("producer closed, cannot send"));
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         record = addDefaultStreamNameIfNeeded(record);
         return producerDriver.send(record, callback);
       } else {
@@ -1080,7 +1080,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         producerDriver.flush();
       } else {
         this.accumulator.beginFlush();
@@ -1110,7 +1110,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         return producerDriver.partitionsFor(topic);
       } else {
         try {
@@ -1132,7 +1132,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         return producerDriver.metrics();
       } else {
         return Collections.unmodifiableMap(this.metrics.metrics());
@@ -1192,7 +1192,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         producerDriver = null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         producerDriverToClose.close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
       } else {
         if (timeout < 0)
