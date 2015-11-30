@@ -224,9 +224,9 @@ public class ConsumerConfig extends AbstractConfig {
                                                         + "Implementing the <code>org.apache.kafka.clients.consumer.ConsumerInterceptor</code> interface allows you to intercept (and possibly mutate) records "
                                                         + "received by the consumer. By default, there are no interceptors.";
 
-    /** <code>marlin.consumer.default.stream</code> **/
-    public static final String MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG = "marlin.consumer.default.stream";
-    private static final String MARLIN_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
+    /** <code>streams.consumer.default.stream</code> **/
+    public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
+    private static final String STREAMS_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
       + "if the topic name does not specify the stream.  For example, if consumer subscribes to exampleTopic and this parameter "
       + "is set to /exampleStream, then the consumer will subscribe to /exampleStream:exampleTopic.  If consumer subscribes to "
       + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
@@ -451,11 +451,11 @@ public class ConsumerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG,
+                                .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
                                         "",
                                         Importance.MEDIUM,
-                                        MARLIN_CONSUMER_DEFAULT_STREAM_DOC);
+                                        STREAMS_CONSUMER_DEFAULT_STREAM_DOC);
     }
 
     @Override
