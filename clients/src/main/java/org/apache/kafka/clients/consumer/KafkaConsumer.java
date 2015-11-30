@@ -62,7 +62,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
-/* Marlin Imports */
+/* Streams Imports */
 import org.apache.kafka.clients.mapr.GenericHFactory;
 import java.io.IOException;
 
@@ -486,10 +486,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
     private final AtomicInteger refcount = new AtomicInteger(0);
 
-    // MARLIN SPECIFIC
+    // STREAMS SPECIFIC
     private final ConsumerConfig config;
-    private boolean isMarlin = false;
-    private boolean isMarlinClosed = false;
+    private boolean isStreams = false;
+    private boolean isStreamsClosed = false;
     private Consumer<K, V> consumerDriver = null;
     private String defaultStream = null;
 
@@ -566,8 +566,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
         this.closed = false;
-        this.isMarlin = false;
-        this.isMarlinClosed = false;
+        this.isStreams = false;
+        this.isStreamsClosed = false;
 
         if (keyDeserializer == null) {
           this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
@@ -588,18 +588,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         defaultStream = null;
         try {
-          defaultStream = config.getString(ConsumerConfig.MARLIN_CONSUMER_DEFAULT_STREAM_CONFIG);
+          defaultStream = config.getString(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG);
           if (defaultStream == "") defaultStream = null;
         } catch (Exception e) {}
 
         if (defaultStream != null) {
-          initializeConsumer(defaultStream + ":");  // Just to be safe, add a ":", which will make it marlin!
+          initializeConsumer(defaultStream + ":");  // Just to be safe, add a ":", which will make it streams!
         }
     }
 
     private void initializeConsumer(String topic) {
       synchronized(this) {
-        if (isMarlinClosed) {
+        if (isStreamsClosed) {
           log.error("cannot initialize consumer. already closed.");
           return;
         }
@@ -622,10 +622,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                                                    {ConsumerConfig.class,
                                                     Deserializer.class,
                                                     Deserializer.class});
-          isMarlin = true;
+          isStreams = true;
           consumerDriver = ac;
         } else {
-          isMarlin = false;
+          isStreams = false;
           consumerDriver = this;
 
           List<InetSocketAddress> kafkaaddresses = ClientUtils.parseAndValidateAddresses(config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
@@ -855,7 +855,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Set<TopicPartition> assignment() {
       if (consumerDriver == null) {
         return (new HashSet<TopicPartition>());
-      } else if (isMarlin) {
+      } else if (isStreams) {
         return consumerDriver.assignment();
       } else {
         acquire();
@@ -875,7 +875,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Set<String> subscription() {
       if (consumerDriver == null) {
         return (new HashSet<String>());
-      } else if (isMarlin) {
+      } else if (isStreams) {
         return consumerDriver.subscription();
       } else {
         acquire();
@@ -932,7 +932,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         topics = getNewTopicListWithDefaultStream(topics);
         consumerDriver.subscribe(topics, listener);
       } else {
@@ -1001,7 +1001,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
         consumerDriver.subscribe(pattern, listener);
       } else {
@@ -1026,7 +1026,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         consumerDriver.unsubscribe();
       } else {
         acquire();
@@ -1068,7 +1068,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         partitions = getNewPartitionListWithDefaultStream(partitions);
         consumerDriver.assign(partitions);
       } else {
@@ -1114,7 +1114,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         throw new IllegalStateException("No active subscriptions");
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         return consumerDriver.poll(timeout);
       } else {
         acquire();
@@ -1212,7 +1212,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         throw new IllegalStateException("No active subscriptions");
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         consumerDriver.commitSync();
       } else {
         acquire();
@@ -1263,7 +1263,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         Map<TopicPartition, OffsetAndMetadata> newoffsets = getNewPartitionMapWithDefaultStream(offsets);
         consumerDriver.commitSync(newoffsets);
       } else {
@@ -1303,7 +1303,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         throw new IllegalStateException("No active subscriptions");
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         consumerDriver.commitAsync(callback);
       } else {
         acquire();
@@ -1348,7 +1348,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         Map<TopicPartition, OffsetAndMetadata> newOffsets = getNewPartitionMapWithDefaultStream(offsets);
         consumerDriver.commitAsync(newOffsets, callback);
       } else {
@@ -1382,7 +1382,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         partition = getNewTopicPartitionWithDefaultStream(partition);
         consumerDriver.seek(partition, offset);
       } else {
@@ -1410,7 +1410,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         updatePartitionArrayWithDefaultStream(partitions);
         consumerDriver.seekToBeginning(partitions);
       } else {
@@ -1442,7 +1442,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         updatePartitionArrayWithDefaultStream(partitions);
         consumerDriver.seekToEnd(partitions);
       } else {
@@ -1483,7 +1483,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         throw new NoOffsetForPartitionException(partition);
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         partition = getNewTopicPartitionWithDefaultStream(partition);
         return consumerDriver.position(partition);
       } else {
@@ -1529,7 +1529,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         throw new NoOffsetForPartitionException(partition);
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         partition = getNewTopicPartitionWithDefaultStream(partition);
         return consumerDriver.committed(partition);
       } else {
@@ -1564,7 +1564,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         return consumerDriver.metrics();
       } else {
         return Collections.unmodifiableMap(this.metrics.metrics());
@@ -1595,7 +1595,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         topic = getNewTopicNameWithDefaultStream(topic);
         return consumerDriver.partitionsFor(topic);
       } else {
@@ -1632,7 +1632,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return new HashMap<String, List<PartitionInfo>>();
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         if (defaultStream == null) {
           throw new KafkaException("Cannot get listTopics() without default stream name");
         }
@@ -1664,7 +1664,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return new HashMap<String, List<PartitionInfo>>();
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         return consumerDriver.listTopics(stream);
       } else {
         throw new KafkaException("Unsupported method for KafkaConsumer");
@@ -1688,7 +1688,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return new HashMap<String, List<PartitionInfo>>();
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
         return consumerDriver.listTopics(pattern);
       } else {
@@ -1714,7 +1714,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         updatePartitionArrayWithDefaultStream(partitions);
         consumerDriver.pause(partitions);
       } else {
@@ -1747,7 +1747,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         updatePartitionArrayWithDefaultStream(partitions);
         consumerDriver.resume(partitions);
       } else {
@@ -1772,10 +1772,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      Consumer<K, V> consumerDriverToDelete = null;
 
       synchronized(this) {
-        if (isMarlinClosed) {
+        if (isStreamsClosed) {
           return;
         }
-        isMarlinClosed = true;
+        isStreamsClosed = true;
         if (consumerDriver == null) {
           return;
         }
@@ -1784,7 +1784,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         consumerDriver = null;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         consumerDriverToDelete.close();
       } else {
         acquire();
@@ -1808,12 +1808,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         return;
       }
 
-      if (closed || isMarlinClosed) {
+      if (closed || isStreamsClosed) {
         log.error("Consumer closed, cannot wake up.");
         return;
       }
 
-      if (isMarlin) {
+      if (isStreams) {
         consumerDriver.wakeup();
       } else {
         this.client.wakeup();
