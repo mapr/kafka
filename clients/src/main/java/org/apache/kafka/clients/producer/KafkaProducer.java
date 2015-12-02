@@ -259,7 +259,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
           Producer<K,V> ap;
           GenericHFactory<Producer<K, V>> producerFactory = new GenericHFactory<Producer<K, V>>();
           ap =
-            producerFactory.getImplementorInstance("com.mapr.fs.marlin.producer.MarlinProducer",
+            producerFactory.getImplementorInstance("com.mapr.streams.producer.MarlinProducer",
                                                    new Object [] {this.config,
                                                                   this.keySerializer,
                                                                   this.valueSerializer},
