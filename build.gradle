@@ -86,6 +86,7 @@ subprojects {
   apply plugin: 'eclipse'
   apply plugin: 'maven'
   apply plugin: 'signing'
+  apply plugin: 'maven-publish'
 
   sourceCompatibility = 1.7
 
@@ -186,6 +187,19 @@ subprojects {
     configure(scalaCompileOptions.forkOptions) {
       memoryMaximumSize = '1g'
       jvmArgs = ['-XX:MaxPermSize=512m', '-Xss2m']
+    }
+  }
+  
+  publishing {
+    repositories {
+      maven {
+        name "targetrepo"
+        url mavenUrl
+        credentials {
+          username mavenUsername
+          password mavenPassword
+        }
+      }
     }
   }
 }
@@ -484,6 +498,43 @@ project(':clients') {
      configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("clients-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaClients(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-clients"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaClientsPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':tools') {
