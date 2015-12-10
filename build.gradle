@@ -140,6 +140,7 @@ subprojects {
 
   if (!JavaVersion.current().isJava9Compatible())
     apply plugin: 'findbugs'
+  apply plugin: 'maven-publish'
 
   sourceCompatibility = 1.7
   targetCompatibility = 1.7
@@ -398,6 +399,18 @@ subprojects {
   def coverageGen = it.path == ':core' ? 'reportScoverage' : 'jacocoTestReport'
   task reportCoverage(dependsOn: [coverageGen])
 
+  publishing {
+    repositories {
+      maven {
+        name "targetrepo"
+        url mavenUrl
+        credentials {
+          username mavenUsername
+          password mavenPassword
+        }
+      }
+    }
+  }
 }
 
 gradle.taskGraph.whenReady { taskGraph ->
@@ -878,6 +891,44 @@ project(':tools') {
 
   jar {
     dependsOn 'copyDependantLibs'
+  }
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("clients-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaClients(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-clients"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaClientsPublication {
+      dependsOn "eatPom"
+    }
   }
 }
 
