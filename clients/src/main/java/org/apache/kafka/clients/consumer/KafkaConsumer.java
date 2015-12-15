@@ -614,7 +614,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
           GenericHFactory<Consumer<K, V>> consumerFactory = new GenericHFactory<Consumer<K, V>>();
 
           ac =
-            consumerFactory.getImplementorInstance("com.mapr.streams.listener.MarlinListener",
+            consumerFactory.getImplementorInstance("com.mapr.streams.impl.listener.MarlinListener",
                                                    new Object [] {this.config,
                                                                   this.keyDeserializer,
                                                                   this.valueDeserializer},
