@@ -67,4 +67,10 @@ public class CommonClientConfigs {
                                                          + "for the response of a request. If the response is not received before the timeout "
                                                          + "elapses the client will resend the request if necessary or fail the request if "
                                                          + "retries are exhausted.";
+
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>streams.rpc.timeout.ms</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
+    public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). "
+                                                            + "The default value is Integer.MAX_VALUE (no timeout).";
 }

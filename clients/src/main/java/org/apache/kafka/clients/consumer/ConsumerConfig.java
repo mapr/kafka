@@ -162,6 +162,10 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
+
     /** <code>streams.consumer.default.stream</code> **/
     public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
     private static final String STREAMS_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
@@ -310,6 +314,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        Integer.MAX_VALUE,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
                                 .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
                                         "",
