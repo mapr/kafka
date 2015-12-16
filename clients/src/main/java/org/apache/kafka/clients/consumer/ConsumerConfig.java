@@ -223,6 +223,9 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String INTERCEPTOR_CLASSES_DOC = "A list of classes to use as interceptors. "
                                                         + "Implementing the <code>org.apache.kafka.clients.consumer.ConsumerInterceptor</code> interface allows you to intercept (and possibly mutate) records "
                                                         + "received by the consumer. By default, there are no interceptors.";
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
 
     /** <code>streams.consumer.default.stream</code> **/
     public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
@@ -451,6 +454,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        Integer.MAX_VALUE,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
                                 .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
                                         "",
