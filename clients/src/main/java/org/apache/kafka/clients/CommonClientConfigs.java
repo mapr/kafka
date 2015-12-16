@@ -107,5 +107,17 @@ public class CommonClientConfigs {
             rval.put(RECONNECT_BACKOFF_MAX_MS_CONFIG, parsedValues.get(RECONNECT_BACKOFF_MS_CONFIG));
         }
         return rval;
+		}
+
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>streams.rpc.timeout.ms</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
+    public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). "
+                                                            + "The default value is Integer.MAX_VALUE (no timeout).";
+    private static List<String> nonTestingSecurityProtocolNames() {
+        List<String> names = new ArrayList<>();
+        for (SecurityProtocol protocol : SecurityProtocol.nonTestingValues())
+            names.add(protocol.name);
+        return names;
     }
 }

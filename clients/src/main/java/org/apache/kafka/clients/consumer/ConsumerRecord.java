@@ -42,6 +42,7 @@ public class ConsumerRecord<K, V> {
     private final Headers headers;
     private final K key;
     private final V value;
+    private final String producer; 
 
     private volatile Long checksum;
 
@@ -133,6 +134,31 @@ public class ConsumerRecord<K, V> {
         this.key = key;
         this.value = value;
         this.headers = headers;
+        this.producer = null;
+    }
+
+    /**
+     * Creates a record to be received from a specified topic and partition
+     *
+     * @param topic The topic this record is received from
+     * @param partition The partition of the topic this record is received from
+     * @param offset The offset of this record in the corresponding Kafka partition
+     * @param key The key of the record, if one exists (null is allowed)
+     * @param value The record contents
+     * @param timestamp The timestamp at which the record was produced
+     * @param producer The producer for this record 
+     */
+    public ConsumerRecord(String topic, int partition, long offset, K key, V value,
+                          long timestamp, String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.key = key;
+        this.value = value;
+        this.timestamp = timestamp;
+        this.producer = producer; 
     }
 
     /**
@@ -192,24 +218,6 @@ public class ConsumerRecord<K, V> {
     }
 
     /**
-     * The checksum (CRC32) of the record.
-     *
-     * @deprecated As of Kafka 0.11.0. Because of the potential for message format conversion on the broker, the
-     *             checksum returned by the broker may not match what was computed by the producer.
-     *             It is therefore unsafe to depend on this checksum for end-to-end delivery guarantees. Additionally,
-     *             message format v2 does not include a record-level checksum (for performance, the record checksum
-     *             was replaced with a batch checksum). To maintain compatibility, a partial checksum computed from
-     *             the record timestamp, serialized key size, and serialized value size is returned instead, but
-     *             this should not be depended on for end-to-end reliability.
-     */
-    @Deprecated
-    public long checksum() {
-        if (checksum == null)
-            this.checksum = DefaultRecord.computePartialChecksum(timestamp, serializedKeySize, serializedValueSize);
-        return this.checksum;
-    }
-
-    /**
      * The size of the serialized, uncompressed key in bytes. If key is null, the returned size
      * is -1.
      */
@@ -225,13 +233,20 @@ public class ConsumerRecord<K, V> {
         return this.serializedValueSize;
     }
 
+		/**
+     * The producer for this record.
+     */
+    public String producer() {
+        return this.producer;
+		}
+
     @Override
     public String toString() {
         return "ConsumerRecord(topic = " + topic() + ", partition = " + partition() + ", offset = " + offset()
                + ", " + timestampType + " = " + timestamp
                + ", serialized key size = "  + serializedKeySize
                + ", serialized value size = " + serializedValueSize
-               + ", headers = " + headers
+               + ", headers = " + headers + ", producer = " + producer
                + ", key = " + key + ", value = " + value + ")";
     }
 }
