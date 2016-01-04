@@ -594,6 +594,43 @@ project(':tools') {
         configFile = new File(rootDir, "checkstyle/checkstyle.xml")
     }
     test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+    File originalPom = file("tools-pom-template.xml")
+    List<Node> originalNodes = null
+
+    task eatPom() {
+      doFirst {
+        originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+      }
+    }
+
+    publishing {
+      publications {
+        kafkaTools(MavenPublication) {
+          groupId "org.apache.kafka"
+          artifactId "kafka-tools"
+          artifact jar
+          artifact(srcJar) {
+            classifier "sources"
+          }
+          artifact(testJar) {
+            classifier "test"
+          }
+          artifact(javadocJar) {
+            classifier "javadoc"
+          }
+
+          pom.withXml {
+            originalNodes.each { asNode().append(it) }
+          }
+        }
+      }
+    }
+    model {
+      tasks.generatePomFileForKafkaToolsPublication {
+        dependsOn "eatPom"
+      }
+    }
 }
 
 project(':log4j-appender') {
@@ -628,6 +665,43 @@ project(':log4j-appender') {
      configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("log4j-appender-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaAppender(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-log4j-appender"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaAppenderPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:api') {
