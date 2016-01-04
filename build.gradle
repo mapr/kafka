@@ -851,47 +851,7 @@ project(':clients') {
     include "**/org/apache/kafka/common/security/auth/*"
     include "**/org/apache/kafka/server/policy/*"
   }
-}
 
-project(':tools') {
-  archivesBaseName = "kafka-tools"
-
-  dependencies {
-    compile project(':clients')
-    compile project(':log4j-appender')
-    compile libs.argparse4j
-    compile libs.jacksonDatabind
-    compile libs.slf4jlog4j
-
-    compile libs.jacksonJaxrsJsonProvider
-    compile libs.jerseyContainerServlet
-    compile libs.jettyServer
-    compile libs.jettyServlet
-    compile libs.jettyServlets
-
-    testCompile project(':clients')
-    testCompile libs.junit
-    testCompile project(':clients').sourceSets.test.output
-  }
-
-  javadoc {
-    enabled = false
-  }
-
-  tasks.create(name: "copyDependantLibs", type: Copy) {
-    from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-    }
-    from (configurations.runtime) {
-      exclude('kafka-clients*')
-    }
-    into "$buildDir/dependant-libs-${versions.scala}"
-    duplicatesStrategy 'exclude'
-  }
-
-  jar {
-    dependsOn 'copyDependantLibs'
-  }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
 
   File originalPom = file("clients-pom-template.xml")
@@ -930,6 +890,87 @@ project(':tools') {
       dependsOn "eatPom"
     }
   }
+}
+
+project(':tools') {
+  archivesBaseName = "kafka-tools"
+
+  dependencies {
+    compile project(':clients')
+    compile project(':log4j-appender')
+    compile libs.argparse4j
+    compile libs.jacksonDatabind
+    compile libs.slf4jlog4j
+
+    compile libs.jacksonJaxrsJsonProvider
+    compile libs.jerseyContainerServlet
+    compile libs.jettyServer
+    compile libs.jettyServlet
+    compile libs.jettyServlets
+
+    testCompile project(':clients')
+    testCompile libs.junit
+    testCompile project(':clients').sourceSets.test.output
+  }
+
+  javadoc {
+    enabled = false
+  }
+  
+	tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+    }
+    into "$buildDir/dependant-libs-${versions.scala}"
+    duplicatesStrategy 'exclude'
+  }
+
+  jar {
+    dependsOn 'copyDependantLibs'
+  }
+
+    test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+    File originalPom = file("tools-pom-template.xml")
+    List<Node> originalNodes = null
+
+    task eatPom() {
+      doFirst {
+        originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+      }
+    }
+
+    publishing {
+      publications {
+        kafkaTools(MavenPublication) {
+          groupId "org.apache.kafka"
+          artifactId "kafka-tools"
+          artifact jar
+          artifact(srcJar) {
+            classifier "sources"
+          }
+          artifact(testJar) {
+            classifier "test"
+          }
+          artifact(javadocJar) {
+            classifier "javadoc"
+          }
+
+          pom.withXml {
+            originalNodes.each { asNode().append(it) }
+          }
+        }
+      }
+    }
+    model {
+      tasks.generatePomFileForKafkaToolsPublication {
+        dependsOn "eatPom"
+      }
+    }
+
 }
 
 project(':streams') {
@@ -1066,6 +1107,44 @@ project(':log4j-appender') {
     enabled = false
   }
 
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("log4j-appender-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaAppender(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-log4j-appender"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaAppenderPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:api') {
