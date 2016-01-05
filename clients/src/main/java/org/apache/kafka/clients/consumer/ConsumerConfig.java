@@ -173,6 +173,10 @@ public class ConsumerConfig extends AbstractConfig {
       + "is set to /exampleStream, then the consumer will subscribe to /exampleStream:exampleTopic.  If consumer subscribes to "
       + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
+    /** <code>streams.record.strip.streampath</code> **/
+    public static final String STREAMS_RECORD_STRIP_STREAMPATH_CONFIG = "streams.record.strip.streampath";
+    private static final String STREAMS_RECORD_STRIP_STREAMPATH_DOC = "Strip streamname from the consumer record.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
                                         Type.LIST, "",
@@ -320,6 +324,11 @@ public class ConsumerConfig extends AbstractConfig {
                                         atLeast(30000),
                                         Importance.LOW,
                                         STREAMS_RPC_TIMEOUT_MS_DOC)
+                                .define(STREAMS_RECORD_STRIP_STREAMPATH_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_RECORD_STRIP_STREAMPATH_DOC)
                                 .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
                                         Type.STRING,
                                         "",
