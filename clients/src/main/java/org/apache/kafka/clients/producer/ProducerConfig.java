@@ -201,9 +201,13 @@ public class ProducerConfig extends AbstractConfig {
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
     /** STREAMS SPECIFIC SETTINGS **/
-    /** <code>streams.rpc.timeout.ms</code> */
-    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
-    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
+    /** <code>fs.mapr.rpc.timeout</code> */
+    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
+
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
 
     /** <code>streams.buffer.max.time.ms</code> **/
     public static final String STREAMS_BUFFER_TIME_CONFIG = "streams.buffer.max.time.ms";
@@ -312,12 +316,17 @@ public class ProducerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
                                         Type.INT,
-                                        Integer.MAX_VALUE,
-                                        atLeast(30000),
+                                        300,
+                                        atLeast(30),
                                         Importance.LOW,
-                                        STREAMS_RPC_TIMEOUT_MS_DOC)
+                                        STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
                                 .define(STREAMS_BUFFER_TIME_CONFIG,
                                         Type.LONG,
                                         3000L,
