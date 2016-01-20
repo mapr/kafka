@@ -76,6 +76,15 @@ public class CommonClientConfigs {
 
     /** STREAMS SPECIFIC SETTINGS **/
     /** <code>streams.rpc.timeout.ms</code> **/
+
+    /** <code>fs.mapr.rpc.timeout</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_CONFIG = "fs.mapr.rpc.timeout";
+    public static final String STREAMS_RPC_TIMEOUT_DOC = "RPCs to the server can timeout after the specified time (in seconds).";
+
+    /** <code>fs.mapr.hardmount</code> **/
+    public static final String STREAMS_HARDMOUNT_CONFIG = "fs.mapr.hardmount";
+    public static final String STREAMS_HARDMOUNT_DOC = "If server is down/unreachable, keep retrying the RPC.";
+
     public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
     public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). "
                                                             + "The default value is Integer.MAX_VALUE (no timeout).";
@@ -85,5 +94,4 @@ public class CommonClientConfigs {
             names.add(protocol.name);
         return names;
     }
-
 }

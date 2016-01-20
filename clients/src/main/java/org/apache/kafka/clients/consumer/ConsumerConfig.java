@@ -162,9 +162,13 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String REQUEST_TIMEOUT_MS_CONFIG = CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG;
     private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
-    /** <code>streams.rpc.timeout.ms</code> */
-    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
-    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
+    /** <code>fs.mapr.rpc.timeout</code> */
+    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
+
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
 
     /** <code>streams.consumer.default.stream</code> **/
     public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
@@ -318,12 +322,17 @@ public class ConsumerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
                                         Type.INT,
-                                        Integer.MAX_VALUE,
-                                        atLeast(30000),
+                                        300,
+                                        atLeast(30),
                                         Importance.LOW,
-                                        STREAMS_RPC_TIMEOUT_MS_DOC)
+                                        STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
                                 .define(STREAMS_RECORD_STRIP_STREAMPATH_CONFIG,
                                         Type.BOOLEAN,
                                         false,
