@@ -658,7 +658,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     public void flush() {
       log.trace("Flushing accumulated records in producer.");
       if (producerDriver == null) {
-        log.error("producer not initialized, cannot flush.");
+        log.info("producer not initialized, cannot flush.");
         return;
       }
 
@@ -708,7 +708,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
       if (producerDriver == null) {
-        log.error("producer not initialized, cannot get metrics");
+        log.info("producer not initialized, cannot get metrics");
         return null;
       }
 
