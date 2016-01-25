@@ -1533,7 +1533,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
       if (consumerDriver == null) {
-        log.error("consumed not initialized, cannot get metrics");
+        log.info("consumed not initialized, cannot get metrics");
         return null;
       }
 
@@ -1601,7 +1601,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public Map<String, List<PartitionInfo>> listTopics() {
       if (consumerDriver == null) {
-        log.error("consumer closed or not initialized, cannot listTopics");
+        log.info("consumer closed or not initialized, cannot listTopics");
         return new HashMap<String, List<PartitionInfo>>();
       }
 
@@ -1633,7 +1633,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (consumerDriver == null) {
-        log.error("consumer closed or not initialized, cannot listTopics");
+        log.info("consumer closed or not initialized, cannot listTopics");
         return new HashMap<String, List<PartitionInfo>>();
       }
 
@@ -1657,7 +1657,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (consumerDriver == null) {
-        log.error("consumer closed or not initialized, cannot listTopics");
+        log.info("consumer closed or not initialized, cannot listTopics");
         return new HashMap<String, List<PartitionInfo>>();
       }
 
@@ -1777,7 +1777,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public void wakeup() {
       if (consumerDriver == null) {
-        log.error("consumed not initialized, cannot wakeup");
+        log.info("consumed not initialized, cannot wakeup");
         return;
       }
 
