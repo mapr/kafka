@@ -45,8 +45,6 @@ should_include_file() {
   fi
 }
 
-base_dir=$(dirname $0)/..
-
 if [ -z "$SCALA_VERSION" ]; then
   SCALA_VERSION=2.11.12
 fi
@@ -55,75 +53,19 @@ if [ -z "$SCALA_BINARY_VERSION" ]; then
   SCALA_BINARY_VERSION=$(echo $SCALA_VERSION | cut -f 1-2 -d '.')
 fi
 
-# run ./gradlew copyDependantLibs to get all dependant jars in a local dir
-shopt -s nullglob
-for dir in "$base_dir"/core/build/dependant-libs-${SCALA_VERSION}*;
-do
-  if [ -z "$CLASSPATH" ] ; then
-    CLASSPATH="$dir/*"
-  else
-    CLASSPATH="$CLASSPATH:$dir/*"
-  fi
-done
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
 
-for file in "$base_dir"/examples/build/libs/kafka-examples*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
+# Set up Java classpath, start with $MAPR_CONF
+CLASSPATH=$MAPR_CONF
+# Add MapR jars
+CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
+# Add logger jars
+CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
+# Add 3rd party jars
+CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
 
-for file in "$base_dir"/clients/build/libs/kafka-clients*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for file in "$base_dir"/streams/build/libs/kafka-streams*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for file in "$base_dir"/streams/examples/build/libs/kafka-streams-examples*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for file in "$base_dir"/streams/build/dependant-libs-${SCALA_VERSION}/rocksdb*.jar;
-do
-  CLASSPATH="$CLASSPATH":"$file"
-done
-
-for file in "$base_dir"/tools/build/libs/kafka-tools*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for dir in "$base_dir"/tools/build/dependant-libs-${SCALA_VERSION}*;
-do
-  CLASSPATH="$CLASSPATH:$dir/*"
-done
-
-for cc_pkg in "api" "transforms" "runtime" "file" "json" "tools"
-do
-  for file in "$base_dir"/connect/${cc_pkg}/build/libs/connect-${cc_pkg}*.jar;
-  do
-    if should_include_file "$file"; then
-      CLASSPATH="$CLASSPATH":"$file"
-    fi
-  done
-  if [ -d "$base_dir/connect/${cc_pkg}/build/dependant-libs" ] ; then
-    CLASSPATH="$CLASSPATH:$base_dir/connect/${cc_pkg}/build/dependant-libs/*"
-  fi
-done
-
+base_dir=$(dirname $0)/..
 # classpath addition for release
 for file in "$base_dir"/libs/*;
 do
@@ -132,13 +74,8 @@ do
   fi
 done
 
-for file in "$base_dir"/core/build/libs/kafka_${SCALA_BINARY_VERSION}*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-shopt -u nullglob
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
 
 if [ -z "$CLASSPATH" ] ; then
   echo "Classpath is empty. Please build the project first e.g. by running './gradlew jar -Pscala_version=$SCALA_VERSION'"
