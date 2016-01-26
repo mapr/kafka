@@ -20,72 +20,26 @@ then
   exit 1
 fi
 
+
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
+# Set up Java classpath, start with $MAPR_CONF
+CLASSPATH=$MAPR_CONF
+# Add MapR jars
+CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
+# Add logger jars
+CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
+# Add 3rd party jars
+CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
+
 base_dir=$(dirname $0)/..
-
-if [ -z "$SCALA_VERSION" ]; then
-	SCALA_VERSION=2.10.5
-fi
-
-if [ -z "$SCALA_BINARY_VERSION" ]; then
-	SCALA_BINARY_VERSION=2.10
-fi
-
-# run ./gradlew copyDependantLibs to get all dependant jars in a local dir
-shopt -s nullglob
-for dir in $base_dir/core/build/dependant-libs-${SCALA_VERSION}*;
-do
-  CLASSPATH=$CLASSPATH:$dir/*
-done
-
-for file in $base_dir/examples/build/libs//kafka-examples*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-
-for file in $base_dir/contrib/hadoop-consumer/build/libs//kafka-hadoop-consumer*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-
-for file in $base_dir/contrib/hadoop-producer/build/libs//kafka-hadoop-producer*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-
-for file in $base_dir/clients/build/libs/kafka-clients*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-
-for file in $base_dir/tools/build/libs/kafka-tools*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-
-for dir in $base_dir/tools/build/dependant-libs-${SCALA_VERSION}*;
-do
-  CLASSPATH=$CLASSPATH:$dir/*
-done
-
-for cc_pkg in "api" "runtime" "file" "json"
-do
-  for file in $base_dir/connect/${cc_pkg}/build/libs/connect-${cc_pkg}*.jar;
-  do
-    CLASSPATH=$CLASSPATH:$file
-  done
-  if [ -d "$base_dir/connect/${cc_pkg}/build/dependant-libs" ] ; then
-    CLASSPATH=$CLASSPATH:$base_dir/connect/${cc_pkg}/build/dependant-libs/*
-  fi
-done
-
 # classpath addition for release
 CLASSPATH=$CLASSPATH:$base_dir/libs/*
 
-for file in $base_dir/core/build/libs/kafka_${SCALA_BINARY_VERSION}*.jar;
-do
-  CLASSPATH=$CLASSPATH:$file
-done
-shopt -u nullglob
+
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
 
 # JMX settings
 if [ -z "$KAFKA_JMX_OPTS" ]; then
