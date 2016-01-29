@@ -246,6 +246,10 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String STREAMS_RECORD_STRIP_STREAMPATH_CONFIG = "streams.record.strip.streampath";
     private static final String STREAMS_RECORD_STRIP_STREAMPATH_DOC = "Strip streamname from the consumer record.";
 
+    /** <code>streams.consumer.buffer.memory</code> **/
+    public static final String STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG = "streams.consumer.buffer.memory";
+    private static final String STREAMS_CONSUMER_BUFFER_MEMORY_DOC = "Size of memory the consumer can use to read ahead messages and cache before being consumed.";
+
     /** <code>exclude.internal.topics</code> */
     public static final String EXCLUDE_INTERNAL_TOPICS_CONFIG = "exclude.internal.topics";
     private static final String EXCLUDE_INTERNAL_TOPICS_DOC = "Whether records from internal topics (such as offsets) should be exposed to the consumer. "
@@ -486,7 +490,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         Type.STRING,
                                         "",
                                         Importance.MEDIUM,
-                                        STREAMS_CONSUMER_DEFAULT_STREAM_DOC);
+                                        STREAMS_CONSUMER_DEFAULT_STREAM_DOC)
+                                .define(STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG,
+                                        Type.LONG,
+                                        64 * 1024 * 1024,
+                                        Importance.MEDIUM,
+                                        STREAMS_CONSUMER_BUFFER_MEMORY_DOC);
     }
 
     @Override
