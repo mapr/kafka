@@ -32,7 +32,17 @@ public class PomUtil {
         List<Node> cleanedNodes = parsePom(originalPom)
         for (Node node : cleanedNodes) {
             if (node.name().toString().contains("dependencies")) {
-                node.append(maprStreams(maprVersion))
+                if ((maprVersion == null) ||
+                    (maprVersion.equalsIgnoreCase("null")) ||
+                    (maprVersion.contains("null")) ||
+                    (maprVersion.contains("NULL")) ||
+                    (maprVersion.equalsIgnoreCase("0")) ||
+                    (maprVersion.equalsIgnorecase(""))
+                ) {
+                    println "not adding MapR Streams dependency"
+                } else {
+                    node.append(maprStreams(maprVersion))
+                }
             }
         }
         return cleanedNodes
