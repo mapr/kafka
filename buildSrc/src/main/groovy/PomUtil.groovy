@@ -37,7 +37,7 @@ public class PomUtil {
                     (maprVersion.contains("null")) ||
                     (maprVersion.contains("NULL")) ||
                     (maprVersion.equalsIgnoreCase("0")) ||
-                    (maprVersion.equalsIgnorecase(""))
+                    (maprVersion.equalsIgnoreCase(""))
                 ) {
                     println "not adding MapR Streams dependency"
                 } else {
