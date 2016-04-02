@@ -185,6 +185,10 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG = "streams.consumer.buffer.memory";
     private static final String STREAMS_CONSUMER_BUFFER_MEMORY_DOC = "Size of memory the consumer can use to read ahead messages and cache before being consumed.";
 
+    /** <code>streams.zerooffset.record.on.eof</code> **/
+    public static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG = "streams.zerooffset.record.on.eof";
+    private static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset 0 if there are no other pending messages for a topic partition.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
                                         Type.LIST, "",
@@ -351,7 +355,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         Type.LONG,
                                         64 * 1024 * 1024,
                                         Importance.MEDIUM,
-                                        STREAMS_CONSUMER_BUFFER_MEMORY_DOC);
+                                        STREAMS_CONSUMER_BUFFER_MEMORY_DOC)
+                                .define(STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC);
     }
 
     public static Map<String, Object> addDeserializerToConfig(Map<String, Object> configs,
