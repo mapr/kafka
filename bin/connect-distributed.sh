@@ -20,4 +20,12 @@ if [ "x$KAFKA_LOG4J_OPTS" = "x" ]; then
     export KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:$base_dir/../config/connect-log4j.properties"
 fi
 
+# Add connect plugins to classpath
+CONNECTORS_CLASSPATH=""
+for jar in /opt/mapr/kafka-connect-*/kafka-connect-*/share/java/kafka-connect-*/*.jar
+do
+        CONNECTORS_CLASSPATH="$CONNECTORS_CLASSPATH:$jar"
+done
+export CONNECTORS_CLASSPATH
+
 exec $(dirname $0)/kafka-run-class.sh org.apache.kafka.connect.cli.ConnectDistributed "$@"

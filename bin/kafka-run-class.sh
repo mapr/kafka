@@ -37,6 +37,10 @@ base_dir=$(dirname $0)/..
 # classpath addition for release
 CLASSPATH=$CLASSPATH:$base_dir/libs/*
 
+# Add kafka Connect plugins to classpath
+if [ ! -z $CONNECTORS_CLASSPATH ]; then
+    CLASSPATH="$CLASSPATH$CONNECTORS_CLASSPATH"
+fi
 
 # Add native library path to LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
