@@ -17,25 +17,6 @@
 
 package org.apache.kafka.connect.util;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.errors.WakeupException;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.common.utils.Utils;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +26,25 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Future;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.utils.Utils;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -229,6 +229,14 @@ public class KafkaBasedLog<K, V> {
 
     private void poll(long timeoutMs) {
         try {
+
+            // poll with 0 timeout for MapR streams cause blocking
+            // and WakeupException in some circumstances.
+            // 100 is small enough timeout as a workaround.
+            if (timeoutMs == 0) {
+                timeoutMs = 100;
+            }
+
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
             for (ConsumerRecord<K, V> record : records)
                 consumedCallback.onCompletion(null, record);
@@ -240,6 +248,21 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
+    /*
+    MapR Streams offsets start from 1, not from 0 as in Kafka.
+    But for compatibility position() API for empty topic and Consumer that
+    reads from earliest offsets returns 0, after seekToEnd() the position()
+    returns 1 on empty topic. We should use below translation to avoid waiting
+    for the record with offset 0 on empty topic (This block connector infinitely)
+     */
+    private long adjustOffset(long offset, TopicPartition topicPartition) {
+        String topic = topicPartition.topic();
+        if(offset == 0 && topic.startsWith("/") && topic.contains(":")) {
+            return 1;
+        }
+        return offset;
+    }
+
     private void readToLogEnd() {
         log.trace("Reading to end of offset log");
 
@@ -249,7 +272,7 @@ public class KafkaBasedLog<K, V> {
         Map<TopicPartition, Long> offsets = new HashMap<>();
         for (TopicPartition tp : assignment) {
             long offset = consumer.position(tp);
-            offsets.put(tp, offset);
+            offsets.put(tp, adjustOffset(offset, tp));
             consumer.seekToEnd(tp);
         }
 
