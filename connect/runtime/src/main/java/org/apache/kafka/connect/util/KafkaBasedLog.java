@@ -16,6 +16,16 @@
  */
 package org.apache.kafka.connect.util;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Future;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -43,7 +53,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Future;
-
 
 /**
  * <p>
@@ -253,6 +262,14 @@ public class KafkaBasedLog<K, V> {
 
     private void poll(long timeoutMs) {
         try {
+
+            // poll with 0 timeout for MapR streams cause blocking
+            // and WakeupException in some circumstances.
+            // 100 is small enough timeout as a workaround.
+            if (timeoutMs == 0) {
+                timeoutMs = 100;
+            }
+
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
             for (ConsumerRecord<K, V> record : records)
                 consumedCallback.onCompletion(null, record);
