@@ -145,6 +145,13 @@ if [ "x$KAFKA_DEBUG" != "x" ]; then
     KAFKA_OPTS="$JAVA_DEBUG_OPTS $KAFKA_OPTS"
 fi
 
+env=$MAPR_CONF/env.sh
+[ -f $env ] && . $env
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  KAFKA_OPTS="$KAFKA_OPTS -Dhadoop.login=hybrid"
+fi
+
 # Which java to use
 if [ -z "$JAVA_HOME" ]; then
   JAVA="java"
