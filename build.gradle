@@ -787,6 +787,43 @@ project(':connect:api') {
     configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("connect-api-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectApi(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-api"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectApiPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:json') {
@@ -848,6 +885,43 @@ project(':connect:json') {
     configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("connect-json-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectJson(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-json"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectJsonPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:runtime') {
@@ -903,7 +977,7 @@ project(':connect:runtime') {
   jar {
     dependsOn copyDependantLibs
   }
-
+  /*
   artifacts {
     archives testJar
   }
@@ -911,7 +985,7 @@ project(':connect:runtime') {
   configurations {
     archives.extendsFrom(testCompile)
   }
-
+  */
   checkstyle {
     configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
@@ -922,6 +996,45 @@ project(':connect:runtime') {
     main = 'org.apache.kafka.connect.runtime.distributed.DistributedConfig'
     if( !generatedDocsDir.exists() ) { generatedDocsDir.mkdirs() }
     standardOutput = new File(generatedDocsDir, "connect_config.html").newOutputStream()
+  }
+
+  File originalPom = file("connect-runtime-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectRuntime(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-runtime"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        /*
+        artifact(testJar) {
+          classifier "test"
+        }
+        */
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectRuntimePublication {
+      dependsOn "eatPom"
+    }
   }
 }
 
@@ -983,4 +1096,22 @@ project(':connect:file') {
     configFile = new File(rootDir, "checkstyle/checkstyle.xml")
   }
   test.dependsOn('checkstyleMain', 'checkstyleTest')
+}
+
+task maprLocalPublish() {
+  dependsOn "jarAll",
+    ":clients:publishKafkaClientsPublicationToMavenLocal",
+    ":connect:api:publishConnectApiPublicationToMavenLocal",
+    ":connect:json:publishConnectJsonPublicationToMavenLocal",
+    ":connect:runtime:publishConnectRuntimePublicationToMavenLocal"
+}
+
+task maprPublicPublish() {
+  dependsOn "jarAll",
+    ":clients:publishKafkaClientsPublicationToTargetrepoRepository",
+    ":connect:api:publishConnectApiPublicationToTargetrepoRepository",
+    ":connect:json:publishConnectJsonPublicationToTargetrepoRepository",
+    ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
+    "uploadCoreArchives_2_10_5",
+    "uploadCoreArchives_2_11_7"
 }
