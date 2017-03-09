@@ -45,6 +45,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.mapr.GenericHFactory;
+
 /**
  * This class manages the coordination process with brokers for the Connect cluster group membership. It ties together
  * the Coordinator, which implements the group member protocol, with all the other pieces needed to drive the connection
@@ -57,20 +59,36 @@ public class WorkerGroupMember {
     private static final AtomicInteger CONNECT_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
     private static final String JMX_PREFIX = "kafka.connect";
 
-    private final Time time;
-    private final String clientId;
-    private final ConsumerNetworkClient client;
-    private final Metrics metrics;
-    private final Metadata metadata;
-    private final long retryBackoffMs;
-    private final WorkerCoordinator coordinator;
+    private Time time;
+    private String clientId;
+    private ConsumerNetworkClient client;
+    private Metrics metrics;
+    private Metadata metadata;
+    private long retryBackoffMs;
+    private final GenericWorkerCoordinator coordinator;
 
     private boolean stopped = false;
 
     public WorkerGroupMember(DistributedConfig config, String restUrl, KafkaConfigStorage configStorage, WorkerRebalanceListener listener) {
-        try {
-            this.time = new SystemTime();
-
+      try {
+        this.time = new SystemTime();
+        String configTopic = (String) config.originals().get(KafkaConfigStorage.CONFIG_TOPIC_CONFIG);
+        if (configTopic.startsWith("/") == true || configTopic.contains(":") == true) {
+          GenericHFactory<GenericWorkerCoordinator> coordFactory =
+            new GenericHFactory<GenericWorkerCoordinator>();
+          this.coordinator = coordFactory.getImplementorInstance(
+                            "com.mapr.streams.impl.MarlinWorkerCoordinator",
+                            new Object [] {config,
+                                           config.getString(DistributedConfig.GROUP_ID_CONFIG),
+                                           restUrl,
+                                           configStorage,
+                                           listener},
+                            new Class [] {DistributedConfig.class,
+                                          String.class,
+                                          String.class,
+                                          KafkaConfigStorage.class,
+                                          WorkerRebalanceListener.class});
+        } else {
             MetricConfig metricConfig = new MetricConfig().samples(config.getInt(CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG))
                     .timeWindow(config.getLong(CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS);
             String clientIdConfig = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG);
@@ -111,13 +129,14 @@ public class WorkerGroupMember {
 
             AppInfoParser.registerAppInfo(JMX_PREFIX, clientId);
             log.debug("Connect group member created");
-        } catch (Throwable t) {
+        }
+      } catch (Throwable t) {
             // call close methods if internal objects are already constructed
             // this is to prevent resource leak. see KAFKA-2121
             stop(true);
             // now propagate the exception
             throw new KafkaException("Failed to construct kafka consumer", t);
-        }
+      }
     }
 
     public void stop() {
@@ -140,7 +159,7 @@ public class WorkerGroupMember {
             long start = time.milliseconds();
             coordinator.ensureCoordinatorKnown();
             coordinator.ensureActiveGroup();
-            client.poll(remaining);
+            coordinator.poll(remaining);
             remaining -= time.milliseconds() - start;
         }
     }
@@ -149,7 +168,7 @@ public class WorkerGroupMember {
      * Interrupt any running poll() calls, causing a WakeupException to be thrown in the thread invoking that method.
      */
     public void wakeup() {
-        this.client.wakeup();
+        coordinator.wakeup();
     }
 
     /**

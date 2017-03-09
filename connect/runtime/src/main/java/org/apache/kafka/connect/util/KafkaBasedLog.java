@@ -20,6 +20,7 @@ package org.apache.kafka.connect.util;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +83,7 @@ public class KafkaBasedLog<K, V> {
     private Thread thread;
     private boolean stopRequested;
     private Queue<Callback<Void>> readLogEndOffsetCallbacks;
+    private boolean isStreams;
 
     /**
      * Create a new KafkaBasedLog object. This does not start reading the log and writing is not permitted until
@@ -108,6 +110,11 @@ public class KafkaBasedLog<K, V> {
         this.stopRequested = false;
         this.readLogEndOffsetCallbacks = new ArrayDeque<>();
         this.time = time;
+        if (this.topic.startsWith("/") == true &&
+            this.topic.contains(":") == true)
+          isStreams = true;
+        else
+          isStreams = false;
     }
 
     public void start() {
@@ -190,6 +197,14 @@ public class KafkaBasedLog<K, V> {
      */
     public void readToEnd(Callback<Void> callback) {
         producer.flush();
+        // Doing a seek will ensure we get an EOF on reaching the end
+        // of the log
+        if (isStreams == true) {
+          for (TopicPartition tp : consumer.assignment()) {
+            long offset = consumer.position(tp);
+            consumer.seek(tp, offset);
+          }
+        }
         synchronized (this) {
             readLogEndOffsetCallbacks.add(callback);
         }
@@ -224,22 +239,19 @@ public class KafkaBasedLog<K, V> {
     private Consumer<K, V> createConsumer() {
         // Always force reset to the beginning of the log since this class wants to consume all available log data
         consumerConfigs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        if (isStreams == true)
+          consumerConfigs.put("streams.zerooffset.record.on.eof", "true");
         return new KafkaConsumer<>(consumerConfigs);
     }
 
     private void poll(long timeoutMs) {
         try {
-
-            // poll with 0 timeout for MapR streams cause blocking
-            // and WakeupException in some circumstances.
-            // 100 is small enough timeout as a workaround.
-            if (timeoutMs == 0) {
-                timeoutMs = 100;
-            }
-
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
-            for (ConsumerRecord<K, V> record : records)
+            for (ConsumerRecord<K, V> record : records) {
+                if (isStreams == true && record.offset() == 0)
+                    continue;
                 consumedCallback.onCompletion(null, record);
+            }
         } catch (WakeupException e) {
             // Expected on get() or stop(). The calling code should handle this
             throw e;
@@ -248,31 +260,14 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
-    /*
-    MapR Streams offsets start from 1, not from 0 as in Kafka.
-    But for compatibility position() API for empty topic and Consumer that
-    reads from earliest offsets returns 0, after seekToEnd() the position()
-    returns 1 on empty topic. We should use below translation to avoid waiting
-    for the record with offset 0 on empty topic (This block connector infinitely)
-     */
-    private long adjustOffset(long offset, TopicPartition topicPartition) {
-        String topic = topicPartition.topic();
-        if(offset == 0 && topic.startsWith("/") && topic.contains(":")) {
-            return 1;
-        }
-        return offset;
-    }
-
-    private void readToLogEnd() {
-        log.trace("Reading to end of offset log");
-
+    private void readToKafkaLogEnd() {
         Set<TopicPartition> assignment = consumer.assignment();
 
         // This approach to getting the current end offset is hacky until we have an API for looking these up directly
         Map<TopicPartition, Long> offsets = new HashMap<>();
         for (TopicPartition tp : assignment) {
             long offset = consumer.position(tp);
-            offsets.put(tp, adjustOffset(offset, tp));
+            offsets.put(tp, offset);
             consumer.seekToEnd(tp);
         }
 
@@ -307,6 +302,54 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
+    // Account for EOF on each partition EXACTLY once - the
+    // donePartitions set helps ensure this.
+    private int consumeAllRecords(long timeoutMs, Set<Integer> donePartitions) {
+        int numEofs = 0;
+        try {
+            ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
+            for (ConsumerRecord<K, V> record : records) {
+                if (record.offset() == 0 && !donePartitions.contains(record.partition())) {
+                  numEofs++;
+                  donePartitions.add(record.partition());
+                }
+                else if (record.offset() != 0)
+                  consumedCallback.onCompletion(null, record);
+            }
+        } catch (WakeupException e) {
+            // Expected on get() or stop(). The calling code should handle this
+            throw e;
+        } catch (KafkaException e) {
+            log.error("Error polling: " + e);
+        }
+        return numEofs;
+    }
+
+    private void readToMapRStreamsLogEnd() {
+        Set<TopicPartition> assignment = consumer.assignment();
+
+        int numPartitions = assignment.size();
+        int numEofsSoFar = 0;
+
+        Set<Integer> donePartitions = new HashSet<>();
+        while (true) {
+          log.trace("numEofsSoFar " + numEofsSoFar + 
+                    "numPartitions " + numPartitions);
+          numEofsSoFar += consumeAllRecords(100, donePartitions);
+          if (numEofsSoFar == numPartitions)
+            break;
+        }
+    }
+
+    private void readToLogEnd() {
+        log.trace("Reading to end of offset log");
+
+        if (isStreams == true) {
+          readToMapRStreamsLogEnd();
+        } else {
+          readToKafkaLogEnd();
+        }
+    }
 
     private class WorkThread extends Thread {
         @Override
