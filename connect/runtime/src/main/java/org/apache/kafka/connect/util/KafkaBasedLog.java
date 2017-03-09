@@ -19,6 +19,7 @@ package org.apache.kafka.connect.util;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +92,7 @@ public class KafkaBasedLog<K, V> {
     private boolean stopRequested;
     private Queue<Callback<Void>> readLogEndOffsetCallbacks;
     private Runnable initializer;
+    private boolean isStreams;
 
     /**
      * Create a new KafkaBasedLog object. This does not start reading the log and writing is not permitted until
@@ -127,6 +129,11 @@ public class KafkaBasedLog<K, V> {
             public void run() {
             }
         };
+        if (this.topic.startsWith("/") == true &&
+            this.topic.contains(":") == true)
+          isStreams = true;
+        else
+          isStreams = false;
     }
 
     public void start() {
@@ -210,6 +217,14 @@ public class KafkaBasedLog<K, V> {
     public void readToEnd(Callback<Void> callback) {
         log.trace("Starting read to end log for topic {}", topic);
         producer.flush();
+        // Doing a seek will ensure we get an EOF on reaching the end
+        // of the log
+        if (isStreams == true) {
+          for (TopicPartition tp : consumer.assignment()) {
+            long offset = consumer.position(tp);
+            consumer.seek(tp, offset);
+          }
+        }
         synchronized (this) {
             readLogEndOffsetCallbacks.add(callback);
         }
@@ -257,22 +272,19 @@ public class KafkaBasedLog<K, V> {
 
         // Turn off autocommit since we always want to consume the full log
         consumerConfigs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        if (isStreams == true)
+          consumerConfigs.put("streams.zerooffset.record.on.eof", "true");
         return new KafkaConsumer<>(consumerConfigs);
     }
 
     private void poll(long timeoutMs) {
         try {
-
-            // poll with 0 timeout for MapR streams cause blocking
-            // and WakeupException in some circumstances.
-            // 100 is small enough timeout as a workaround.
-            if (timeoutMs == 0) {
-                timeoutMs = 100;
-            }
-
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
-            for (ConsumerRecord<K, V> record : records)
+            for (ConsumerRecord<K, V> record : records) {
+                if (isStreams == true && record.offset() == 0)
+                    continue;
                 consumedCallback.onCompletion(null, record);
+            }
         } catch (WakeupException e) {
             // Expected on get() or stop(). The calling code should handle this
             throw e;
@@ -281,13 +293,12 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
-    private void readToLogEnd() {
+    private void readToKafkaLogEnd() {
         log.trace("Reading to end of offset log");
 
         Set<TopicPartition> assignment = consumer.assignment();
         Map<TopicPartition, Long> endOffsets = consumer.endOffsets(assignment);
         log.trace("Reading to end of log offsets {}", endOffsets);
-
         while (!endOffsets.isEmpty()) {
             Iterator<Map.Entry<TopicPartition, Long>> it = endOffsets.entrySet().iterator();
             while (it.hasNext()) {
@@ -302,6 +313,54 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
+    // Account for EOF on each partition EXACTLY once - the
+    // donePartitions set helps ensure this.
+    private int consumeAllRecords(long timeoutMs, Set<Integer> donePartitions) {
+        int numEofs = 0;
+        try {
+            ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
+            for (ConsumerRecord<K, V> record : records) {
+                if (record.offset() == 0 && !donePartitions.contains(record.partition())) {
+                  numEofs++;
+                  donePartitions.add(record.partition());
+                }
+                else if (record.offset() != 0)
+                  consumedCallback.onCompletion(null, record);
+            }
+        } catch (WakeupException e) {
+            // Expected on get() or stop(). The calling code should handle this
+            throw e;
+        } catch (KafkaException e) {
+            log.error("Error polling: " + e);
+        }
+        return numEofs;
+    }
+
+    private void readToMapRStreamsLogEnd() {
+        Set<TopicPartition> assignment = consumer.assignment();
+
+        int numPartitions = assignment.size();
+        int numEofsSoFar = 0;
+
+        Set<Integer> donePartitions = new HashSet<>();
+        while (true) {
+          log.trace("numEofsSoFar " + numEofsSoFar + 
+                    "numPartitions " + numPartitions);
+          numEofsSoFar += consumeAllRecords(100, donePartitions);
+          if (numEofsSoFar == numPartitions)
+            break;
+        }
+    }
+
+    private void readToLogEnd() {
+        log.trace("Reading to end of offset log");
+
+        if (isStreams == true) {
+          readToMapRStreamsLogEnd();
+        } else {
+          readToKafkaLogEnd();
+        }
+    }
 
     private class WorkThread extends Thread {
         public WorkThread() {
