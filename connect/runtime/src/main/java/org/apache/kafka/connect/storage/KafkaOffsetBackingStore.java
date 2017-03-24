@@ -120,6 +120,8 @@ public class KafkaOffsetBackingStore implements OffsetBackingStore {
         for (Map.Entry<ByteBuffer, ByteBuffer> entry : values.entrySet()) {
             ByteBuffer key = entry.getKey();
             ByteBuffer value = entry.getValue();
+            if (value == null)
+                    value = key;
             offsetLog.send(key == null ? null : key.array(), value == null ? null : value.array(), producerCallback);
         }
 
