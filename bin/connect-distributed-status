@@ -1,0 +1,11 @@
+#!/bin/sh
+
+SERVICE_NAME='Kafka Connect'
+TARGET=`ps ax | egrep -i '(kafka-connect)' | grep java | grep -v grep | awk '{print $1}'`
+if [ "x$TARGET" = "x" ]; then
+  echo "${SERVICE_NAME} not running."
+  exit 1
+else
+  echo "${SERVICE_NAME} running as process ${TARGET}"
+  exit 0
+fi
