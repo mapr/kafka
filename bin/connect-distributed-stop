@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TARGET=`ps ax | egrep -i "$1" | grep kafka-connect | grep -v grep | awk '{print $1}'`
+TARGET=`jps | grep ConnectDistributed | awk '{print $1}'`
 if [ "x$TARGET" = "x" ]; then
   >&2 echo "No running instance found."
   exit 1
