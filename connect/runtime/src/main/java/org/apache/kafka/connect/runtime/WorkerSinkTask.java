@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * WorkerTask that uses a SinkTask to export data from Kafka.
@@ -71,6 +72,7 @@ class WorkerSinkTask implements WorkerTask {
     private Map<TopicPartition, OffsetAndMetadata> lastCommittedOffsets;
     private Map<TopicPartition, OffsetAndMetadata> currentOffsets;
     private boolean pausedForRedelivery;
+    private final AtomicBoolean rebalanceFinished = new AtomicBoolean(false);
 
     public WorkerSinkTask(ConnectorTaskId id, SinkTask task, WorkerConfig workerConfig,
                           Converter keyConverter, Converter valueConverter, Time time) {
@@ -140,7 +142,26 @@ class WorkerSinkTask implements WorkerTask {
             throw new ConnectException("Sink tasks require a list of topics.");
         String[] topics = topicsStr.split(",");
         log.debug("Task {} subscribing to topics {}", id, topics);
-        consumer.subscribe(Arrays.asList(topics), new HandleRebalance());
+        consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
+
+            ConsumerRebalanceListener actualListener = new HandleRebalance();
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                actualListener.onPartitionsAssigned(partitions);
+                rebalanceFinished.set(true);
+            }
+
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                actualListener.onPartitionsRevoked(partitions);
+            }
+        });
+
+        // Waiting for consumer rebalance to finish, otherwise task will be initialized with outdated context
+        while(!rebalanceFinished.get()) {
+            // waiting for rebalance to finish
+        }
 
         // Ensure we're in the group so that if start() wants to rewind offsets, it will have an assignment of partitions
         // to work with. Any rewinding will be handled immediately when polling starts.
