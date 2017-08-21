@@ -24,6 +24,7 @@ base_dir=$(dirname $0)
 logDir="$base_dir/../logs"
 logFile="$logDir/connect-distributed.log"
 KAFKA_CONNECT_CONF="$@"
+pid="/opt/mapr/pid/kafka-connect.pid"
 
 if [ "x$KAFKA_LOG4J_OPTS" = "x" ]; then
     export KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:$base_dir/../config/connect-log4j.properties"
@@ -94,4 +95,4 @@ do
 done
 export CONNECTORS_CLASSPATH
 
-exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectDistributed "$@"
+exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectDistributed "$@" & echo $! > $pid
