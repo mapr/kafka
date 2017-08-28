@@ -40,6 +40,8 @@ WARDEN_KAFKA_CONNECT_FILE="$KAFKA_HOME/config/warden.kafka-connect.conf"
 KAFKA_VERSION_FILE="$KAFKA_HOME/kafkaversion"
 DAEMON_CONF=${MAPR_HOME}/conf/daemon.conf
 VERSION=0.9.0
+MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
+KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-${VERSION}.restart}
 
 
 function write_version_file() {
@@ -74,6 +76,26 @@ function setup_warden_config() {
     cp $WARDEN_KAFKA_CONNECT_FILE $WARDEN_KAFKA_CONNECT_DEST_CONF
     chown ${MAPR_USER} ${WARDEN_KAFKA_CONNECT_DEST_CONF}
     chgrp ${MAPR_GROUP} ${WARDEN_KAFKA_CONNECT_DEST_CONF}
+}
+
+function write_restart_kafka_connect() {
+	su ${MAPR_USER} <<-EOF
+	maprcli node services -name kafka-connect -action restart -nodes `hostname`
+	EOF
+
+    if [ ! -d $MAPR_RESTART_SCRIPTS_DIR ]; then
+        mkdir $MAPR_RESTART_SCRIPTS_DIR
+        chown -R ${MAPR_USER} ${MAPR_RESTART_SCRIPTS_DIR}
+        chgrp -R ${MAPR_GROUP} ${MAPR_RESTART_SCRIPTS_DIR}
+    fi
+
+	cat >${KAFKA_CONNECT_RESTART_SRC} <<-EOF
+	maprcli node services -name kafka-rest -action restart -nodes `hostname`
+	EOF
+
+    chown ${MAPR_USER} ${KAFKA_CONNECT_RESTART_SRC}
+    chgrp ${MAPR_GROUP} ${KAFKA_CONNECT_RESTART_SRC}
+    chmod u+x ${KAFKA_CONNECT_RESTART_SRC}
 }
 
 # Parse options
@@ -114,6 +136,7 @@ done
 
 change_permissions
 write_version_file
+write_restart_kafka_connect
 setup_warden_config
 
 
