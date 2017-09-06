@@ -35,13 +35,14 @@ fi
 
 
 KAFKA_HOME="/opt/mapr/kafka/kafka-0.9.0/"
+KAFKA_CONNECT_HOME="/opt/mapr/kafka-connect*/kafka-connect*"
 WARDEN_KAFKA_CONNECT_DEST_CONF="$MAPR_HOME/conf/conf.d/warden.kafka-connect.conf"
 WARDEN_KAFKA_CONNECT_FILE="$KAFKA_HOME/config/warden.kafka-connect.conf"
-KAFKA_VERSION_FILE="$KAFKA_HOME/kafkaversion"
+KAFKA_VERSION_FILE=${MAPR_HOME}/kafka/kafkaversion
 DAEMON_CONF=${MAPR_HOME}/conf/daemon.conf
 VERSION=0.9.0
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
-KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-${VERSION}.restart}
+KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-2.0.1.restart}
 
 
 function write_version_file() {
@@ -58,11 +59,13 @@ function change_permissions() {
 
         if [ ! -z "$MAPR_USER" ]; then
             chown -R ${MAPR_USER} ${KAFKA_HOME}
+            chown -R ${MAPR_USER} ${KAFKA_CONNECT_HOME} 
             chown ${MAPR_USER} ${MAPR_CONF_DIR}
         fi
 
 	if [ ! -z "$MAPR_GROUP" ]; then
             chgrp -R ${MAPR_GROUP} ${KAFKA_HOME}
+            chgrp -R ${MAPR_GROUP} ${KAFKA_CONNECT_HOME}            
             chgrp ${MAPR_GROUP} ${MAPR_CONF_DIR}
         fi
         chmod -f u+x ${KAFKA_HOME}/bin/*
@@ -71,7 +74,7 @@ function change_permissions() {
 
 function setup_warden_config() {
     if [ -f $WARDEN_KAFKA_CONNECT_DEST_CONF ]; then
-        rm -f $WARDEN_KAFKA_CONNECT_DEST_CONF
+        return 0
     fi
     cp $WARDEN_KAFKA_CONNECT_FILE $WARDEN_KAFKA_CONNECT_DEST_CONF
     chown ${MAPR_USER} ${WARDEN_KAFKA_CONNECT_DEST_CONF}
@@ -79,9 +82,6 @@ function setup_warden_config() {
 }
 
 function write_restart_kafka_connect() {
-	su ${MAPR_USER} <<-EOF
-	maprcli node services -name kafka-connect -action restart -nodes `hostname`
-	EOF
 
     if [ ! -d $MAPR_RESTART_SCRIPTS_DIR ]; then
         mkdir $MAPR_RESTART_SCRIPTS_DIR
