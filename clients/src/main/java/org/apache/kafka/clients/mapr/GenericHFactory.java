@@ -5,6 +5,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.reflect.Method;
 
 public class GenericHFactory<T> {
   protected static final Map<String, Constructor<? extends Object>> CONSTRUCTOR_CACHE =
@@ -40,6 +41,24 @@ public class GenericHFactory<T> {
     catch (Throwable t) {
       throw new RuntimeException(String.format("Error occurred while instantiating %s.\n==> %s.",
         className, getMessage(t)), t);
+    }
+  }
+
+  /*
+   * This API can be used to invoke a 'static' method - methodName from a given
+   * class - className.
+   */
+  public T runMethod(String className,
+                     String methodName,
+                     Object[] params) {
+    try {
+      Class<? extends T> clazz = (Class<? extends T>) Class.forName(className);
+      Method method = clazz.getDeclaredMethod(methodName);
+      return (T) method.invoke (null, params);
+    }
+    catch (Throwable t) {
+      throw new RuntimeException(String.format("Error occurred while invoking %s:%s.\n==> %s.",
+        className, methodName, getMessage(t)), t);
     }
   }
 
