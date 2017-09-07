@@ -55,6 +55,9 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Future;
 
+/* Streams Imports */
+import org.apache.kafka.clients.mapr.GenericHFactory;
+
 /**
  * <p>
  *     KafkaBasedLog provides a generic implementation of a shared, compacted log of records stored in Kafka that all
@@ -79,7 +82,8 @@ import java.util.concurrent.Future;
 public class KafkaBasedLog<K, V> {
     private static final Logger log = LoggerFactory.getLogger(KafkaBasedLog.class);
     private static final long CREATE_TOPIC_TIMEOUT_MS = 30000;
-
+    private static final int EOF_OFFSET_V6 = -1001;
+    private static int EOF_OFFSET = 0;
     private Time time;
     private final String topic;
     private final Map<String, Object> producerConfigs;
@@ -272,16 +276,38 @@ public class KafkaBasedLog<K, V> {
 
         // Turn off autocommit since we always want to consume the full log
         consumerConfigs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        if (isStreams == true)
-          consumerConfigs.put("streams.zerooffset.record.on.eof", "true");
+        if (isStreams == true) {
+          if (checkMapRBuildVersion("6.0.0")) {
+            consumerConfigs.put("streams.negativeoffset.record.on.eof", "true");
+            EOF_OFFSET = EOF_OFFSET_V6;
+          } else {
+            consumerConfigs.put("streams.zerooffset.record.on.eof", "true");
+            EOF_OFFSET = 0;
+          }
+        } 
         return new KafkaConsumer<>(consumerConfigs);
+    }
+
+    private boolean checkMapRBuildVersion (String minVersion) {
+      GenericHFactory<String> verFactory = new GenericHFactory<String>();
+      String buildVersion = verFactory.runMethod("com.mapr.fs.maprbuildversion.MapRBuildVersion",
+                                                          "getMapRBuildVersion",
+                                                          new Object[]{});
+
+      String[] verArr = buildVersion.split (".");
+      String[] minVerArr = minVersion.split (".");
+      /*Compare only major rev*/
+      if (Integer.parseInt(verArr[0]) <  Integer.parseInt(minVerArr[0]))
+        return false;
+      else
+        return true;
     }
 
     private void poll(long timeoutMs) {
         try {
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
             for (ConsumerRecord<K, V> record : records) {
-                if (isStreams == true && record.offset() == 0)
+                if (isStreams == true && record.offset() == EOF_OFFSET)
                     continue;
                 consumedCallback.onCompletion(null, record);
             }
@@ -320,11 +346,11 @@ public class KafkaBasedLog<K, V> {
         try {
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
             for (ConsumerRecord<K, V> record : records) {
-                if (record.offset() == 0 && !donePartitions.contains(record.partition())) {
+                if (record.offset() == EOF_OFFSET && !donePartitions.contains(record.partition())) {
                   numEofs++;
                   donePartitions.add(record.partition());
                 }
-                else if (record.offset() != 0)
+                else if (record.offset() != EOF_OFFSET)
                   consumedCallback.onCompletion(null, record);
             }
         } catch (WakeupException e) {

@@ -250,9 +250,9 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG = "streams.consumer.buffer.memory";
     private static final String STREAMS_CONSUMER_BUFFER_MEMORY_DOC = "Size of memory the consumer can use to read ahead messages and cache before being consumed.";
 
-    /** <code>streams.zerooffset.record.on.eof</code> **/
-    public static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG = "streams.zerooffset.record.on.eof";
-    private static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset 0 if there are no other pending messages for a topic partition.";
+    /** <code>streams.negativeoffset.record.on.eof</code> **/
+    public static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG = "streams.negativeoffset.record.on.eof";
+    private static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset -1001 if there are no other pending messages for a topic partition.";
 
     /** <code>exclude.internal.topics</code> */
     public static final String EXCLUDE_INTERNAL_TOPICS_CONFIG = "exclude.internal.topics";
@@ -500,11 +500,11 @@ public class ConsumerConfig extends AbstractConfig {
                                         64 * 1024 * 1024,
                                         Importance.MEDIUM,
                                         STREAMS_CONSUMER_BUFFER_MEMORY_DOC)
-                                .define(STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG,
+                                .define(STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG,
                                         Type.BOOLEAN,
                                         false,
                                         Importance.LOW,
-                                        STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC);
+                                        STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC);
     }
 
     @Override
