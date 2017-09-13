@@ -259,8 +259,8 @@ public class KafkaBasedLog<K, V> {
                                                           "getMapRBuildVersion",
                                                           new Object[]{});
 
-      String[] verArr = buildVersion.split (".");
-      String[] minVerArr = minVersion.split (".");
+      String[] verArr = buildVersion.trim().split ("\\.");
+      String[] minVerArr = minVersion.trim().split ("\\.");
       /*Compare only major rev*/
       if (Integer.parseInt(verArr[0]) <  Integer.parseInt(minVerArr[0]))
         return false;
