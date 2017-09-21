@@ -106,7 +106,7 @@ USAGE="usage: $0 [-h] [-R]"
 { OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,help,EC -- "$@"`; } 2>/dev/null
 eval set -- "$OPTS"
 
-for i ; do
+for i in "$@" ; do
   case "$i" in
     --secure)
       isSecure=1;
@@ -125,11 +125,11 @@ for i ; do
       exit $RETURN_SUCCESS
       ;;
     --)
-      shift;;
+      shift; break;;
     *)
       # Invalid arguments passed
-      echo "${USAGE}"
-      exit $RETURN_ERR_ARGS
+      break;; 
+
   esac
 done
 
