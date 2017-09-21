@@ -36,6 +36,8 @@ fi
 
 KAFKA_HOME="/opt/mapr/kafka/kafka-0.9.0/"
 KAFKA_CONNECT_HOME="/opt/mapr/kafka-connect*/kafka-connect*"
+KAFKA_CONNECT_HDFS_HOME="/opt/mapr/kafka-connect-hdfs/kafka-connect-hdfs-2.0.1/"
+KAFKA_CONNECT_JDBC_HOME="/opt/mapr/kafka-connect-jdbc/kafka-connect-jdbc-2.0.1/"
 WARDEN_KAFKA_CONNECT_DEST_CONF="$MAPR_HOME/conf/conf.d/warden.kafka-connect.conf"
 WARDEN_KAFKA_CONNECT_FILE="$KAFKA_HOME/config/warden.kafka-connect.conf"
 KAFKA_VERSION_FILE=${MAPR_HOME}/kafka/kafkaversion
@@ -139,5 +141,13 @@ write_version_file
 write_restart_kafka_connect
 setup_warden_config
 
+# remove state file
+if  [ -f "$KAFKA_CONNECT_JDBC_HOME/conf/.not_configured_yet" ] ; then
+    rm -f "$KAFKA_CONNECT_JDBC_HOME/conf/.not_configured_yet"
+fi
+
+if [ -f "$KAFKA_CONNECT_HDFS_HOME/conf/.not_configured_yet" ]  ; then
+    rm -f "$KAFKA_CONNECT_HDFS_HOME/conf/.not_configured_yet"
+fi
 
 exit $RETURN_SUCCESS
