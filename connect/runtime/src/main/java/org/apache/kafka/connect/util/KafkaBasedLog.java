@@ -243,10 +243,10 @@ public class KafkaBasedLog<K, V> {
         consumerConfigs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         if (isStreams == true) {
           if (checkMapRBuildVersion("6.0.0")) {
-            consumerConfigs.put("streams.negativeoffset.record.on.eof", "true");
+            consumerConfigs.put(ConsumerConfig.STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG, "true");
             EOF_OFFSET = EOF_OFFSET_V6;
           } else {
-            consumerConfigs.put("streams.zerooffset.record.on.eof", "true");
+            consumerConfigs.put(ConsumerConfig.STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG, "true");
             EOF_OFFSET = 0;
           }
         } 
