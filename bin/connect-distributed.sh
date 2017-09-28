@@ -35,27 +35,6 @@ if [ -f ${KAFKA_CONNECT_CONF} ]; then
 fi
 
 if [ $CONF_STREAM_DEFAULT ] || [ $OFFSET_STREAM_DEFAULT ]; then
-        nowC=$(date +%s)
-        while [  1 -eq 1 ]; do
-	        ret=0
-	        { maprcli volume info -path /var/mapr; ret=$?; } >> /dev/null
-            if [ $ret -eq 0 ]; then
-                # volume exist. Try to create stream.
-                break;
-            fi
-
-            # waiting for valume to be created
-            realNow=$(date +%s)
-            timeDiff="$(( $realNow - $nowC ))"
-            if [ "$timeDiff" -gt 12 ]; then
- 		        now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
-                echo "[$now] ERROR Kafka connect can not create default streams. Volume was not created." >> $logFile
-                exit 1
-            fi
-            now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
-            echo "[$now] INFO Waiting 10 sec for /var/mapr to be created" >> $logFile
-            sleep 10
-        done
         now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
 	    echo "[$now] INFO Creating stream /var/mapr/.__mapr_connect if it does not already exist" >> $logFile
 	    output="$(maprcli stream create -path /var/mapr/.__mapr_connect 2>&1)"
