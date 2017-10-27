@@ -91,9 +91,8 @@ function write_restart_kafka_connect() {
         chgrp -R ${MAPR_GROUP} ${MAPR_RESTART_SCRIPTS_DIR}
     fi
 
-	cat >${KAFKA_CONNECT_RESTART_SRC} <<-EOF
-	maprcli node services -name kafka-rest -action restart -nodes `hostname`
-	EOF
+    echo -e "#!/bin/bash\nsudo -u $MAPR_USER maprcli node services -action restart -name kafka-connect -nodes `hostname`" > ${KAFKA_CONNECT_RESTART_SRC}
+
 
     chown ${MAPR_USER} ${KAFKA_CONNECT_RESTART_SRC}
     chgrp ${MAPR_GROUP} ${KAFKA_CONNECT_RESTART_SRC}
