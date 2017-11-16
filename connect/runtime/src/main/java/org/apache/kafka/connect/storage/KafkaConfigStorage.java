@@ -175,7 +175,7 @@ public class KafkaConfigStorage {
             .field("tasks", Schema.INT32_SCHEMA)
             .build();
 
-    private static final long READ_TO_END_TIMEOUT_MS = 60000;
+    private static final long READ_TO_END_TIMEOUT_MS = 30000;
 
     private final Object lock;
     private boolean starting;
