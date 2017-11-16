@@ -506,7 +506,7 @@ public class DistributedHerder implements Herder, Runnable {
                         else if (!configState.connectors().contains(connName))
                             callback.onCompletion(new NotFoundException("Connector " + connName + " not found"), null);
                         else {
-                            configStorage.putTaskConfigs(taskConfigListAsMap(connName, configs));
+                            configStorage.putTaskConfigs(connName, configs);
                             callback.onCompletion(null, null);
                         }
                         return null;
@@ -736,7 +736,7 @@ public class DistributedHerder implements Herder, Runnable {
             }
             if (changed) {
                 if (isLeader()) {
-                    configStorage.putTaskConfigs(taskConfigListAsMap(connName, taskProps));
+                    configStorage.putTaskConfigs(connName, taskProps);
                     cb.onCompletion(null, null);
                 } else {
                     // We cannot forward the request on the same thread because this reconfiguration can happen in as a
@@ -907,16 +907,5 @@ public class DistributedHerder implements Herder, Runnable {
             }
         };
     }
-
-
-    private static Map<ConnectorTaskId, Map<String, String>> taskConfigListAsMap(String connName, List<Map<String, String>> configs) {
-        int index = 0;
-        Map<ConnectorTaskId, Map<String, String>> result = new HashMap<>();
-        for (Map<String, String> taskConfigMap : configs) {
-            ConnectorTaskId taskId = new ConnectorTaskId(connName, index);
-            result.put(taskId, taskConfigMap);
-            index++;
-        }
-        return result;
-    }
+    
 }
