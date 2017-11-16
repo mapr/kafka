@@ -190,7 +190,7 @@ public class KafkaConfigBackingStore implements ConfigBackingStore {
             .field("state", Schema.STRING_SCHEMA)
             .build();
 
-    private static final long READ_TO_END_TIMEOUT_MS = 60000;
+    private static final long READ_TO_END_TIMEOUT_MS = 30000;
 
     private final Object lock;
     private final Converter converter;
