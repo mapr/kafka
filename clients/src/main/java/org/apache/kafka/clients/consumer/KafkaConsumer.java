@@ -561,7 +561,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private Deserializer<K> keyDeserializer;
     private Deserializer<V> valueDeserializer;
     private Fetcher<K, V> fetcher;
-    private final ConsumerInterceptors<K, V> interceptors;
+    private ConsumerInterceptors<K, V> interceptors;
 
     private Time time;
     private ConsumerNetworkClient client;
@@ -578,6 +578,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
     private final AtomicInteger refcount = new AtomicInteger(0);
+		private final LogContext logContext;
 
     // STREAMS SPECIFIC
     private final ConsumerConfig config;
@@ -660,7 +661,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 				this.clientId = clientId;
 				String groupId = config.getString(ConsumerConfig.GROUP_ID_CONFIG);
 
-				LogContext logContext = new LogContext("[Consumer clientId=" + clientId + ", groupId=" + groupId + "] ");
+				this.logContext = new LogContext("[Consumer clientId=" + clientId + ", groupId=" + groupId + "] ");
 				this.log = logContext.logger(getClass());
         log.debug("Starting the Kafka consumer");
         this.config = config;
@@ -670,12 +671,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.isStreams = false;
         this.isStreamsClosed = false;
 
-				// load interceptors and make sure they get clientId
-				Map<String, Object> userProvidedConfigs = config.originals();
-				userProvidedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
-				List<ConsumerInterceptor<K, V>> interceptorList = (List) (new ConsumerConfig(userProvidedConfigs, false)).getConfiguredInstances(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
-								ConsumerInterceptor.class);
-				this.interceptors = interceptorList.isEmpty() ? null : new ConsumerInterceptors<>(interceptorList);
         if (keyDeserializer == null) {
           this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                                                               Deserializer.class);
@@ -715,6 +710,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
           log.debug("initialized consumer already.");
           return;
         }
+				// load interceptors and make sure they get clientId
+				Map<String, Object> userProvidedConfigs = config.originals();
+				userProvidedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
+				List<ConsumerInterceptor<K, V>> interceptorList = (List) (new ConsumerConfig(userProvidedConfigs, false)).getConfiguredInstances(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
+								ConsumerInterceptor.class);
+				this.interceptors = interceptorList.isEmpty() ? null : new ConsumerInterceptors<>(interceptorList);
 
         if (topic.startsWith("/") == true || topic.contains(":") == true) {
           Consumer<K,V> ac;
@@ -742,6 +743,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         try {
             log.debug("Initializing the Kafka consumer");
+						String groupId = config.getString(ConsumerConfig.GROUP_ID_CONFIG);
             this.requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG);
             int sessionTimeOutMs = config.getInt(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG);
             int fetchMaxWaitMs = config.getInt(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG);
@@ -884,6 +886,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                   long retryBackoffMs,
                   long requestTimeoutMs,
                   List<PartitionAssignor> assignors) {
+				this.config = null;
+				this.logContext = logContext;
         this.log = logContext.logger(getClass());
         this.clientId = clientId;
         this.coordinator = coordinator;
@@ -953,7 +957,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       return needDefault;
     }
 
-    private List<TopicPartition> getNewPartitionListWithDefaultStream(List<TopicPartition> partitions) {
+    private Collection<TopicPartition> getNewPartitionCollectionWithDefaultStream(Collection<TopicPartition> partitions) {
       if (checkIfPartitionsNeedDefaultStream(partitions)) {
         List<TopicPartition> newPartitions = new ArrayList<TopicPartition>(partitions.size());
         for (TopicPartition partition : partitions) {
@@ -1283,7 +1287,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        partitions = getNewPartitionListWithDefaultStream(partitions);
+        partitions = getNewPartitionCollectionWithDefaultStream(partitions);
         consumerDriver.assign(partitions);
       } else {
         acquireAndEnsureOpen();

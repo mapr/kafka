@@ -159,6 +159,11 @@ public class ConsumerRecord<K, V> {
         this.value = value;
         this.timestamp = timestamp;
         this.producer = producer; 
+				this.timestampType = TimestampType.NO_TIMESTAMP_TYPE;
+				this.serializedKeySize = 0; // TODO cyalamanchili fix this
+				this.serializedValueSize = 0;
+        this.checksum = 0L;
+				this.headers = null;
     }
 
     /**

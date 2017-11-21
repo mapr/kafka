@@ -248,14 +248,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private CompressionType compressionType;
     private Sensor errors;
     private Time time;
-    private final ExtendedSerializer<K> keySerializer;
-    private final ExtendedSerializer<V> valueSerializer;
+    private ExtendedSerializer<K> keySerializer;
+    private ExtendedSerializer<V> valueSerializer;
     private ProducerConfig producerConfig;
     private long maxBlockTimeMs;
     private int requestTimeoutMs;
-    private final ProducerInterceptors<K, V> interceptors;
+    private ProducerInterceptors<K, V> interceptors;
     private ApiVersions apiVersions;
-    private final TransactionManager transactionManager;
+    private TransactionManager transactionManager;
+		private final LogContext logContext;
 
     // For streams we have added the following.
     private final ProducerConfig config;
@@ -326,36 +327,29 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
 			String transactionalId = userProvidedConfigs.containsKey(ProducerConfig.TRANSACTIONAL_ID_CONFIG) ?
 							(String) userProvidedConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG) : null;
-			LogContext logContext;
 			if (transactionalId == null)
-					logContext = new LogContext(String.format("[Producer clientId=%s] ", clientId));
+					this.logContext = new LogContext(String.format("[Producer clientId=%s] ", clientId));
 			else
-					logContext = new LogContext(String.format("[Producer clientId=%s, transactionalId=%s] ", clientId, transactionalId));
+					this.logContext = new LogContext(String.format("[Producer clientId=%s, transactionalId=%s] ", clientId, transactionalId));
 			log = logContext.logger(KafkaProducer.class);
       log.trace("Starting the Kafka producer");
       this.config = config;
       this.closed = false;
-			// load interceptors and make sure they get clientId
-			userProvidedConfigs.put(ProducerConfig.CLIENT_ID_CONFIG, clientId);
-			List<ProducerInterceptor<K, V>> interceptorList = (List) (new ProducerConfig(userProvidedConfigs, false)).getConfiguredInstances(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,
-							ProducerInterceptor.class);
-			this.interceptors = interceptorList.isEmpty() ? null : new ProducerInterceptors<>(interceptorList);
-
       if (keySerializer == null) {
-        this.keySerializer = config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                                                          Serializer.class);
+        this.keySerializer = ensureExtended(config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                                                          Serializer.class));
         this.keySerializer.configure(config.originals(), true);
       } else {
         config.ignore(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-        this.keySerializer = keySerializer;
+        this.keySerializer = ensureExtended(keySerializer);
       }
       if (valueSerializer == null) {
-        this.valueSerializer = config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                                                            Serializer.class);
+        this.valueSerializer = ensureExtended(config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                                                            Serializer.class));
         this.valueSerializer.configure(config.originals(), false);
       } else {
         config.ignore(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG);
-        this.valueSerializer = valueSerializer;
+        this.valueSerializer = ensureExtended(valueSerializer);
       }
 
       defaultStream = null;
@@ -384,6 +378,13 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
           log.debug("already initlialized producer.");
           return;
         }
+
+				Map<String, Object> userProvidedConfigs = producerConfig.originals();
+				// load interceptors and make sure they get clientId
+				userProvidedConfigs.put(ProducerConfig.CLIENT_ID_CONFIG, clientId);
+				List<ProducerInterceptor<K, V>> interceptorList = (List) (new ProducerConfig(userProvidedConfigs, false)).getConfiguredInstances(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,
+								ProducerInterceptor.class);
+				this.interceptors = interceptorList.isEmpty() ? null : new ProducerInterceptors<>(interceptorList);
 
         if (topic.startsWith("/") == true || topic.contains(":") == true) {
           Producer<K,V> ap;
@@ -1118,7 +1119,6 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         } catch (InterruptedException e) {
             throw new InterruptException(e);
         }
-        return this.metadata.fetch().partitionsForTopic(topic);
       }
     }
 
