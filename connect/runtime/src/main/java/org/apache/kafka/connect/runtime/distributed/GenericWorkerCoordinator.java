@@ -18,9 +18,10 @@ package org.apache.kafka.connect.runtime.distributed;
 
 import java.io.Closeable;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.connect.util.ConnectorTaskId;
 
 public interface GenericWorkerCoordinator extends Closeable {
-  public void ensureCoordinatorKnown();
+  public void ensureCoordinatorReady();
   public void ensureActiveGroup();
   public void requestRejoin();
   public String memberId();

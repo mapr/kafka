@@ -102,6 +102,7 @@ public final class WorkerCoordinator extends AbstractCoordinator implements Clos
         return "connect";
     }
 
+    @Override
     public void poll(long timeout) {
         // poll for io until the timeout expires
         final long start = time.milliseconds();
@@ -308,10 +309,7 @@ public final class WorkerCoordinator extends AbstractCoordinator implements Clos
         return leaderState.ownerUrl(task);
     }
 
-    public void poll(long timeout) {
-      this.client.poll(timeout);
-    }
-
+    @Override
     public void wakeup() {
       this.client.wakeup();
     }

@@ -1125,6 +1125,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
     }
 
+     /**
+      * Retained for backward binary compatibility.
+      * See {@link #subscribe(Collection, ConsumerRebalanceListener)}
+      */
+     @Override
+     public void subscribe(List<String> topics, ConsumerRebalanceListener listener) {
+       subscribe((Collection<String>)topics, listener);
+      }
+
     /**
      * Subscribe to the given list of topics to get dynamically assigned partitions.
      * <b>Topic subscriptions are not incremental. This list will replace the current
@@ -1149,6 +1158,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public void subscribe(Collection<String> topics) {
         subscribe(topics, new NoOpConsumerRebalanceListener());
+    }
+
+    /**
+     * Retained for backward binary compatibility
+     * See {@link #subscribe(Collection)}
+     */
+    @Override
+    public void subscribe(List<String> topics) {
+      subscribe(topics, new NoOpConsumerRebalanceListener());
     }
 
     /**
@@ -1318,6 +1336,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             release();
         }
       }
+    }
+
+    /**
+     * Retained for backward binary compatibility.
+     * See {@link #assign(Collection)}
+     */
+    @Override
+    public void assign(List<TopicPartition> partitions) {
+      assign((Collection<TopicPartition>)partitions);
     }
 
     /**
@@ -1718,6 +1745,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * @deprecated use {@link #subscribe(Collection, ConsumerRebalanceListener)} instead.
+     */
+    @Deprecated
+    public void seekToBeginning(TopicPartition... partitions) {
+      seekToBeginning(Arrays.asList(partitions));
+    }
+
+    /**
      * Seek to the last offset for each of the given partitions. This function evaluates lazily, seeking to the
      * final offset in all partitions only when {@link #poll(long)} or {@link #position(TopicPartition)} are called.
      * If no partitions are provided, seek to the final offset for all of the currently assigned partitions.
@@ -1755,6 +1790,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             release();
         }
       }
+    }
+
+    /**
+     * @deprecated use {@link #seekToEnd(Collection)} instead.
+     */
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions) {
+      seekToEnd(Arrays.asList(partitions));
     }
 
     /**
@@ -2031,6 +2074,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * @deprecated use {@link #pause(Collection)} instead.
+     */
+    @Deprecated
+    public void pause(TopicPartition... partitions) {
+      pause(Arrays.asList(partitions));
+    }
+
+    /**
      * Resume specified partitions which have been paused with {@link #pause(Collection)}. New calls to
      * {@link #poll(long)} will return records from these partitions if there are any to be fetched.
      * If the partitions were not previously paused, this method is a no-op.
@@ -2062,6 +2113,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             release();
         }
       }
+    }
+
+    /**
+     * @deprecated use {@link #resume(Collection)} instead.
+     */
+    @Deprecated
+    public void resume(TopicPartition... partitions) {
+      resume(Arrays.asList(partitions));
     }
 
     /**

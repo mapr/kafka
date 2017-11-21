@@ -158,7 +158,7 @@ object ConsumerPerformance {
         joinStart = System.currentTimeMillis
       }})
     consumer.poll(0)
-    consumer.seekToBeginning(Collections.emptyList())
+    consumer.seekToBeginning(Collections.emptyList[TopicPartition])
 
     // Now start the benchmark
     val startMs = System.currentTimeMillis
