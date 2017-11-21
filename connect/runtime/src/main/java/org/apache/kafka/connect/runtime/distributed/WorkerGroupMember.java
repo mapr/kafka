@@ -77,7 +77,15 @@ public class WorkerGroupMember {
                              Time time) {
         try {
         this.time = time;
+
+        String clientIdConfig = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG);
         String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
+        this.clientId = clientIdConfig.length() <= 0 ? "connect-" + CONNECT_CLIENT_ID_SEQUENCE.getAndIncrement() : clientIdConfig;
+        String groupId = config.getString(DistributedConfig.GROUP_ID_CONFIG);
+
+        LogContext logContext = new LogContext("[Worker clientId=" + clientId + ", groupId=" + groupId + "] ");
+        this.log = logContext.logger(WorkerGroupMember.class);
+
         if (configTopic.startsWith("/") == true || configTopic.contains(":") == true) {
           GenericHFactory<GenericWorkerCoordinator> coordFactory =
             new GenericHFactory<GenericWorkerCoordinator>();
@@ -93,15 +101,13 @@ public class WorkerGroupMember {
                                           String.class,
                                           ConfigBackingStore.class,
                                           WorkerRebalanceListener.class});
-        } else {
-            MetricConfig metricConfig = new MetricConfig().samples(config.getInt(CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG))
-                    .timeWindow(config.getLong(CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS);
-            String clientIdConfig = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG);
-            clientId = clientIdConfig.length() <= 0 ? "connect-" + CONNECT_CLIENT_ID_SEQUENCE.getAndIncrement() : clientIdConfig;
-            String groupId = config.getString(DistributedConfig.GROUP_ID_CONFIG);
 
-            LogContext logContext = new LogContext("[Worker clientId=" + clientId + ", groupId=" + groupId + "] ");
-            this.log = logContext.logger(WorkerGroupMember.class);
+          // Not relevant / not supported by MAPR-STREAMS
+          this.client = null;
+          this.metrics = null;
+          this.metadata = null;
+          this.retryBackoffMs = 0;
+        } else {
 
             Map<String, String> metricsTags = new LinkedHashMap<>();
             metricsTags.put("client-id", clientId);

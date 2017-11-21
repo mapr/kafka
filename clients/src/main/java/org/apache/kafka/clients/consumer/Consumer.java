@@ -51,14 +51,32 @@ public interface Consumer<K, V> extends Closeable {
     public void subscribe(Collection<String> topics);
 
     /**
+     * @see KafkaConsumer#subscribe(Collection).
+     * Retained for backward binary compactibility
+     */
+    public void subscribe(List<String> topics);
+
+    /**
      * @see KafkaConsumer#subscribe(Collection, ConsumerRebalanceListener)
      */
     public void subscribe(Collection<String> topics, ConsumerRebalanceListener callback);
 
     /**
+     * @see KafkaConsumer#subscribe(Collection, ConsumerRebalanceListener).
+     * Retained for backward binary compactibility
+     */
+    public void subscribe(List<String> topics, ConsumerRebalanceListener callback);
+
+    /**
      * @see KafkaConsumer#assign(Collection)
      */
     public void assign(Collection<TopicPartition> partitions);
+
+    /**
+     * @see KafkaConsumer#assign(Collection)
+     * Retained for backward binary compactibility
+     */
+    public void assign(List<TopicPartition> partitions);
 
     /**
     * @see KafkaConsumer#subscribe(Pattern, ConsumerRebalanceListener)
@@ -115,10 +133,16 @@ public interface Consumer<K, V> extends Closeable {
      */
     public void seekToBeginning(Collection<TopicPartition> partitions);
 
+    @Deprecated
+    public void seekToBeginning(TopicPartition... partitions);
+
     /**
      * @see KafkaConsumer#seekToEnd(Collection)
      */
     public void seekToEnd(Collection<TopicPartition> partitions);
+
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions);
 
     /**
      * @see KafkaConsumer#position(TopicPartition)
@@ -155,6 +179,9 @@ public interface Consumer<K, V> extends Closeable {
      */
     public void pause(Collection<TopicPartition> partitions);
 
+    @Deprecated
+    public void pause(TopicPartition... partitions);
+
      /**
      * @see KafkaConsumer#listTopics(Pattern)
      */
@@ -164,6 +191,9 @@ public interface Consumer<K, V> extends Closeable {
      * @see KafkaConsumer#resume(Collection)
      */
     public void resume(Collection<TopicPartition> partitions);
+
+    @Deprecated
+    public void resume(TopicPartition... partitions);
 
     /**
      * @see KafkaConsumer#offsetsForTimes(java.util.Map)

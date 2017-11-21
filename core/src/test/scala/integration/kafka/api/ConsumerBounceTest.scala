@@ -118,7 +118,7 @@ class ConsumerBounceTest extends IntegrationTestHarness with Logging {
         assertEquals(consumer.position(tp), consumer.committed(tp).offset)
 
         if (consumer.position(tp) == numRecords) {
-          consumer.seekToBeginning(Collections.emptyList())
+          consumer.seekToBeginning(Collections.emptyList[TopicPartition])
           consumed = 0
         }
       }
@@ -150,7 +150,7 @@ class ConsumerBounceTest extends IntegrationTestHarness with Logging {
       val coin = TestUtils.random.nextInt(3)
       if (coin == 0) {
         info("Seeking to end of log")
-        consumer.seekToEnd(Collections.emptyList())
+        consumer.seekToEnd(Collections.emptyList[TopicPartition])
         assertEquals(numRecords.toLong, consumer.position(tp))
       } else if (coin == 1) {
         val pos = TestUtils.random.nextInt(numRecords).toLong
