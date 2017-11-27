@@ -223,7 +223,38 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String INTERCEPTOR_CLASSES_DOC = "A list of classes to use as interceptors. "
                                                         + "Implementing the <code>org.apache.kafka.clients.consumer.ConsumerInterceptor</code> interface allows you to intercept (and possibly mutate) records "
                                                         + "received by the consumer. By default, there are no interceptors.";
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
 
+    /** <code>fs.mapr.rpc.timeout</code> */
+    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
+
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
+
+    /** <code>streams.consumer.default.stream</code> **/
+    public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
+    private static final String STREAMS_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
+      + "if the topic name does not specify the stream.  For example, if consumer subscribes to exampleTopic and this parameter "
+      + "is set to /exampleStream, then the consumer will subscribe to /exampleStream:exampleTopic.  If consumer subscribes to "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
+    /** <code>streams.record.strip.streampath</code> **/
+    public static final String STREAMS_RECORD_STRIP_STREAMPATH_CONFIG = "streams.record.strip.streampath";
+    private static final String STREAMS_RECORD_STRIP_STREAMPATH_DOC = "Strip streamname from the consumer record.";
+
+    /** <code>streams.consumer.buffer.memory</code> **/
+    public static final String STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG = "streams.consumer.buffer.memory";
+    private static final String STREAMS_CONSUMER_BUFFER_MEMORY_DOC = "Size of memory the consumer can use to read ahead messages and cache before being consumed.";
+
+    public static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG = "streams.zerooffset.record.on.eof";
+    private static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset 0 if there are no other pending messages for a topic partition.";
+
+    public static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG = "streams.negativeoffset.record.on.eof";
+    private static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset -1001 if there are no other pending messages for a topic partition.";
 
     /** <code>exclude.internal.topics</code> */
     public static final String EXCLUDE_INTERNAL_TOPICS_CONFIG = "exclude.internal.topics";
@@ -256,7 +287,7 @@ public class ConsumerConfig extends AbstractConfig {
     
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
-                                        Type.LIST,
+                                        Type.LIST, "",
                                         Importance.HIGH,
                                         CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
                                 .define(GROUP_ID_CONFIG, Type.STRING, "", Importance.HIGH, GROUP_ID_DOC)
@@ -444,8 +475,43 @@ public class ConsumerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
-
+                                .withClientSaslSupport()
+                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
+                                        Type.INT,
+                                        300,
+                                        atLeast(30),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
+                                .define(STREAMS_RECORD_STRIP_STREAMPATH_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_RECORD_STRIP_STREAMPATH_DOC)
+                                .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_CONSUMER_DEFAULT_STREAM_DOC)
+                                .define(STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG,
+                                        Type.LONG,
+                                        64 * 1024 * 1024,
+                                        Importance.MEDIUM,
+                                        STREAMS_CONSUMER_BUFFER_MEMORY_DOC)
+                                .define(STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC)
+                                .define(STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC);
     }
 
     @Override

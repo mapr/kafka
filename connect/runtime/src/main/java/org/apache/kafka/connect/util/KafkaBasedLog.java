@@ -16,6 +16,17 @@
  */
 package org.apache.kafka.connect.util;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Future;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -44,6 +55,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Future;
 
+/* Streams Imports */
+import org.apache.kafka.clients.mapr.GenericHFactory;
 
 /**
  * <p>
@@ -69,7 +82,8 @@ import java.util.concurrent.Future;
 public class KafkaBasedLog<K, V> {
     private static final Logger log = LoggerFactory.getLogger(KafkaBasedLog.class);
     private static final long CREATE_TOPIC_TIMEOUT_MS = 30000;
-
+    private static final int EOF_OFFSET_V6 = -1001;
+    private static int EOF_OFFSET = 0;
     private Time time;
     private final String topic;
     private final Map<String, Object> producerConfigs;
@@ -82,6 +96,7 @@ public class KafkaBasedLog<K, V> {
     private boolean stopRequested;
     private Queue<Callback<Void>> readLogEndOffsetCallbacks;
     private Runnable initializer;
+    private boolean isStreams;
 
     /**
      * Create a new KafkaBasedLog object. This does not start reading the log and writing is not permitted until
@@ -118,6 +133,11 @@ public class KafkaBasedLog<K, V> {
             public void run() {
             }
         };
+        if (this.topic.startsWith("/") == true &&
+            this.topic.contains(":") == true)
+          isStreams = true;
+        else
+          isStreams = false;
     }
 
     public void start() {
@@ -201,6 +221,14 @@ public class KafkaBasedLog<K, V> {
     public void readToEnd(Callback<Void> callback) {
         log.trace("Starting read to end log for topic {}", topic);
         producer.flush();
+        // Doing a seek will ensure we get an EOF on reaching the end
+        // of the log
+        if (isStreams == true) {
+          for (TopicPartition tp : consumer.assignment()) {
+            long offset = consumer.position(tp);
+            consumer.seek(tp, offset);
+          }
+        }
         synchronized (this) {
             readLogEndOffsetCallbacks.add(callback);
         }
@@ -248,14 +276,41 @@ public class KafkaBasedLog<K, V> {
 
         // Turn off autocommit since we always want to consume the full log
         consumerConfigs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        if (isStreams == true) {
+          if (checkMapRBuildVersion("6.0.0")) {
+            consumerConfigs.put(ConsumerConfig.STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG, "true");
+            EOF_OFFSET = EOF_OFFSET_V6;
+          } else {
+            consumerConfigs.put(ConsumerConfig.STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG, "true");
+            EOF_OFFSET = 0;
+          }
+        } 
         return new KafkaConsumer<>(consumerConfigs);
+    }
+
+    private boolean checkMapRBuildVersion (String minVersion) {
+      GenericHFactory<String> verFactory = new GenericHFactory<String>();
+      String buildVersion = verFactory.runMethod("com.mapr.fs.maprbuildversion.MapRBuildVersion",
+                                                          "getMapRBuildVersion",
+                                                          new Object[]{});
+
+      String[] verArr = buildVersion.trim().split ("\\.");
+      String[] minVerArr = minVersion.trim().split ("\\.");
+      /*Compare only major rev*/
+      if (Integer.parseInt(verArr[0]) <  Integer.parseInt(minVerArr[0]))
+        return false;
+      else
+        return true;
     }
 
     private void poll(long timeoutMs) {
         try {
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
-            for (ConsumerRecord<K, V> record : records)
+            for (ConsumerRecord<K, V> record : records) {
+                if (isStreams == true && record.offset() == EOF_OFFSET)
+                    continue;
                 consumedCallback.onCompletion(null, record);
+            }
         } catch (WakeupException e) {
             // Expected on get() or stop(). The calling code should handle this
             throw e;
@@ -264,7 +319,7 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
-    private void readToLogEnd() {
+    private void readToKafkaLogEnd() {
         log.trace("Reading to end of offset log");
 
         Set<TopicPartition> assignment = consumer.assignment();
@@ -285,6 +340,54 @@ public class KafkaBasedLog<K, V> {
         }
     }
 
+    // Account for EOF on each partition EXACTLY once - the
+    // donePartitions set helps ensure this.
+    private int consumeAllRecords(long timeoutMs, Set<Integer> donePartitions) {
+        int numEofs = 0;
+        try {
+            ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
+            for (ConsumerRecord<K, V> record : records) {
+                if (record.offset() == EOF_OFFSET && !donePartitions.contains(record.partition())) {
+                  numEofs++;
+                  donePartitions.add(record.partition());
+                }
+                else if (record.offset() != EOF_OFFSET)
+                  consumedCallback.onCompletion(null, record);
+            }
+        } catch (WakeupException e) {
+            // Expected on get() or stop(). The calling code should handle this
+            throw e;
+        } catch (KafkaException e) {
+            log.error("Error polling: " + e);
+        }
+        return numEofs;
+    }
+
+    private void readToMapRStreamsLogEnd() {
+        Set<TopicPartition> assignment = consumer.assignment();
+
+        int numPartitions = assignment.size();
+        int numEofsSoFar = 0;
+
+        Set<Integer> donePartitions = new HashSet<>();
+        while (true) {
+          log.trace("numEofsSoFar " + numEofsSoFar + 
+                    "numPartitions " + numPartitions);
+          numEofsSoFar += consumeAllRecords(100, donePartitions);
+          if (numEofsSoFar == numPartitions)
+            break;
+        }
+    }
+
+    private void readToLogEnd() {
+        log.trace("Reading to end of offset log");
+
+        if (isStreams == true) {
+          readToMapRStreamsLogEnd();
+        } else {
+          readToKafkaLogEnd();
+        }
+    }
 
     private class WorkThread extends Thread {
         public WorkThread() {

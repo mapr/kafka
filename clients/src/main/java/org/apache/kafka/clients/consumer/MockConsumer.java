@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
+import java.util.Arrays;
 
 
 /**
@@ -97,6 +98,11 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public void subscribe(List<String> topics) {
+      subscribe((Collection<String>)topics);
+    }
+
+    @Override
     public synchronized void subscribe(Pattern pattern, final ConsumerRebalanceListener listener) {
         ensureNotClosed();
         this.subscriptions.subscribe(pattern, listener);
@@ -122,9 +128,19 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public void subscribe(List<String> topics, final ConsumerRebalanceListener listener) {
+      subscribe((Collection<String>)topics, listener);
+    }
+
+    @Override
     public synchronized void assign(Collection<TopicPartition> partitions) {
         ensureNotClosed();
         this.subscriptions.assignFromUser(new HashSet<>(partitions));
+    }
+
+    @Override
+    public void assign(List<TopicPartition> partitions) {
+      assign((Collection<TopicPartition>)partitions);
     }
 
     @Override
@@ -265,6 +281,12 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
             subscriptions.needOffsetReset(tp, OffsetResetStrategy.EARLIEST);
     }
 
+    @Override
+    @Deprecated
+    public void seekToBeginning(TopicPartition... partitions) {
+      seekToBeginning(Arrays.asList(partitions));
+    }
+
     public synchronized void updateBeginningOffsets(Map<TopicPartition, Long> newOffsets) {
         beginningOffsets.putAll(newOffsets);
     }
@@ -274,6 +296,12 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
         ensureNotClosed();
         for (TopicPartition tp : partitions)
             subscriptions.needOffsetReset(tp, OffsetResetStrategy.LATEST);
+    }
+
+    @Override
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions) {
+      seekToEnd(Arrays.asList(partitions));
     }
 
     public synchronized void updateEndOffsets(Map<TopicPartition, Long> newOffsets) {
@@ -298,6 +326,16 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
         return partitions;
     }
 
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+      throw new KafkaException("listTopics(String) is not supported");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+      throw new KafkaException("listTopics(Pattern) is not supported");
+    }
+
     public synchronized void updatePartitions(String topic, List<PartitionInfo> partitions) {
         ensureNotClosed();
         this.partitions.put(topic, partitions);
@@ -312,11 +350,23 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    @Deprecated
+    public void pause(TopicPartition... partitions) {
+      pause(Arrays.asList(partitions));
+    }
+
+    @Override
     public synchronized void resume(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             subscriptions.resume(partition);
             paused.remove(partition);
         }
+    }
+
+    @Override
+    @Deprecated
+    public void resume(TopicPartition... partitions) {
+      resume(Arrays.asList(partitions));
     }
 
     @Override

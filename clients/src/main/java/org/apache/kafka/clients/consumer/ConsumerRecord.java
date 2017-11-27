@@ -42,6 +42,7 @@ public class ConsumerRecord<K, V> {
     private final Headers headers;
     private final K key;
     private final V value;
+    private final String producer; 
 
     private volatile Long checksum;
 
@@ -133,6 +134,36 @@ public class ConsumerRecord<K, V> {
         this.key = key;
         this.value = value;
         this.headers = headers;
+        this.producer = null;
+    }
+
+    /**
+     * Creates a record to be received from a specified topic and partition
+     *
+     * @param topic The topic this record is received from
+     * @param partition The partition of the topic this record is received from
+     * @param offset The offset of this record in the corresponding Kafka partition
+     * @param key The key of the record, if one exists (null is allowed)
+     * @param value The record contents
+     * @param timestamp The timestamp at which the record was produced
+     * @param producer The producer for this record 
+     */
+    public ConsumerRecord(String topic, int partition, long offset, K key, V value,
+                          long timestamp, String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.key = key;
+        this.value = value;
+        this.timestamp = timestamp;
+        this.producer = producer; 
+				this.timestampType = TimestampType.NO_TIMESTAMP_TYPE;
+				this.serializedKeySize = 0; // TODO cyalamanchili fix this
+				this.serializedValueSize = 0;
+        this.checksum = 0L;
+				this.headers = null;
     }
 
     /**
@@ -225,13 +256,20 @@ public class ConsumerRecord<K, V> {
         return this.serializedValueSize;
     }
 
+		/**
+     * The producer for this record.
+     */
+    public String producer() {
+        return this.producer;
+		}
+
     @Override
     public String toString() {
         return "ConsumerRecord(topic = " + topic() + ", partition = " + partition() + ", offset = " + offset()
                + ", " + timestampType + " = " + timestamp
                + ", serialized key size = "  + serializedKeySize
                + ", serialized value size = " + serializedValueSize
-               + ", headers = " + headers
+               + ", headers = " + headers + ", producer = " + producer
                + ", key = " + key + ", value = " + value + ")";
     }
 }

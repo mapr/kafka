@@ -219,8 +219,38 @@ public class ProducerConfig extends AbstractConfig {
             "Note that enable.idempotence must be enabled if a TransactionalId is configured. " +
             "The default is empty, which means transactions cannot be used.";
 
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>fs.mapr.rpc.timeout</code> */
+    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
+
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
+
+    /** <code>streams.buffer.max.time.ms</code> **/
+    public static final String STREAMS_BUFFER_TIME_CONFIG = "streams.buffer.max.time.ms";
+    private static final String STREAMS_BUFFER_TIME_DOC = "Messages are buffered in the producer at most the specified time.  A thread "
+                                                       + "will flush all messages that have been buffered more than the specified time. "
+                                                       + "The default value is 3000 (3 seconds).";
+    /** <code>streams.parallel.flushers.per.partition</code> **/
+    public static final String STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG = "streams.parallel.flushers.per.partition";
+    private static final String STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_DOC = "This enables parallel flushers per partition.  By default, "
+                                                                           + "it is enabled.  If enabled, messages even within a single "
+                                                                           + "partition may be delivered out-of-order.";
+    /** <code>streams.partitioner.class</code> **/
+    public static final String STREAMS_PARTITIONER_CLASS_CONFIG = "streams.partitioner.class";
+    private static final String STREAMS_PARTITIONER_CLASS_DOC = "Streams partitioner class that implements <code>StreamsPartitioner</code> interface.";
+
+    /** <code>streams.producer.default.stream</code> **/
+    public static final String STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG = "streams.producer.default.stream";
+    private static final String STREAMS_PRODUCER_DEFAULT_STREAM_DOC = "The default stream the producer should send the messages to, "
+      + "if the topic name does not specify the stream.  For example, if producer sends a message to exampleTopic and this parameter "
+      + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If producer sends a message to "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
-        CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, Importance.HIGH, CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
+        CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, "", Importance.HIGH, CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
                                 .define(BUFFER_MEMORY_CONFIG, Type.LONG, 32 * 1024 * 1024L, atLeast(0L), Importance.HIGH, BUFFER_MEMORY_DOC)
                                 .define(RETRIES_CONFIG, Type.INT, 0, between(0, Integer.MAX_VALUE), Importance.HIGH, RETRIES_DOC)
                                 .define(ACKS_CONFIG,
@@ -326,7 +356,39 @@ public class ProducerConfig extends AbstractConfig {
                                         null,
                                         new ConfigDef.NonEmptyString(),
                                         Importance.LOW,
-                                        TRANSACTIONAL_ID_DOC);
+                                        TRANSACTIONAL_ID_DOC)
+                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
+                                        Type.INT,
+                                        300,
+                                        atLeast(30),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
+                                .define(STREAMS_BUFFER_TIME_CONFIG,
+                                        Type.LONG,
+                                        3000L,
+                                        atLeast(0L),
+                                        Importance.HIGH,
+                                        STREAMS_BUFFER_TIME_DOC)
+                                .define(STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.HIGH,
+                                        STREAMS_PARALLEL_FLUSHERS_PER_PARTITION_DOC)
+                                .define(STREAMS_PARTITIONER_CLASS_CONFIG,
+                                        Type.CLASS,
+                                        "org.apache.kafka.clients.producer.DefaultStreamsPartitioner",
+                                        Importance.MEDIUM,
+                                        STREAMS_PARTITIONER_CLASS_DOC)
+                                .define(STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_PRODUCER_DEFAULT_STREAM_DOC);
     }
 
     @Override
