@@ -72,6 +72,7 @@ import org.apache.kafka.clients.mapr.GenericHFactory;
 public class KafkaBasedLog<K, V> {
     private static final Logger log = LoggerFactory.getLogger(KafkaBasedLog.class);
     private static final long CREATE_TOPIC_TIMEOUT_MS = 30000;
+    private static final long POLL_TIMEOUT_MS = 5000;
     private static final int EOF_OFFSET_V6 = -1001;
     private static int EOF_OFFSET = 0;
     private Time time;
@@ -199,14 +200,7 @@ public class KafkaBasedLog<K, V> {
      */
     public void readToEnd(Callback<Void> callback) {
         producer.flush();
-        // Doing a seek will ensure we get an EOF on reaching the end
-        // of the log
-        if (isStreams == true) {
-          for (TopicPartition tp : consumer.assignment()) {
-            long offset = consumer.position(tp);
-            consumer.seek(tp, offset);
-          }
-        }
+
         synchronized (this) {
             readLogEndOffsetCallbacks.add(callback);
         }
@@ -249,7 +243,7 @@ public class KafkaBasedLog<K, V> {
             consumerConfigs.put(ConsumerConfig.STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG, "true");
             EOF_OFFSET = 0;
           }
-        } 
+        }
         return new KafkaConsumer<>(consumerConfigs);
     }
 
@@ -313,7 +307,7 @@ public class KafkaBasedLog<K, V> {
         }
 
         while (!endOffsets.isEmpty()) {
-            poll(Integer.MAX_VALUE);
+            poll(POLL_TIMEOUT_MS);
 
             Iterator<Map.Entry<TopicPartition, Long>> it = endOffsets.entrySet().iterator();
             while (it.hasNext()) {
@@ -330,6 +324,14 @@ public class KafkaBasedLog<K, V> {
     // donePartitions set helps ensure this.
     private int consumeAllRecords(long timeoutMs, Set<Integer> donePartitions) {
         int numEofs = 0;
+        // Doing a seek will ensure we get an EOF on reaching the end
+        // of the log
+        if (isStreams) {
+            for (TopicPartition tp : consumer.assignment()) {
+                long offset = consumer.position(tp);
+                consumer.seek(tp, offset);
+            }
+        }
         try {
             ConsumerRecords<K, V> records = consumer.poll(timeoutMs);
             for (ConsumerRecord<K, V> record : records) {
@@ -357,7 +359,7 @@ public class KafkaBasedLog<K, V> {
 
         Set<Integer> donePartitions = new HashSet<>();
         while (true) {
-          log.trace("numEofsSoFar " + numEofsSoFar + 
+          log.trace("numEofsSoFar " + numEofsSoFar +
                     "numPartitions " + numPartitions);
           numEofsSoFar += consumeAllRecords(100, donePartitions);
           if (numEofsSoFar == numPartitions)
