@@ -72,7 +72,6 @@ import org.apache.kafka.clients.mapr.GenericHFactory;
 public class KafkaBasedLog<K, V> {
     private static final Logger log = LoggerFactory.getLogger(KafkaBasedLog.class);
     private static final long CREATE_TOPIC_TIMEOUT_MS = 30000;
-    private static final long POLL_TIMEOUT_MS = 5000;
     private static final int EOF_OFFSET_V6 = -1001;
     private static int EOF_OFFSET = 0;
     private Time time;
@@ -307,7 +306,7 @@ public class KafkaBasedLog<K, V> {
         }
 
         while (!endOffsets.isEmpty()) {
-            poll(POLL_TIMEOUT_MS);
+            poll(Integer.MAX_VALUE);
 
             Iterator<Map.Entry<TopicPartition, Long>> it = endOffsets.entrySet().iterator();
             while (it.hasNext()) {
