@@ -1209,6 +1209,11 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
             member.wakeup();
         }
 
+        // Present to ensure compatibility with MEP 4.1
+        @Override
+        public void onAssigned(ConnectProtocol.Assignment assignment) {
+        }
+
         @Override
         public void onRevoked(String leader, Collection<String> connectors, Collection<ConnectorTaskId> tasks) {
             log.info("Rebalance started");
