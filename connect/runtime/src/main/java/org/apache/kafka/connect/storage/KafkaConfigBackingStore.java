@@ -439,7 +439,8 @@ public class KafkaConfigBackingStore implements ConfigBackingStore {
                 }
             }
         };
-        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, Time.SYSTEM, createTopics);
+        // TODO cyalamanchili createTopics not yet implemented
+        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, Time.SYSTEM, null);
     }
 
     @SuppressWarnings("unchecked")
