@@ -318,7 +318,7 @@ public class ConsumerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         ENABLE_AUTO_COMMIT_DOC)
                                 .define(AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                                        Type.INT,
+                                        Type.LONG,
                                         5000,
                                         atLeast(0),
                                         Importance.LOW,
