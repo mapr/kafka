@@ -44,6 +44,20 @@ public final class RecordMetadata {
 
     private volatile Long checksum;
 
+    /**
+     * For kafka-0.9.0 backward compatibility
+     */
+    public RecordMetadata(TopicPartition topicPartition, long baseOffset, long relativeOffset) {
+        // ignore the relativeOffset if the base offset is -1,
+        // since this indicates the offset is unknown
+        this.offset = baseOffset == -1 ? baseOffset : baseOffset + relativeOffset;
+        this.timestamp = RecordBatch.NO_TIMESTAMP;
+        this.checksum = null;
+        this.serializedKeySize = 0;
+        this.serializedValueSize = 0;
+        this.topicPartition = topicPartition;
+    }
+
     public RecordMetadata(TopicPartition topicPartition, long baseOffset, long relativeOffset, long timestamp,
                           Long checksum, int serializedKeySize, int serializedValueSize) {
         // ignore the relativeOffset if the base offset is -1,

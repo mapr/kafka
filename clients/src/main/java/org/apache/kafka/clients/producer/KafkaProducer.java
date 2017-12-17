@@ -392,7 +392,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
           Producer<K,V> ap;
           GenericHFactory<Producer<K, V>> producerFactory = new GenericHFactory<Producer<K, V>>();
           ap =
-            producerFactory.getImplementorInstance("com.mapr.streams.impl.producer.MarlinProducer",
+            producerFactory.getImplementorInstance("com.mapr.streams.impl.producer.MarlinProducerV10",
                                                    new Object [] {this.config,
                                                                   this.keySerializer,
                                                                   this.valueSerializer},
@@ -605,6 +605,21 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         } catch (NumberFormatException e) {
             throw new ConfigException("Invalid configuration value for 'acks': " + acksString);
         }
+    }
+
+    private String addDefaultStreamNameToTopicName(String topicname) {
+      return (defaultStream + ":" + topicname);
+    }
+
+    private boolean useDefaultStreamName(String topicname) {
+      return (!topicname.startsWith("/"));
+    }
+
+    private String getNewTopicNameWithDefaultStream(String topic) {
+      if (defaultStream != null && useDefaultStreamName(topic)) {
+        return addDefaultStreamNameToTopicName(topic);
+      }
+      return topic;
     }
 
     private ProducerRecord<K, V> addDefaultStreamNameIfNeeded(ProducerRecord<K, V> record) {
@@ -1114,6 +1129,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
       }
 
       if (isStreams) {
+        topic = getNewTopicNameWithDefaultStream(topic);
         return producerDriver.partitionsFor(topic);
       } else {
         try {
