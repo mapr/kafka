@@ -58,7 +58,7 @@ if [ $CONF_STREAM_DEFAULT ] || [ $OFFSET_STREAM_DEFAULT ]; then
         done
         now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
 	    echo "[$now] INFO Creating stream /var/mapr/.__mapr_connect if it does not already exist" >> $logFile
-	    output="$(maprcli stream create -path /var/mapr/.__mapr_connect 2>&1)"
+	    output="$(maprcli stream create -path /var/mapr/.__mapr_connect -ttl 0 2>&1)"
 	    if [[ $output == *"Permission denied"* ]]; then
             now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
 		    echo "[$now] ERROR You do not have permission to create streams for storage.topic. Please fix the permission issue or change default values of config.storage.topic and offset.storage.topic in connect-distributed.properties" >> $logFile
