@@ -725,11 +725,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             consumerFactory.getImplementorInstance("com.mapr.streams.impl.listener.MarlinListenerV10",
                                                    new Object [] {this.config,
                                                                   this.keyDeserializer,
-                                                                  this.valueDeserializer},
+                                                                  this.valueDeserializer,
+                                                                  this.interceptors},
                                                    new Class[]
                                                    {ConsumerConfig.class,
                                                     Deserializer.class,
-                                                    Deserializer.class});
+                                                    Deserializer.class,
+                                                    ConsumerInterceptors.class});
           isStreams = true;
           consumerDriver = ac;
         } else {
@@ -1382,7 +1384,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        return consumerDriver.poll(timeout);
+        ConsumerRecords<K,V> records  = consumerDriver.poll(timeout);
+        if (this.interceptors != null) {
+          records = this.interceptors.onConsume(records);
+        }
+        return records;
       } else {
         acquireAndEnsureOpen();
         try {
