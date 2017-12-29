@@ -875,16 +875,6 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
-        // intercept the record, which can be potentially modified; this method does not throw exceptions
-        ProducerRecord<K, V> interceptedRecord = this.interceptors == null ? record : this.interceptors.onSend(record);
-        return doSend(interceptedRecord, callback);
-    }
-
-    /**
-     * Implementation of asynchronously send a record to a topic.
-     */
-    private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
-        TopicPartition tp = null;
 
       if (producerDriver == null) {
         initializeProducer(record.topic());
@@ -896,9 +886,23 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         return new FutureFailure(new ApiException("producer closed, cannot send"));
       }
 
+      // intercept the record, which can be potentially modified; this method does not throw exceptions
+      ProducerRecord<K, V> interceptedRecord = this.interceptors == null ? record : this.interceptors.onSend(record);
+      return doSend(interceptedRecord, callback);
+    }
+
+    /**
+     * Implementation of asynchronously send a record to a topic.
+     */
+    private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
+      TopicPartition tp = null;
+
       if (isStreams) {
         record = addDefaultStreamNameIfNeeded(record);
-        return producerDriver.send(record, callback);
+
+        // Producer callback will make sure to call both 'callback' and interceptor callback
+        Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback<>(callback, this.interceptors, tp);
+        return producerDriver.send(record, interceptCallback);
       } else {
         try {
             // first make sure the metadata for the topic is available
