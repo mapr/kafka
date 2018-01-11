@@ -2227,12 +2227,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
+      if (partitions.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get endOffsets");
+        return new HashMap<TopicPartition, Long>();
+      }
+
+      if (isStreams) {
+        Collection<TopicPartition>  newPartitions =
+                                  getNewPartitionCollectionWithDefaultStream(partitions);
+        return consumerDriver.beginningOffsets(newPartitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             return fetcher.beginningOffsets(partitions, requestTimeoutMs);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -2256,13 +2274,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
+      if (partitions.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get endOffsets");
+        return new HashMap<TopicPartition, Long>();
+      }
+
+      if (isStreams) {
+        Collection<TopicPartition>  newPartitions =
+                                  getNewPartitionCollectionWithDefaultStream(partitions);
+        return consumerDriver.endOffsets(newPartitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             return fetcher.endOffsets(partitions, requestTimeoutMs);
         } finally {
             release();
         }
-
+      }
     }
 
     /**
