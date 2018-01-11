@@ -975,19 +975,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
     }
 
-    private Map<TopicPartition, OffsetAndMetadata> getNewPartitionMapWithDefaultStream(Map<TopicPartition, OffsetAndMetadata> offsets) {
-      if (checkIfPartitionsNeedDefaultStream(offsets.keySet())) {
-        Map<TopicPartition, OffsetAndMetadata> newOffsets = new HashMap<TopicPartition, OffsetAndMetadata>();
-        for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
+    private Map<TopicPartition, ? extends Object> getNewPartitionMapWithDefaultStream(Map<TopicPartition, ? extends Object> partitions) {
+      if (checkIfPartitionsNeedDefaultStream(partitions.keySet())) {
+        Map<TopicPartition, Object> newPartitions = new HashMap<TopicPartition, Object>();
+        for (Map.Entry<TopicPartition, ? extends Object> entry : partitions.entrySet()) {
           TopicPartition tp = entry.getKey();
           if (useDefaultStreamName(tp.topic())) {
             tp = addDefaultStreamNameToTopicPartition(tp);
           }
-          newOffsets.put(tp, entry.getValue());
+          newPartitions.put(tp, entry.getValue());
         }
-        return newOffsets;
+        return newPartitions;
       } else {
-        return offsets;
+        return partitions;
       }
     }
 
@@ -1565,7 +1565,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        Map<TopicPartition, OffsetAndMetadata> newoffsets = getNewPartitionMapWithDefaultStream(offsets);
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, OffsetAndMetadata> newoffsets =
+            (Map<TopicPartition, OffsetAndMetadata> )getNewPartitionMapWithDefaultStream(offsets);
         consumerDriver.commitSync(newoffsets);
       } else {
         acquireAndEnsureOpen();
@@ -1660,7 +1662,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        Map<TopicPartition, OffsetAndMetadata> newOffsets = getNewPartitionMapWithDefaultStream(offsets);
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, OffsetAndMetadata> newOffsets =
+              (Map<TopicPartition, OffsetAndMetadata>)getNewPartitionMapWithDefaultStream(offsets);
         consumerDriver.commitAsync(newOffsets, callback);
       } else {
         acquireAndEnsureOpen();
@@ -2136,12 +2140,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Set<TopicPartition> paused() {
+      if (consumerDriver == null) {
+        return (new HashSet<TopicPartition>());
+      } else if (isStreams) {
+        return consumerDriver.paused();
+      } else {
         acquireAndEnsureOpen();
         try {
             return Collections.unmodifiableSet(subscriptions.pausedPartitions());
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -2165,8 +2175,24 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws org.apache.kafka.common.errors.UnsupportedVersionException if the broker does not support looking up
      *         the offsets by timestamp.
      */
+    @SuppressWarnings("unchecked")
     @Override
     public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
+      if (consumerDriver == null) {
+        initializeConsumer(timestampsToSearch.keySet().iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get offsetsForTimes");
+        return new HashMap<TopicPartition, OffsetAndTimestamp>();
+      }
+
+      if (isStreams) {
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, Long> newTimestampsToSearch =
+            (Map<TopicPartition, Long>)getNewPartitionMapWithDefaultStream(timestampsToSearch);
+        return consumerDriver.offsetsForTimes(newTimestampsToSearch);
+      } else {
         acquireAndEnsureOpen();
         try {
             for (Map.Entry<TopicPartition, Long> entry : timestampsToSearch.entrySet()) {
@@ -2180,6 +2206,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
