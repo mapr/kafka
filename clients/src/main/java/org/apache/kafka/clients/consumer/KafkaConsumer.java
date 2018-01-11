@@ -2178,6 +2178,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @SuppressWarnings("unchecked")
     @Override
     public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
+      if (timestampsToSearch.isEmpty()) {
+        return Collections.emptyMap();
+      }
       if (consumerDriver == null) {
         initializeConsumer(timestampsToSearch.keySet().iterator().next().topic());
       }
