@@ -85,6 +85,7 @@ if [ $CONF_STREAM_DEFAULT ] || [ $OFFSET_STREAM_DEFAULT ]; then
 	    fi
 	    maprcli stream topic create -path /var/mapr/.__mapr_connect -topic configs > /dev/null 2>&1
         maprcli	stream topic create -path /var/mapr/.__mapr_connect -topic offsets > /dev/null 2>&1
+        maprcli	stream topic create -path /var/mapr/.__mapr_connect -topic status > /dev/null 2>&1
 fi
 
 # Add connect plugins to classpath
