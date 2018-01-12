@@ -902,6 +902,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
         // Producer callback will make sure to call both 'callback' and interceptor callback
         Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback<>(callback, this.interceptors, tp);
+        setReadOnly(record.headers());
         return producerDriver.send(record, interceptCallback);
       } else {
         try {
