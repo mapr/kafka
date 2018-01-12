@@ -39,6 +39,9 @@ allprojects {
 
   repositories {
     mavenCentral()
+    maven {
+      url "http://packages.confluent.io/maven/"
+    }      
   }
 
   apply plugin: 'com.github.ben-manes.versions'
@@ -1358,6 +1361,7 @@ project(':connect:runtime') {
     compile project(':clients')
     compile project(':tools')
     compile libs.slf4jApi
+    compile libs.restutils
 
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet

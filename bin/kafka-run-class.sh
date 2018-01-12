@@ -79,6 +79,9 @@ if [ ! -z $CONNECTORS_CLASSPATH ]; then
     CLASSPATH="$CLASSPATH$CONNECTORS_CLASSPATH"
 fi
 
+# Remove old guava from classpath
+CLASSPATH=$(echo $CLASSPATH |sed 's/\/opt\/mapr\/lib\/guava-14.0.1.jar//')
+
 # Add native library path to LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
 
