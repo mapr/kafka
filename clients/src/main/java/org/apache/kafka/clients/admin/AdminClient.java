@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.admin;
 
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.TopicPartitionReplica;
 import org.apache.kafka.common.acl.AclBinding;
 import org.apache.kafka.common.acl.AclBindingFilter;
@@ -48,7 +49,10 @@ public abstract class AdminClient implements AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     public static AdminClient create(Properties props) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(props), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        return adminFactory.runMethod("com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+                                      "create",
+                                      new Object [] {new AdminClientConfig(props)});
     }
 
     /**
@@ -58,7 +62,10 @@ public abstract class AdminClient implements AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     public static AdminClient create(Map<String, Object> conf) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(conf), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        return adminFactory.runMethod("com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+                                      "create",
+                                      new Object [] {new AdminClientConfig(conf)});
     }
 
     /**

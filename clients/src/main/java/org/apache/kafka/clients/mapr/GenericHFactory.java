@@ -53,7 +53,13 @@ public class GenericHFactory<T> {
                      Object[] params) {
     try {
       Class<? extends T> clazz = (Class<? extends T>) Class.forName(className);
-      Method method = clazz.getDeclaredMethod(methodName);
+      Class[] paramTypes = new Class[params.length];
+
+      for (int i = 0; i < params.length; i++) {
+        paramTypes[i] = params[i].getClass();
+      }
+
+      Method method = clazz.getDeclaredMethod(methodName, paramTypes);
       return (T) method.invoke (null, params);
     }
     catch (Throwable t) {

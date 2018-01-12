@@ -35,7 +35,7 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 public class DescribeLogDirsResult {
     private final Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> futures;
 
-    DescribeLogDirsResult(Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> futures) {
+    public DescribeLogDirsResult(Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> futures) {
         this.futures = futures;
     }
 

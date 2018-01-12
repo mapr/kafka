@@ -84,7 +84,7 @@ public class DeleteAclsResult {
 
     private final Map<AclBindingFilter, KafkaFuture<FilterResults>> futures;
 
-    DeleteAclsResult(Map<AclBindingFilter, KafkaFuture<FilterResults>> futures) {
+    public DeleteAclsResult(Map<AclBindingFilter, KafkaFuture<FilterResults>> futures) {
         this.futures = futures;
     }
 

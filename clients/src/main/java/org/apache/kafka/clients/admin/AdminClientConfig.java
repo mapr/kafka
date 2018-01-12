@@ -101,6 +101,13 @@ public class AdminClientConfig extends AbstractConfig {
     public static final String RETRIES_CONFIG = "retries";
     private static final String RETRIES_DOC = "The maximum number of times to retry a call before failing it.";
 
+    /** <code>streams.admin.default.stream</code> **/
+    public static final String STREAMS_ADMIN_DEFAULT_STREAM_CONFIG = "streams.admin.default.stream";
+    private static final String STREAMS_ADMIN_DEFAULT_STREAM_DOC = "The default stream the admin prefixes the topic name with, if the "
+      + "topic name does not specify the stream.  For example, if admin wants to create a topic exampleTopic and this parameter is "
+      + "set to /exampleStream, then the full topic path will be /exampleStream:exampleTopic.  If the admin specifies the topic name as "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
                                         Type.LIST,
@@ -166,7 +173,12 @@ public class AdminClientConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
+                                .withClientSaslSupport()
+                                .define(STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_ADMIN_DEFAULT_STREAM_DOC);
     }
 
     @Override
