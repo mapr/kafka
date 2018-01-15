@@ -75,7 +75,6 @@ import java.util.regex.Pattern;
 
 /* Streams Imports */
 import org.apache.kafka.clients.mapr.GenericHFactory;
-import java.io.IOException;
 
 /**
  * A client that consumes records from a Kafka cluster.
@@ -842,7 +841,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     this.time,
                     retryBackoffMs,
                     config.getBoolean(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG),
-                    config.getInt(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
+                    config.getLong(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
                     this.interceptors,
                     config.getBoolean(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG),
                     config.getBoolean(ConsumerConfig.LEAVE_GROUP_ON_CLOSE_CONFIG));
