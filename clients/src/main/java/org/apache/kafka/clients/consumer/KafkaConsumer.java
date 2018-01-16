@@ -2329,7 +2329,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (consumerDriver == null) {
           return;
         }
-
         consumerDriverToDelete = consumerDriver;
         consumerDriver = null;
       }
@@ -2357,15 +2356,35 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws IllegalArgumentException If the {@code timeout} is negative.
      */
     public void close(long timeout, TimeUnit timeUnit) {
-			if (timeout < 0)
-					throw new IllegalArgumentException("The timeout cannot be negative.");
-			acquire();
-			try {
-					close(timeUnit.toMillis(timeout), false);
-			} finally {
-					release();
-			}
-		}
+      if (timeout < 0) {
+        throw new IllegalArgumentException("The timeout cannot be negative.");
+      }
+
+      Consumer<K, V> consumerDriverToDelete = null;
+      synchronized(this) {
+        if (isStreamsClosed) {
+          return;
+        }
+        isStreamsClosed = true;
+        if (consumerDriver == null) {
+          return;
+        }
+
+        consumerDriverToDelete = consumerDriver;
+        consumerDriver = null;
+      }
+
+      if (isStreams) {
+        consumerDriverToDelete.close(timeout, timeUnit);
+      } else {
+        acquire();
+        try {
+          close(timeUnit.toMillis(timeout), false);
+        } finally {
+          release();
+        }
+      }
+    }
 
     /**
      * Wakeup the consumer. This method is thread-safe and is useful in particular to abort a long poll.
