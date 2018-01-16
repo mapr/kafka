@@ -1183,7 +1183,27 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public void close() {
+      Producer<K, V> producerDriverToClose = null;
+
+      synchronized(this) {
+        if (closed) {
+          return;
+        }
+
+        closed = true;
+        if (producerDriver == null) {
+          return;
+        }
+
+        producerDriverToClose = producerDriver;
+        producerDriver = null;
+      }
+
+      if (isStreams) {
+        producerDriverToClose.close();
+      } else {
         close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      }
     }
 
     /**
@@ -1211,8 +1231,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
       Producer<K, V> producerDriverToClose = null;
 
       synchronized(this) {
-        if (closed)
+        if (closed) {
           return;
+        }
 
         closed = true;
         if (producerDriver == null) {
@@ -1223,11 +1244,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         producerDriver = null;
       }
 
+      if (timeout < 0) {
+        throw new IllegalArgumentException("The timeout cannot be negative.");
+      }
       if (isStreams) {
-        producerDriverToClose.close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        producerDriverToClose.close(timeout, timeUnit);
       } else {
-        if (timeout < 0)
-          throw new IllegalArgumentException("The timeout cannot be negative.");
 
         log.info("Closing the Kafka producer with timeoutMillis = {} ms.", timeUnit.toMillis(timeout));
         // this will keep track of the first encountered exception
