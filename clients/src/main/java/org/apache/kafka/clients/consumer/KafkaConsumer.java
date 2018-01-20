@@ -719,6 +719,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 				this.interceptors = interceptorList.isEmpty() ? null : new ConsumerInterceptors<>(interceptorList);
 
         if (topic.startsWith("/") == true || topic.contains(":") == true) {
+
+          // Load the MarlinClient and associated jni classes first.
+          try {
+            Class.forName("com.mapr.streams.impl.MarlinClient");
+          } catch (Throwable e) {
+            throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.streams.impl.MarlinClient. " + e.getMessage()), e);
+          }
+
           Consumer<K,V> ac;
           GenericHFactory<Consumer<K, V>> consumerFactory = new GenericHFactory<Consumer<K, V>>();
 
