@@ -162,7 +162,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract DeleteTopicsResult deleteTopics(Collection<String> topics, DeleteTopicsOptions options);
 
     /**
-     * List the topics available in the cluster with the default options.
+     * List the topics available in the default stream with the default options.
      *
      * This is a convenience method for #{@link AdminClient#listTopics(ListTopicsOptions)} with default options.
      * See the overload for more details.
@@ -174,12 +174,34 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
-     * List the topics available in the cluster.
+     * List the topics available in the default stream.
      *
      * @param options           The options to use when listing the topics.
      * @return                  The ListTopicsResult.
      */
     public abstract ListTopicsResult listTopics(ListTopicsOptions options);
+
+    /**
+     * List the topics available in the specified stream with the default options.
+     *
+     * This is a convenience method for #{@link AdminClient#listTopics(ListTopicsOptions)} with default options.
+     * See the overload for more details.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @return                  The ListTopicsResult.
+     */
+    public ListTopicsResult listTopics(String streamPath) {
+        return listTopics(streamPath, new ListTopicsOptions());
+    }
+
+    /**
+     * List the topics available in the specified stream.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @param options           The options to use when listing the topics.
+     * @return                  The ListTopicsResult.
+     */
+    public abstract ListTopicsResult listTopics(String streamPath, ListTopicsOptions options);
 
     /**
      * Describe some topics in the cluster, with the default options.

@@ -1219,6 +1219,11 @@ public class KafkaAdminClient extends AdminClient {
     }
 
     @Override
+    public ListTopicsResult listTopics(String streamPath, final ListTopicsOptions options) {
+        throw new KafkaException("listTopics(streamPath) API not implemented");
+    }
+
+    @Override
     public DescribeTopicsResult describeTopics(final Collection<String> topicNames, DescribeTopicsOptions options) {
         final Map<String, KafkaFutureImpl<TopicDescription>> topicFutures = new HashMap<>(topicNames.size());
         final ArrayList<String> topicNamesList = new ArrayList<>();

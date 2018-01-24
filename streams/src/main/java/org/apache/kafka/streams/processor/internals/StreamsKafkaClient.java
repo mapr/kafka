@@ -16,6 +16,11 @@
  */
 package org.apache.kafka.streams.processor.internals;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.ClientRequest;
 import org.apache.kafka.clients.ClientResponse;
@@ -27,9 +32,11 @@ import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.JmxReporter;
 import org.apache.kafka.common.metrics.MetricConfig;
 import org.apache.kafka.common.metrics.Metrics;
@@ -54,12 +61,15 @@ import org.apache.kafka.streams.errors.StreamsException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.kafka.streams.StreamsConfig.EXACTLY_ONCE;
@@ -83,6 +93,7 @@ public class StreamsKafkaClient {
 
     }
     private final KafkaClient kafkaClient;
+    private final AdminClient adminClient;
     private final List<MetricsReporter> reporters;
     private final Config streamsConfig;
     private final Map<String, String> defaultTopicConfigs = new HashMap<>();
@@ -95,6 +106,9 @@ public class StreamsKafkaClient {
         this.streamsConfig = streamsConfig;
         this.kafkaClient = kafkaClient;
         this.reporters = reporters;
+        Properties adminConfig = new Properties();
+        adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "");
+        this.adminClient = AdminClient.create(adminConfig);
         extractDefaultTopicConfigs(streamsConfig.originalsWithPrefix(StreamsConfig.TOPIC_PREFIX));
     }
 
@@ -168,6 +182,7 @@ public class StreamsKafkaClient {
     public void close() throws IOException {
         try {
             kafkaClient.close();
+            adminClient.close();
         } finally {
             for (MetricsReporter metricsReporter: this.reporters) {
                 metricsReporter.close();
@@ -181,7 +196,7 @@ public class StreamsKafkaClient {
     public void createTopics(final Map<InternalTopicConfig, Integer> topicsMap, final int replicationFactor,
                              final long windowChangeLogAdditionalRetention, final MetadataResponse metadata) {
 
-        final Map<String, CreateTopicsRequest.TopicDetails> topicRequestDetails = new HashMap<>();
+        List<NewTopic> topicsList = new ArrayList<NewTopic>();
         for (Map.Entry<InternalTopicConfig, Integer> entry : topicsMap.entrySet()) {
             InternalTopicConfig internalTopicConfig = entry.getKey();
             Integer partitions = entry.getValue();
@@ -195,33 +210,41 @@ public class StreamsKafkaClient {
                 (short) replicationFactor,
                 topicConfig);
 
-            topicRequestDetails.put(internalTopicConfig.name(), topicDetails);
+            topicsList.add(new NewTopic(internalTopicConfig.name(), partitions, (short) replicationFactor));
         }
 
-        final ClientRequest clientRequest = kafkaClient.newClientRequest(
-            getControllerReadyBrokerId(metadata),
-            new CreateTopicsRequest.Builder(
-                topicRequestDetails,
-                streamsConfig.getInt(StreamsConfig.REQUEST_TIMEOUT_MS_CONFIG)),
-            Time.SYSTEM.milliseconds(),
-            true);
-        final ClientResponse clientResponse = sendRequest(clientRequest);
+        final CreateTopicsResult createTopicsResult = adminClient.createTopics(topicsList);
 
-        if (!clientResponse.hasResponse()) {
-            throw new StreamsException("Empty response for client request.");
-        }
-        if (!(clientResponse.responseBody() instanceof CreateTopicsResponse)) {
-            throw new StreamsException("Inconsistent response type for internal topic creation request. " +
-                "Expected CreateTopicsResponse but received " + clientResponse.responseBody().getClass().getName());
-        }
-        final CreateTopicsResponse createTopicsResponse =  (CreateTopicsResponse) clientResponse.responseBody();
+        for (final Map.Entry<String, KafkaFuture<Void>> createTopicResult : createTopicsResult.values().entrySet()) {
+          try {
+            createTopicResult.getValue().get();
+          } catch (final ExecutionException couldNotCreateTopic) {
+            final Throwable cause = couldNotCreateTopic.getCause();
+            final String topicName = createTopicResult.getKey();
 
-        for (InternalTopicConfig internalTopicConfig : topicsMap.keySet()) {
-            ApiError error = createTopicsResponse.errors().get(internalTopicConfig.name());
-            if (error.isFailure() && !error.is(Errors.TOPIC_ALREADY_EXISTS)) {
-                throw new StreamsException("Could not create topic: " + internalTopicConfig.name() + " due to " + error.messageWithFallback());
+            if (!(cause instanceof TopicExistsException)) {
+              throw new StreamsException("Could not create topic: " + topicName + " due to " + couldNotCreateTopic.getMessage());
             }
+          } catch (final InterruptedException fatalException) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(fatalException);
+          }
         }
+    }
+
+    public Map<String, Integer> getNumPartitions(final Set<String> topics) {
+      KafkaFuture<Map<String, TopicDescription>> future = adminClient.describeTopics(topics).all();
+      Map<String, Integer> result = new HashMap<>();
+
+      try {
+        Map<String, TopicDescription> topicDescMap = future.get();
+        for (String topicName : topicDescMap.keySet()) {
+          result.put(topicName, topicDescMap.get(topicName).partitions().size());
+        }
+      } catch (Exception e) {
+        throw new StreamsException(e);
+      }
+      return result;
     }
 
     /**
