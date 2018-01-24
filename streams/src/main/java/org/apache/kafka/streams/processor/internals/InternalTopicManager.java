@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -67,17 +68,14 @@ public class InternalTopicManager {
     public void makeReady(final Map<InternalTopicConfig, Integer> topics) {
         for (int i = 0; i < MAX_TOPIC_READY_TRY; i++) {
             try {
-                final MetadataResponse metadata = streamsKafkaClient.fetchMetadata();
-                final Map<String, Integer> existingTopicPartitions = fetchExistingPartitionCountByTopic(metadata);
+                final Set<String> topicsSet = new HashSet<String>();
+                for (InternalTopicConfig topicConf : topics.keySet()) {
+                  topicsSet.add(topicConf.name());
+                }
+                final Map<String, Integer> existingTopicPartitions = streamsKafkaClient.getNumPartitions(topicsSet);
                 final Map<InternalTopicConfig, Integer> topicsToBeCreated = validateTopicPartitions(topics, existingTopicPartitions);
                 if (topicsToBeCreated.size() > 0) {
-                    if (metadata.brokers().size() < replicationFactor) {
-                        throw new StreamsException("Found only " + metadata.brokers().size() + " brokers, " +
-                            " but replication factor is " + replicationFactor + "." +
-                            " Decrease replication factor for internal topics via StreamsConfig parameter \"replication.factor\"" +
-                            " or add more brokers to your cluster.");
-                    }
-                    streamsKafkaClient.createTopics(topicsToBeCreated, replicationFactor, windowChangeLogAdditionalRetention, metadata);
+                    streamsKafkaClient.createTopics(topicsToBeCreated, replicationFactor, windowChangeLogAdditionalRetention, null);
                 }
                 return;
             } catch (StreamsException ex) {
@@ -93,20 +91,7 @@ public class InternalTopicManager {
      * Get the number of partitions for the given topics
      */
     public Map<String, Integer> getNumPartitions(final Set<String> topics) {
-        for (int i = 0; i < MAX_TOPIC_READY_TRY; i++) {
-            try {
-                final MetadataResponse metadata = streamsKafkaClient.fetchMetadata();
-                final Map<String, Integer> existingTopicPartitions = fetchExistingPartitionCountByTopic(metadata);
-                existingTopicPartitions.keySet().retainAll(topics);
-
-                return existingTopicPartitions;
-            } catch (StreamsException ex) {
-                log.warn("Could not get number of partitions: {} Retry #{}", ex.getMessage(), i);
-            }
-            // backoff
-            time.sleep(100L);
-        }
-        throw new StreamsException("Could not get number of partitions.");
+      return streamsKafkaClient.getNumPartitions(topics);
     }
 
     public void close() {
