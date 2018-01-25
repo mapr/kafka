@@ -53,10 +53,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import static java.util.Collections.singleton;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * WorkerTask that uses a SinkTask to export data from Kafka.
@@ -84,7 +82,6 @@ class WorkerSinkTask extends WorkerTask {
     private long commitStarted;
     private int commitFailures;
     private boolean pausedForRedelivery;
-    private final AtomicBoolean rebalanceFinished = new AtomicBoolean(false);
     private boolean committing;
 
     public WorkerSinkTask(ConnectorTaskId id,
@@ -99,6 +96,7 @@ class WorkerSinkTask extends WorkerTask {
                           ClassLoader loader,
                           Time time) {
         super(id, statusListener, initialState, loader, connectMetrics);
+
         this.workerConfig = workerConfig;
         this.task = task;
         this.keyConverter = keyConverter;
@@ -263,27 +261,7 @@ class WorkerSinkTask extends WorkerTask {
         if (topicsStr == null || topicsStr.isEmpty())
             throw new ConnectException("Sink tasks require a list of topics.");
         String[] topics = topicsStr.split(",");
-        log.debug("Task {} subscribing to topics {}", id, topics);
-        consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
-
-            ConsumerRebalanceListener actualListener = new HandleRebalance();
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                actualListener.onPartitionsAssigned(partitions);
-                rebalanceFinished.set(true);
-            }
-
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                actualListener.onPartitionsRevoked(partitions);
-            }
-        });
-
-        // Waiting for consumer rebalance to finish, otherwise task will be initialized with outdated context
-        while(!rebalanceFinished.get()) {
-            // waiting for rebalance to finish
-        }
+        consumer.subscribe(Arrays.asList(topics), new HandleRebalance());
         log.debug("{} Initializing and starting task for topics {}", this, topics);
         task.initialize(context);
         task.start(taskConfig);
