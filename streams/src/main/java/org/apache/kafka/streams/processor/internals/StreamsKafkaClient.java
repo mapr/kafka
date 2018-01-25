@@ -106,9 +106,7 @@ public class StreamsKafkaClient {
         this.streamsConfig = streamsConfig;
         this.kafkaClient = kafkaClient;
         this.reporters = reporters;
-        Properties adminConfig = new Properties();
-        adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "");
-        this.adminClient = AdminClient.create(adminConfig);
+        this.adminClient = AdminClient.create(new Properties());
         extractDefaultTopicConfigs(streamsConfig.originalsWithPrefix(StreamsConfig.TOPIC_PREFIX));
     }
 

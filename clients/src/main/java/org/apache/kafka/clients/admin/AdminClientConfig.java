@@ -110,7 +110,7 @@ public class AdminClientConfig extends AbstractConfig {
 
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
-                                        Type.LIST,
+                                        Type.LIST, "",
                                         Importance.HIGH,
                                         BOOTSTRAP_SERVERS_DOC)
                                 .define(CLIENT_ID_CONFIG, Type.STRING, "", Importance.MEDIUM, CLIENT_ID_DOC)
