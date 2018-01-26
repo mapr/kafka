@@ -569,7 +569,7 @@ public class StreamTaskTest {
     @Test
     public void shouldCheckpointOffsetsOnCommit() throws IOException {
         final String storeName = "test";
-        final String changelogTopic = ProcessorStateManager.storeChangelogTopic("appId", storeName);
+        final String changelogTopic = ProcessorStateManager.storeChangelogTopic("appId", storeName, "/stream1");
         final InMemoryKeyValueStore inMemoryStore = new InMemoryKeyValueStore(storeName, null, null) {
             @Override
             public void init(final ProcessorContext context, final StateStore root) {
@@ -635,7 +635,7 @@ public class StreamTaskTest {
         final StreamsConfig testConfig = new StreamsConfig(properties);
 
         final String storeName = "test";
-        final String changelogTopic = ProcessorStateManager.storeChangelogTopic("appId", storeName);
+        final String changelogTopic = ProcessorStateManager.storeChangelogTopic("appId", storeName, "/stream1");
         final InMemoryKeyValueStore inMemoryStore = new InMemoryKeyValueStore(storeName, null, null) {
             @Override
             public void init(final ProcessorContext context, final StateStore root) {

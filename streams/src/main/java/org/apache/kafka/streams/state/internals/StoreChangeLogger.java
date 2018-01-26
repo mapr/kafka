@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.internals.RecordCollector;
@@ -45,7 +46,7 @@ class StoreChangeLogger<K, V> {
     }
 
     private StoreChangeLogger(String storeName, ProcessorContext context, int partition, StateSerdes<K, V> serialization) {
-        this.topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName);
+        this.topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName,  context.applicationInternalStream());
         this.context = context;
         this.partition = partition;
         this.serialization = serialization;

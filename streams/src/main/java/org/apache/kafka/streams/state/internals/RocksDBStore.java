@@ -164,7 +164,7 @@ public class RocksDBStore<K, V> implements KeyValueStore<K, V> {
         // we need to construct the serde while opening DB since
         // it is also triggered by windowed DB segments without initialization
         this.serdes = new StateSerdes<>(
-            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name),
+            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name,  context.applicationInternalStream()),
             keySerde == null ? (Serde<K>) context.keySerde() : keySerde,
             valueSerde == null ? (Serde<V>) context.valueSerde() : valueSerde);
 

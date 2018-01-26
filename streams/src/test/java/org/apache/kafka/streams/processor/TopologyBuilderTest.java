@@ -241,7 +241,7 @@ public class TopologyBuilderTest {
     @Test
     public void testSourceTopics() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource("source-1", "topic-1");
         builder.addSource("source-2", "topic-2");
         builder.addSource("source-3", "topic-3");
@@ -329,7 +329,7 @@ public class TopologyBuilderTest {
 
         StateStoreSupplier supplier = new MockStateStoreSupplier("store-1", false);
         builder.addStateStore(supplier);
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource("source-1", "topic-1");
         builder.addProcessor("processor-1", new MockProcessorSupplier(), "source-1");
 
@@ -345,7 +345,7 @@ public class TopologyBuilderTest {
     @Test
     public void testTopicGroups() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addInternalTopic("topic-1x");
         builder.addSource("source-1", "topic-1", "topic-1x");
         builder.addSource("source-2", "topic-2");
@@ -378,7 +378,7 @@ public class TopologyBuilderTest {
     @Test
     public void testTopicGroupsByStateStore() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource("source-1", "topic-1", "topic-1x");
         builder.addSource("source-2", "topic-2");
         builder.addSource("source-3", "topic-3");
@@ -401,9 +401,9 @@ public class TopologyBuilderTest {
         Map<Integer, TopicsInfo> topicGroups = builder.topicGroups();
 
         Map<Integer, TopicsInfo> expectedTopicGroups = new HashMap<>();
-        final String store1 = ProcessorStateManager.storeChangelogTopic("X", "store-1");
-        final String store2 = ProcessorStateManager.storeChangelogTopic("X", "store-2");
-        final String store3 = ProcessorStateManager.storeChangelogTopic("X", "store-3");
+        final String store1 = ProcessorStateManager.storeChangelogTopic("X", "store-1", "/stream1");
+        final String store2 = ProcessorStateManager.storeChangelogTopic("X", "store-2", "/stream1");
+        final String store3 = ProcessorStateManager.storeChangelogTopic("X", "store-3", "/stream1");
         expectedTopicGroups.put(0, new TopicsInfo(Collections.<String>emptySet(), mkSet("topic-1", "topic-1x", "topic-2"),
                                                   Collections.<String, InternalTopicConfig>emptyMap(),
                                                   Collections.singletonMap(store1,
@@ -446,7 +446,7 @@ public class TopologyBuilderTest {
         builder.addProcessor("processor-2", new MockProcessorSupplier(), "source-2", "processor-1");
         builder.addProcessor("processor-3", new MockProcessorSupplier(), "source-3", "source-4");
 
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         ProcessorTopology topology0 = builder.build(0);
         ProcessorTopology topology1 = builder.build(1);
         ProcessorTopology topology2 = builder.build(2);
@@ -506,7 +506,7 @@ public class TopologyBuilderTest {
     @Test(expected = NullPointerException.class)
     public void shouldNotSetApplicationIdToNull() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId(null);
+        builder.setApplicationIdAndInternalStream(null, "/sample-stream");
     }
 
     @Test(expected = NullPointerException.class)
@@ -548,7 +548,7 @@ public class TopologyBuilderTest {
     @Test
     public void shouldCorrectlyMapStateStoreToInternalTopics() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addInternalTopic("internal-topic");
         builder.addSource("source", "internal-topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
@@ -562,7 +562,7 @@ public class TopologyBuilderTest {
     @Test
     public void shouldAddInternalTopicConfigWithCompactAndDeleteSetForWindowStores() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addSource("source", "topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addStateStore(new RocksDBWindowStoreSupplier("store", 30000, 3, false, null, null, 10000, true, Collections.<String, String>emptyMap(), false), "processor");
@@ -582,7 +582,7 @@ public class TopologyBuilderTest {
     @Test
     public void shouldAddInternalTopicConfigWithCompactForNonWindowStores() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addSource("source", "topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addStateStore(new MockStateStoreSupplier("name", true), "processor");
@@ -598,7 +598,7 @@ public class TopologyBuilderTest {
     @Test
     public void shouldAddInternalTopicConfigWithCleanupPolicyDeleteForInternalTopics() {
         final TopologyBuilder builder = new TopologyBuilder();
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addInternalTopic("foo");
         builder.addSource("source", "foo");
         final TopicsInfo topicsInfo = builder.topicGroups().values().iterator().next();
@@ -690,7 +690,7 @@ public class TopologyBuilderTest {
         updatedTopics.add("topic-A");
 
         builder.updateSubscriptions(subscriptionUpdates, null);
-        builder.setApplicationId("test-id");
+        builder.setApplicationIdAndInternalStream("test-id", "/sample-stream");
 
         Map<Integer, TopicsInfo> topicGroups = builder.topicGroups();
         assertTrue(topicGroups.get(0).sourceTopics.contains("topic-foo"));
@@ -770,7 +770,7 @@ public class TopologyBuilderTest {
         updatedTopics.add("topic-A");
 
         topologyBuilder.updateSubscriptions(subscriptionUpdates, "test-thread");
-        topologyBuilder.setApplicationId("test-app");
+        topologyBuilder.setApplicationIdAndInternalStream("test-app", "/sample-stream");
 
         Map<String, List<String>> stateStoreAndTopics = topologyBuilder.stateStoreNameToSourceTopics();
         List<String> topics = stateStoreAndTopics.get("testStateStore");

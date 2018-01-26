@@ -123,6 +123,11 @@ public class InternalTopologyBuilder {
 
     private Map<Integer, Set<String>> nodeGroups = null;
 
+    /** Mapr Streams Specific **/
+    private String internalStream = null;
+
+    /**************************/
+
     interface StateStoreFactory {
         Set<String> users();
         boolean loggingEnabled();
@@ -385,9 +390,11 @@ public class InternalTopologyBuilder {
         }
     }
 
-    public synchronized final InternalTopologyBuilder setApplicationId(final String applicationId) {
+    public synchronized final InternalTopologyBuilder setApplicationIdAndInternalStream(final String applicationId, String internalStream) {
         Objects.requireNonNull(applicationId, "applicationId can't be null");
+        Objects.requireNonNull(internalStream, "internalStream can't be null");
         this.applicationId = applicationId;
+        this.internalStream = internalStream;
 
         return this;
     }
@@ -976,7 +983,7 @@ public class InternalTopologyBuilder {
 
                     // remember the changelog topic if this state store is change-logging enabled
                     if (stateStoreFactory.loggingEnabled() && !storeToChangelogTopic.containsKey(stateStoreName)) {
-                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName);
+                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName, internalStream);
                         storeToChangelogTopic.put(stateStoreName, changelogTopic);
                     }
                     stateStoreMap.put(stateStoreName, stateStoreFactory.build());
@@ -1051,7 +1058,7 @@ public class InternalTopologyBuilder {
                 // if the node is connected to a state, add to the state topics
                 for (final StateStoreFactory stateFactory : stateFactories.values()) {
                     if (stateFactory.loggingEnabled() && stateFactory.users().contains(node)) {
-                        final String name = ProcessorStateManager.storeChangelogTopic(applicationId, stateFactory.name());
+                        final String name = ProcessorStateManager.storeChangelogTopic(applicationId, stateFactory.name(), internalStream);
                         final InternalTopicConfig internalTopicConfig = createInternalTopicConfig(stateFactory, name);
                         stateChangelogTopics.put(name, internalTopicConfig);
                     }
@@ -1216,13 +1223,16 @@ public class InternalTopologyBuilder {
     }
 
     private String decorateTopic(final String topic) {
-        if (applicationId == null) {
+        if (applicationId == null || internalStream == null) {
             throw new TopologyException("there are internal topics and "
-                    + "applicationId hasn't been set. Call "
-                    + "setApplicationId first");
+                    + "applicationId or internalStream haven't been set. Call "
+                    + "setApplicationIdAndInternalStream first");
         }
-
-        return applicationId + "-" + topic;
+        String topicName = applicationId + "-" + topic;
+        return internalStream.isEmpty() ?
+                topicName
+                :
+                internalStream + ":" + topicName;
     }
 
     public SubscriptionUpdates subscriptionUpdates() {

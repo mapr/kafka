@@ -93,7 +93,7 @@ public class ProcessorTopologyTest {
 
     @Test
     public void testTopologyMetadata() {
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
 
         builder.addSource("source-1", "topic-1");
         builder.addSource("source-2", "topic-2", "topic-3");

@@ -18,6 +18,7 @@ package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
@@ -44,7 +45,7 @@ public class ChangeLoggingKeyValueBytesStore extends WrappedStateStore.AbstractS
             WindowStoreUtils.getInnerStateSerde(
                 ProcessorStateManager.storeChangelogTopic(
                     context.applicationId(),
-                    inner.name())));
+                    inner.name(),  context.applicationInternalStream())));
     }
 
     @Override

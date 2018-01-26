@@ -43,15 +43,7 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.StreamPartitioner;
 import org.apache.kafka.streams.processor.ThreadMetadata;
-import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
-import org.apache.kafka.streams.processor.internals.GlobalStreamThread;
-import org.apache.kafka.streams.processor.internals.InternalTopologyBuilder;
-import org.apache.kafka.streams.processor.internals.ProcessorTopology;
-import org.apache.kafka.streams.processor.internals.StateDirectory;
-import org.apache.kafka.streams.processor.internals.StreamThread;
-import org.apache.kafka.streams.processor.internals.StreamsKafkaClient;
-import org.apache.kafka.streams.processor.internals.StreamsMetadataState;
-import org.apache.kafka.streams.processor.internals.ThreadStateTransitionValidator;
+import org.apache.kafka.streams.processor.internals.*;
 import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.StreamsMetadata;
@@ -549,7 +541,7 @@ public class KafkaStreams {
         this.log = logContext.logger(getClass());
         final String cleanupThreadName = clientId + "-CleanupThread";
 
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, config.getString(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
         // sanity check to fail-fast in case we cannot build a ProcessorTopology due to an exception
         internalTopologyBuilder.build(null);
 
@@ -713,7 +705,6 @@ public class KafkaStreams {
         } catch (final IOException e) {
             log.warn("Could not close StreamKafkaClient.", e);
         }
-
     }
 
     /**

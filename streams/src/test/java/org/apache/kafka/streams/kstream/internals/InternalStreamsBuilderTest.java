@@ -66,7 +66,7 @@ public class InternalStreamsBuilderTest {
 
     @Before
     public void setUp() {
-        builder.internalTopologyBuilder.setApplicationId(APP_ID);
+        builder.internalTopologyBuilder.setApplicationIdAndInternalStream(APP_ID, "/sample-stream");
     }
 
     @After

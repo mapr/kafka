@@ -19,6 +19,7 @@ package org.apache.kafka.streams.state.internals;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.kstream.internals.SessionKeySerde;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -78,7 +79,7 @@ public class RocksDBSessionStore<K, AGG> extends WrappedStateStore.AbstractState
     @SuppressWarnings("unchecked")
     public void init(final ProcessorContext context, final StateStore root) {
         final String storeName = bytesStore.name();
-        topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName);
+        topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName,  context.applicationInternalStream());
 
         serdes = new StateSerdes<>(
             topic,

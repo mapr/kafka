@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateRestoreCallback;
 import org.apache.kafka.streams.processor.StateStore;
@@ -102,7 +103,7 @@ class RocksDBSegmentedBytesStore implements SegmentedBytesStore {
     public void init(ProcessorContext context, StateStore root) {
         this.context = context;
 
-        keySchema.init(ProcessorStateManager.storeChangelogTopic(context.applicationId(), root.name()));
+        keySchema.init(ProcessorStateManager.storeChangelogTopic(context.applicationId(), root.name(),  context.applicationInternalStream()));
 
         segments.openExisting(context);
 
