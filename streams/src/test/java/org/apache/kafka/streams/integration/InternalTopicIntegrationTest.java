@@ -169,7 +169,7 @@ public class InternalTopicIntegrationTest {
         // Step 3: Verify the state changelog topics are compact
         //
         streams.close();
-        final Properties properties = getTopicConfigProperties(ProcessorStateManager.storeChangelogTopic(applicationId, "Counts"));
+        final Properties properties = getTopicConfigProperties(ProcessorStateManager.storeChangelogTopic(applicationId, "Counts", "/stream1"));
         assertEquals(LogConfig.Compact(), properties.getProperty(LogConfig.CleanupPolicyProp()));
     }
 
@@ -215,7 +215,7 @@ public class InternalTopicIntegrationTest {
         // Step 3: Verify the state changelog topics are compact
         //
         streams.close();
-        final Properties properties = getTopicConfigProperties(ProcessorStateManager.storeChangelogTopic(applicationId, "CountWindows"));
+        final Properties properties = getTopicConfigProperties(ProcessorStateManager.storeChangelogTopic(applicationId, "CountWindows", "/stream1"));
         final List<String> policies = Arrays.asList(properties.getProperty(LogConfig.CleanupPolicyProp()).split(","));
         assertEquals(2, policies.size());
         assertTrue(policies.contains(LogConfig.Compact()));

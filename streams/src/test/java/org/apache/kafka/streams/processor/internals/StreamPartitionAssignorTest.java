@@ -393,7 +393,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void testAssignWithStates() throws Exception {
         String applicationId = "test";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addSource(null, "source2", null, null, null, "topic2");
 
@@ -463,7 +463,7 @@ public class StreamPartitionAssignorTest {
     }
 
     private Set<TaskId> tasksForState(String applicationId, String storeName, List<TaskId> tasks, Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups) {
-        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName);
+        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName, "/stream1");
 
         Set<TaskId> ids = new HashSet<>();
         for (Map.Entry<Integer, InternalTopologyBuilder.TopicsInfo> entry : topicGroups.entrySet()) {
@@ -581,7 +581,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void testAssignWithInternalTopics() throws Exception {
         String applicationId = "test";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addInternalTopic("topicX");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addProcessor("processor1", new MockProcessorSupplier(), "source1");
@@ -612,7 +612,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void testAssignWithInternalTopicThatsSourceIsAnotherInternalTopic() throws Exception {
         String applicationId = "test";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addInternalTopic("topicX");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addProcessor("processor1", new MockProcessorSupplier(), "source1");
@@ -647,7 +647,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void shouldAddUserDefinedEndPointToSubscription() throws Exception {
         final String applicationId = "application-id";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source", null, null, null, "input");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addSink("sink", "output", null, null, null, "processor");
@@ -666,7 +666,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void shouldMapUserEndPointToTopicPartitions() throws Exception {
         final String applicationId = "application-id";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source", null, null, null, "topic1");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addSink("sink", "output", null, null, null, "processor");
@@ -697,7 +697,7 @@ public class StreamPartitionAssignorTest {
     public void shouldThrowExceptionIfApplicationServerConfigIsNotHostPortPair() throws Exception {
         final String myEndPoint = "localhost";
         final String applicationId = "application-id";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         mockThreadDataProvider(Collections.<TaskId>emptySet(), Collections.<TaskId>emptySet(), UUID.randomUUID(), defaultPartitionGrouper, builder);
         partitionAssignor.setInternalTopicManager(new MockInternalTopicManager(config, mockClientSupplier.restoreConsumer));
@@ -714,7 +714,7 @@ public class StreamPartitionAssignorTest {
     public void shouldThrowExceptionIfApplicationServerConfigPortIsNotAnInteger() {
         final String myEndPoint = "localhost:j87yhk";
         final String applicationId = "application-id";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         try {
             configurePartitionAssignor(0, myEndPoint);
@@ -775,7 +775,7 @@ public class StreamPartitionAssignorTest {
         final StreamsBuilder builder = new StreamsBuilder();
 
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         KStream<Object, Object> stream1 = builder
 
@@ -924,7 +924,7 @@ public class StreamPartitionAssignorTest {
         final StreamsBuilder builder = new StreamsBuilder();
 
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         builder.stream("topic1").groupByKey().count();
 

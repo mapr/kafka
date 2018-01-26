@@ -59,13 +59,13 @@ public class ProcessorStateManagerTest {
     private final String applicationId = "test-application";
     private final String persistentStoreName = "persistentStore";
     private final String nonPersistentStoreName = "nonPersistentStore";
-    private final String persistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreName);
-    private final String nonPersistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, nonPersistentStoreName);
+    private final String persistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreName, "/stream1");
+    private final String nonPersistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, nonPersistentStoreName, "/stream1");
     private final MockStateStoreSupplier.MockStateStore persistentStore = new MockStateStoreSupplier.MockStateStore(persistentStoreName, true);
     private final MockStateStoreSupplier.MockStateStore nonPersistentStore = new MockStateStoreSupplier.MockStateStore(nonPersistentStoreName, false);
     private final TopicPartition persistentStorePartition = new TopicPartition(persistentStoreTopicName, 1);
     private final String storeName = "mockStateStore";
-    private final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName);
+    private final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName, "/stream1");
     private final TopicPartition changelogTopicPartition = new TopicPartition(changelogTopic, 0);
     private final TaskId taskId = new TaskId(0, 1);
     private final MockChangelogReader changelogReader = new MockChangelogReader();
@@ -194,9 +194,9 @@ public class ProcessorStateManagerTest {
         final String storeName2 = "store2";
         final String storeName3 = "store3";
 
-        final String storeTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1);
-        final String storeTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2);
-        final String storeTopicName3 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName3);
+        final String storeTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1, "/stream1");
+        final String storeTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2, "/stream1");
+        final String storeTopicName3 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName3, "/stream1");
 
         final Map<String, String> storeToChangelogTopic = new HashMap<>();
         storeToChangelogTopic.put(storeName1, storeTopicName1);
@@ -278,7 +278,7 @@ public class ProcessorStateManagerTest {
         final HashMap<TopicPartition, Long> ackedOffsets = new HashMap<>();
         ackedOffsets.put(new TopicPartition(persistentStoreTopicName, 1), 123L);
         ackedOffsets.put(new TopicPartition(nonPersistentStoreTopicName, 1), 456L);
-        ackedOffsets.put(new TopicPartition(ProcessorStateManager.storeChangelogTopic(applicationId, "otherTopic"), 1), 789L);
+        ackedOffsets.put(new TopicPartition(ProcessorStateManager.storeChangelogTopic(applicationId, "otherTopic", ), 1), 789L);
 
         final ProcessorStateManager stateMgr = new ProcessorStateManager(
             taskId,

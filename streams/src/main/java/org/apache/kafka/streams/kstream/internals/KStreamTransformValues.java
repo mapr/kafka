@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.kstream.internals;
 
 import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.StreamsMetrics;
 import org.apache.kafka.streams.errors.StreamsException;
 import org.apache.kafka.streams.kstream.ValueTransformer;
@@ -63,6 +64,11 @@ public class KStreamTransformValues<K, V, R> implements ProcessorSupplier<K, V> 
                     @Override
                     public String applicationId() {
                         return context.applicationId();
+                    }
+
+                    @Override
+                    public String applicationInternalStream() {
+                        return context.applicationInternalStream();
                     }
 
                     @Override

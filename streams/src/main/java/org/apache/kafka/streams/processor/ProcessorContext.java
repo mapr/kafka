@@ -38,6 +38,13 @@ public interface ProcessorContext {
     String applicationId();
 
     /**
+     * Returns the application internal stream name
+     *
+     * @return the application internal stream
+     */
+    String applicationInternalStream();
+
+    /**
      * Returns the task id
      *
      * @return the task id

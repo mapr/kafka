@@ -78,8 +78,8 @@ public class StandbyTaskTest {
     private final String applicationId = "test-application";
     private final String storeName1 = "store1";
     private final String storeName2 = "store2";
-    private final String storeChangelogTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1);
-    private final String storeChangelogTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2);
+    private final String storeChangelogTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1, "/stream1");
+    private final String storeChangelogTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2, "/stream1");
 
     private final TopicPartition partition1 = new TopicPartition(storeChangelogTopicName1, 1);
     private final TopicPartition partition2 = new TopicPartition(storeChangelogTopicName2, 1);
@@ -339,7 +339,7 @@ public class StandbyTaskTest {
 
         final StreamsConfig config = createConfig(baseDir);
         final InternalTopologyBuilder internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(builder);
-        final ProcessorTopology topology = internalTopologyBuilder.setApplicationId(applicationId).build(0);
+        final ProcessorTopology topology = internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream").build(0);
 
         new StandbyTask(taskId, applicationId, partitions, topology, consumer, changelogReader, config,
             new MockStreamsMetrics(new Metrics()), stateDirectory);

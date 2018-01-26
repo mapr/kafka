@@ -60,7 +60,7 @@ public class KStreamBuilderTest {
 
     @Before
     public void setUp() {
-        builder.setApplicationId(APP_ID);
+        builder.setApplicationIdAndInternalStream(APP_ID, "/sample-stream");
     }
 
     @Test(expected = TopologyBuilderException.class)

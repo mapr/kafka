@@ -304,6 +304,12 @@ public class StreamsConfig extends AbstractConfig {
     private static final String[] NON_CONFIGURABLE_PRODUCER_EOS_CONFIGS = new String[] {ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
                                                                                         ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION};
 
+    /*** Mapr Streams specific configurations ***/
+
+    /** <code>streams.default.internal.stream</code> **/
+    public static final String STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG = "streams.default.internal.stream";
+    private static final String STREAMS_DEFAULT_INTERNAL_STREAM_DOC = "The default stream where all internal topics will be created.";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -327,6 +333,11 @@ public class StreamsConfig extends AbstractConfig {
                     "/tmp/kafka-streams",
                     Importance.HIGH,
                     STATE_DIR_DOC)
+            .define(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG ,
+                    Type.STRING,
+                    "",
+                    Importance.HIGH,
+                    STREAMS_DEFAULT_INTERNAL_STREAM_DOC)
 
             // MEDIUM
 
@@ -714,6 +725,8 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(REPLICATION_FACTOR_CONFIG, getInt(REPLICATION_FACTOR_CONFIG));
         consumerProps.put(NUM_STANDBY_REPLICAS_CONFIG, getInt(NUM_STANDBY_REPLICAS_CONFIG));
         consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, StreamPartitionAssignor.class.getName());
+        consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, getString(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
         consumerProps.put(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG, getLong(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG));
 
         consumerProps.put(APPLICATION_SERVER_CONFIG, getString(APPLICATION_SERVER_CONFIG));
@@ -737,6 +750,8 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.remove(ConsumerConfig.GROUP_ID_CONFIG);
         // add client id with stream client id prefix
         consumerProps.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-restore-consumer");
+        consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, getString(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
 
         return consumerProps;
     }
