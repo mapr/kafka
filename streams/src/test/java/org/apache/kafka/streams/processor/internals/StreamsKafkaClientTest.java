@@ -199,8 +199,6 @@ public class StreamsKafkaClientTest {
 
     private StreamsKafkaClient createStreamsKafkaClient() {
         final StreamsConfig streamsConfig = new StreamsConfig(config);
-        return new StreamsKafkaClient(StreamsKafkaClient.Config.fromStreamsConfig(streamsConfig),
-                                                                             kafkaClient,
-                                                                             reporters);
+        return new StreamsKafkaClient(StreamsKafkaClient.Config.fromStreamsConfig(streamsConfig));
     }
 }

@@ -108,6 +108,10 @@ public class AdminClientConfig extends AbstractConfig {
       + "set to /exampleStream, then the full topic path will be /exampleStream:exampleTopic.  If the admin specifies the topic name as "
       + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
+    public static final String ADMINCLIENT_CLASS_CONFIG = "org.apache.kafka.clients.admin";
+    private static final String ADMINCLIENT_CLASS_DOC = "The class to load during AdminClient.create() method call. By default, it will load the "
+      + "MarlinAdminClientImpl class.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
                                         Type.LIST, "",
@@ -178,7 +182,12 @@ public class AdminClientConfig extends AbstractConfig {
                                         Type.STRING,
                                         "",
                                         Importance.MEDIUM,
-                                        STREAMS_ADMIN_DEFAULT_STREAM_DOC);
+                                        STREAMS_ADMIN_DEFAULT_STREAM_DOC)
+                                .define(ADMINCLIENT_CLASS_CONFIG,
+                                        Type.STRING,
+                                        "com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+                                        Importance.MEDIUM,
+                                        ADMINCLIENT_CLASS_DOC);
     }
 
     @Override

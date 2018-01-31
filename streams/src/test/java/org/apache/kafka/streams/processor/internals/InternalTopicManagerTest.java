@@ -121,7 +121,7 @@ public class InternalTopicManagerTest {
     private class MockStreamKafkaClient extends StreamsKafkaClient {
 
         MockStreamKafkaClient(final StreamsConfig streamsConfig) {
-            super(StreamsKafkaClient.Config.fromStreamsConfig(streamsConfig), new MockClient(new MockTime()), Collections.EMPTY_LIST);
+            super(StreamsKafkaClient.Config.fromStreamsConfig(streamsConfig));
         }
 
         @Override

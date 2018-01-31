@@ -50,9 +50,12 @@ public abstract class AdminClient implements AutoCloseable {
      */
     public static AdminClient create(Properties props) {
         GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
-        return adminFactory.runMethod("com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+        AdminClientConfig adminConf = new AdminClientConfig(props);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
                                       "create",
-                                      new Object [] {new AdminClientConfig(props)});
+                                      new Object [] {adminConf});
     }
 
     /**
@@ -63,9 +66,12 @@ public abstract class AdminClient implements AutoCloseable {
      */
     public static AdminClient create(Map<String, Object> conf) {
         GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
-        return adminFactory.runMethod("com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+        AdminClientConfig adminConf = new AdminClientConfig(conf);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
                                       "create",
-                                      new Object [] {new AdminClientConfig(conf)});
+                                      new Object [] {adminConf});
     }
 
     /**
