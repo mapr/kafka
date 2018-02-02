@@ -100,8 +100,7 @@ public class KafkaOffsetBackingStore implements OffsetBackingStore {
                 }
             }
         };
-        // TODO cyalamanchili createTopics not yet implemented
-        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, Time.SYSTEM, null);
+        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, Time.SYSTEM, createTopics);
     }
 
     @Override

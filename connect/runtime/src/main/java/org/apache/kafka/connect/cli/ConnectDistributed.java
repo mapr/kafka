@@ -66,11 +66,17 @@ public class ConnectDistributed {
         Map<String, String> workerProps = !workerPropsFile.isEmpty() ?
                 Utils.propsToStringMap(Utils.loadProps(workerPropsFile)) : Collections.<String, String>emptyMap();
 
+        DistributedConfig config = new DistributedConfig(workerProps);
+        String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
+        if (configTopic.startsWith("/") == true || configTopic.contains(":") == true) {
+          // Load the MarlinClient and associated jni classes first.
+          log.info("Loading MarlinClient");
+          Class.forName("com.mapr.streams.impl.MarlinClient");
+        }
+
         log.info("Scanning for plugin classes. This might take a moment ...");
         Plugins plugins = new Plugins(workerProps);
         plugins.compareAndSwapWithDelegatingLoader();
-        DistributedConfig config = new DistributedConfig(workerProps);
-
         RestServer rest = new RestServer(config);
         URI advertisedUrl = rest.advertisedUrl();
         String workerId = advertisedUrl.getHost() + ":" + advertisedUrl.getPort();
