@@ -163,8 +163,7 @@ public class KafkaStatusBackingStore implements StatusBackingStore {
                 }
             }
         };
-        // TODO cyalamanchili createTopics not yet implemented
-        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, time, null);
+        return new KafkaBasedLog<>(topic, producerProps, consumerProps, consumedCallback, time, createTopics);
     }
 
     @Override
