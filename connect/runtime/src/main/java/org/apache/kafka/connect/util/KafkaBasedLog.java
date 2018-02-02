@@ -292,7 +292,7 @@ public class KafkaBasedLog<K, V> {
       GenericHFactory<String> verFactory = new GenericHFactory<String>();
       String buildVersion = verFactory.runMethod("com.mapr.fs.maprbuildversion.MapRBuildVersion",
                                                           "getMapRBuildVersion",
-                                                          new Object[]{});
+                                                          new Object[]{}, new Class[]{});
 
       String[] verArr = buildVersion.trim().split ("\\.");
       String[] minVerArr = minVersion.trim().split ("\\.");

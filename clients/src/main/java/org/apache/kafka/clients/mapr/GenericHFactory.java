@@ -50,19 +50,22 @@ public class GenericHFactory<T> {
    */
   public T runMethod(String className,
                      String methodName,
-                     Object[] params) {
+                     Object[] params,
+                     Class[] paramTypes) {
     try {
       Class<? extends T> clazz = (Class<? extends T>) Class.forName(className);
-      Class[] paramTypes = new Class[params.length];
-
-      for (int i = 0; i < params.length; i++) {
-        paramTypes[i] = params[i].getClass();
-      }
-
       Method method = clazz.getDeclaredMethod(methodName, paramTypes);
-      return (T) method.invoke (null, params);
-    }
-    catch (Throwable t) {
+
+      // Make the method accessible in case it is private and restore the accessibility at the end of invocation.
+      boolean isMethodAccessible = method.isAccessible();
+
+      method.setAccessible(true);
+      Object obj = method.invoke(null, params);
+      method.setAccessible(isMethodAccessible);
+
+      return (T) obj;
+
+    } catch (Throwable t) {
       throw new RuntimeException(String.format("Error occurred while invoking %s:%s.\n==> %s.",
         className, methodName, getMessage(t)), t);
     }
