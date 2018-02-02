@@ -109,7 +109,7 @@ public class AdminClientConfig extends AbstractConfig {
       + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
     public static final String ADMINCLIENT_CLASS_CONFIG = "org.apache.kafka.clients.admin";
-    private static final String ADMINCLIENT_CLASS_DOC = "The class to load during AdminClient.create() method call. By default, it will load the "
+    private static final String ADMINCLIENT_CLASS_DOC = "The class to load during AdminClient.createInternal() method call. By default, it will load the "
       + "MarlinAdminClientImpl class.";
 
     static {

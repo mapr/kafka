@@ -54,8 +54,9 @@ public abstract class AdminClient implements AutoCloseable {
         String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
 
         return adminFactory.runMethod(adminClientClass,
-                                      "create",
-                                      new Object [] {adminConf});
+                                      "createInternal",
+                                      new Object [] {adminConf},
+                                      new Class [] {AdminClientConfig.class});
     }
 
     /**
@@ -70,8 +71,9 @@ public abstract class AdminClient implements AutoCloseable {
         String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
 
         return adminFactory.runMethod(adminClientClass,
-                                      "create",
-                                      new Object [] {adminConf});
+                                      "createInternal",
+                                      new Object [] {adminConf},
+                                      new Class [] {AdminClientConfig.class});
     }
 
     /**

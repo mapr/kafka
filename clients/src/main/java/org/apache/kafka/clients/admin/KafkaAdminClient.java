@@ -285,6 +285,10 @@ public class KafkaAdminClient extends AdminClient {
         return throwable.getClass().getSimpleName();
     }
 
+    static KafkaAdminClient createInternal(AdminClientConfig config) {
+        return createInternal(config, null);
+    }
+
     static KafkaAdminClient createInternal(AdminClientConfig config, TimeoutProcessorFactory timeoutProcessorFactory) {
         Metrics metrics = null;
         NetworkClient networkClient = null;
