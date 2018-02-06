@@ -156,14 +156,7 @@ public class DelegatingClassLoader extends URLClassLoader {
                     registerPlugin(pluginPath);
                 }
             }
-
-            path = "classpath";
-            // Finally add parent/system loader.
-            scanUrlsAndAddPlugins(
-                    getParent(),
-                    ClasspathHelper.forJavaClassPath().toArray(new URL[0]),
-                    null
-            );
+            
         } catch (InvalidPathException | MalformedURLException e) {
             log.error("Invalid path in plugin path: {}. Ignoring.", path, e);
         } catch (IOException e) {
