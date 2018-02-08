@@ -159,7 +159,11 @@ public class KafkaStatusBackingStore implements StatusBackingStore {
             @Override
             public void run() {
                 try (TopicAdmin admin = new TopicAdmin(adminProps)) {
-                    admin.createTopics(topicDescription);
+                    try {
+                        admin.createTopics(topicDescription);
+                    } catch (Exception e){
+                        log.warn(e.getMessage());
+                    }
                 }
             }
         };
