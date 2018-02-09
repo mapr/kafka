@@ -20,6 +20,7 @@ import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.reflections.Reflections;
+import org.reflections.ReflectionsException;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.slf4j.Logger;
@@ -156,7 +157,13 @@ public class DelegatingClassLoader extends URLClassLoader {
                     registerPlugin(pluginPath);
                 }
             }
-            
+            path = "classpath";
+            // Finally add parent/system loader.
+            scanUrlsAndAddPlugins(
+                    getParent(),
+                    ClasspathHelper.forJavaClassPath().toArray(new URL[0]),
+                    null
+            );
         } catch (InvalidPathException | MalformedURLException e) {
             log.error("Invalid path in plugin path: {}. Ignoring.", path, e);
         } catch (IOException e) {
