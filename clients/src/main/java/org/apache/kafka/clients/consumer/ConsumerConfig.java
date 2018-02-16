@@ -260,7 +260,7 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG = "streams.clientside.partition.assignment";
     private static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_DOC = "Enable client side partition assignment. Default stream needs to be "
         + "configured to use this feature. All clients in the same group should use the same streams.default.internal.stream.";
-    public static final boolean DEFAULT_STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT = true;
+    public static final boolean DEFAULT_STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT = false;
 
     /** <code>streams.default.internal.stream</code> **/
     public static final String STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG = "streams.default.internal.stream";
