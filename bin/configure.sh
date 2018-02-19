@@ -87,21 +87,6 @@ function setup_warden_config() {
     chgrp ${MAPR_GROUP} ${WARDEN_KAFKA_CONNECT_DEST_CONF}
 }
 
-function write_restart_kafka_connect() {
-
-    if [ ! -d $MAPR_RESTART_SCRIPTS_DIR ]; then
-        mkdir $MAPR_RESTART_SCRIPTS_DIR
-        chown -R ${MAPR_USER} ${MAPR_RESTART_SCRIPTS_DIR}
-        chgrp -R ${MAPR_GROUP} ${MAPR_RESTART_SCRIPTS_DIR}
-    fi
-
-    echo -e "#!/bin/bash\nsudo -u $MAPR_USER maprcli node services -action restart -name kafka-connect -nodes `hostname`" > ${KAFKA_CONNECT_RESTART_SRC}
-
-
-    chown ${MAPR_USER} ${KAFKA_CONNECT_RESTART_SRC}
-    chgrp ${MAPR_GROUP} ${KAFKA_CONNECT_RESTART_SRC}
-    chmod u+x ${KAFKA_CONNECT_RESTART_SRC}
-}
 
 # Parse options
 
@@ -141,7 +126,6 @@ done
 
 change_permissions
 write_version_file
-write_restart_kafka_connect
 setup_warden_config
 
 # remove state file
