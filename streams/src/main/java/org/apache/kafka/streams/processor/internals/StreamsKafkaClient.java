@@ -16,14 +16,7 @@
  */
 package org.apache.kafka.streams.processor.internals;
 
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
-import org.apache.kafka.clients.admin.DescribeClusterResult;
-import org.apache.kafka.clients.admin.ListTopicsOptions;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.clients.admin.TopicListing;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.ClientRequest;
 import org.apache.kafka.clients.ClientResponse;
 import org.apache.kafka.clients.Metadata;
@@ -44,16 +37,10 @@ import org.apache.kafka.streams.errors.BrokerNotFoundException;
 import org.apache.kafka.streams.errors.StreamsException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class StreamsKafkaClient {
 
@@ -142,11 +129,41 @@ public class StreamsKafkaClient {
         }
     }
 
+    private Set<String> filterUnexistingTopics(Set<String> topics) throws ExecutionException, InterruptedException {
+        if(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG).isEmpty()){
+            return topics;
+        }
+        final Map <String, Set<String>> streamTopicsMap = new HashMap<>();
+        for(String topic : topics){
+            int colonIndex = topic.indexOf(":");
+            String streamName = topic.substring(0, colonIndex);
+            String topicName = topic.substring(colonIndex + 1);
+            Set<String> tps = streamTopicsMap.get(streamName);
+            if(tps == null){
+                tps = new HashSet<>();
+                streamTopicsMap.put(streamName, tps);
+            }
+            tps.add(topicName);
+        }
+        Set<String> res = new HashSet<>();
+        for(Map.Entry<String, Set<String>> entry : streamTopicsMap.entrySet()){
+            String streamName = entry.getKey();
+            Collection<String> allTopics = adminClient.listTopics(streamName).names().get();
+            for(String topic : entry.getValue()){
+                if(allTopics.contains(topic)){
+                    res.add(streamName + ":" + topic);
+                }
+            }
+        }
+        return res;
+    }
+
     public Map<String, Integer> getNumPartitions(final Set<String> topics) {
-      KafkaFuture<Map<String, TopicDescription>> future = adminClient.describeTopics(topics).all();
+
       Map<String, Integer> result = new HashMap<>();
 
       try {
+          KafkaFuture<Map<String, TopicDescription>> future = adminClient.describeTopics(filterUnexistingTopics(topics)).all();
         Map<String, TopicDescription> topicDescMap = future.get();
         for (String topicName : topicDescMap.keySet()) {
           result.put(topicName, topicDescMap.get(topicName).partitions().size());
