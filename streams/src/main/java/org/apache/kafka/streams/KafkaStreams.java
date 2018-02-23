@@ -725,7 +725,7 @@ public class KafkaStreams {
         // first set state to RUNNING before kicking off the threads,
         // making sure the state will always transit to RUNNING before REBALANCING
         if (setRunningFromCreated()) {
-            checkBrokerVersionCompatibility();
+            // checkBrokerVersionCompatibility();
 
             if (globalStreamThread != null) {
                 globalStreamThread.start();
