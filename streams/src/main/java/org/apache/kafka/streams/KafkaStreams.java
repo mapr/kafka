@@ -545,6 +545,7 @@ public class KafkaStreams {
         final String cleanupThreadName = clientId + "-CleanupThread";
 
         internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, config.getString(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
+        internalTopologyBuilder.setDefaultStream(config.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
         // sanity check to fail-fast in case we cannot build a ProcessorTopology due to an exception
         internalTopologyBuilder.build(null);
 

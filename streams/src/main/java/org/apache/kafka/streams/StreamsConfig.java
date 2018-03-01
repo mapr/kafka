@@ -310,6 +310,13 @@ public class StreamsConfig extends AbstractConfig {
     public static final String STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG = "streams.default.internal.stream";
     private static final String STREAMS_DEFAULT_INTERNAL_STREAM_DOC = "The default stream where all internal topics will be created.";
 
+    /** <code>streams.producer.default.stream</code> **/
+    public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+    private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream to consume from and send the messages to, "
+            + "if the topic name does not specify the stream.  For example, if a message is sent to exampleTopic and this parameter "
+            + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
+            + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -393,6 +400,11 @@ public class StreamsConfig extends AbstractConfig {
                     CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
                     Importance.MEDIUM,
                     CommonClientConfigs.SECURITY_PROTOCOL_DOC)
+            .define(STREAMS_DEFAULT_STREAM_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    STREAMS_DEFAULT_STREAM_DOC)
 
             // LOW
 
@@ -727,6 +739,7 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, StreamPartitionAssignor.class.getName());
         consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, getString(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
         consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         consumerProps.put(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG, getLong(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG));
 
         consumerProps.put(APPLICATION_SERVER_CONFIG, getString(APPLICATION_SERVER_CONFIG));
@@ -752,7 +765,7 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-restore-consumer");
         consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, getString(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG));
         consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
-
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         return consumerProps;
     }
 
@@ -777,6 +790,8 @@ public class StreamsConfig extends AbstractConfig {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
         // add client id with stream client id prefix
         props.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-producer");
+
+        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
 
         return props;
     }

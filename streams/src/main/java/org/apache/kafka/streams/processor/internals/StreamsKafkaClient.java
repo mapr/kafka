@@ -66,7 +66,10 @@ public class StreamsKafkaClient {
 
     StreamsKafkaClient(final Config streamsConfig) {
         this.streamsConfig = streamsConfig;
-        this.adminClient = AdminClient.create(new Properties());
+        Properties adminClientProps = new Properties();
+        adminClientProps.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+                streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
+        this.adminClient = AdminClient.create(adminClientProps);
         extractDefaultTopicConfigs(streamsConfig.originalsWithPrefix(StreamsConfig.TOPIC_PREFIX));
     }
 
