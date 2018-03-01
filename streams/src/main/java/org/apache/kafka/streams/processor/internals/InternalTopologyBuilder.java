@@ -126,6 +126,8 @@ public class InternalTopologyBuilder {
     /** Mapr Streams Specific **/
     private String internalStream = null;
 
+    private String defaultStream = null;
+
     /**************************/
 
     interface StateStoreFactory {
@@ -397,6 +399,18 @@ public class InternalTopologyBuilder {
         this.internalStream = internalStream;
 
         return this;
+    }
+
+    public synchronized final void setDefaultStream(final String defaultStream) {
+        Objects.requireNonNull(defaultStream, "defaultStream can't be null");
+        this.defaultStream = defaultStream;
+    }
+
+    private String getNewTopicNameWithDefaultStream(String topic) {
+        if (defaultStream != null && !defaultStream.isEmpty() &&(!topic.startsWith("/"))) {
+            return (defaultStream + ":" + topic);
+        }
+        return topic;
     }
 
     public final void addSource(final Topology.AutoOffsetReset offsetReset,
@@ -962,7 +976,7 @@ public class InternalTopologyBuilder {
                 // prefix the internal topic name with the application id
                 topicSourceMap.put(decorateTopic(topic), node);
             } else {
-                topicSourceMap.put(topic, node);
+                topicSourceMap.put(getNewTopicNameWithDefaultStream(topic), node);
             }
         }
     }
@@ -1039,7 +1053,7 @@ public class InternalTopologyBuilder {
                                                                                             Collections.<String, String>emptyMap()));
                             sourceTopics.add(internalTopic);
                         } else {
-                            sourceTopics.add(topic);
+                            sourceTopics.add(getNewTopicNameWithDefaultStream(topic));
                         }
                     }
                 }
@@ -1216,7 +1230,7 @@ public class InternalTopologyBuilder {
             if (internalTopicNames.contains(topic)) {
                 decoratedTopics.add(decorateTopic(topic));
             } else {
-                decoratedTopics.add(topic);
+                decoratedTopics.add(getNewTopicNameWithDefaultStream(topic));
             }
         }
         return decoratedTopics;
