@@ -121,6 +121,38 @@ public class ConsumerRecord<K, V> {
                           K key,
                           V value,
                           Headers headers) {
+        this(topic, partition, offset, timestamp, timestampType, checksum, serializedKeySize, serializedValueSize,
+                key, value, headers, null);
+    }
+
+    /**
+     * Creates a record to be received from a specified topic and partition
+     *
+     * @param topic The topic this record is received from
+     * @param partition The partition of the topic this record is received from
+     * @param offset The offset of this record in the corresponding Kafka partition
+     * @param timestamp The timestamp of the record.
+     * @param timestampType The timestamp type
+     * @param checksum The checksum (CRC32) of the full record
+     * @param serializedKeySize The length of the serialized key
+     * @param serializedValueSize The length of the serialized value
+     * @param key The key of the record, if one exists (null is allowed)
+     * @param value The record contents
+     * @param headers The headers of the record.
+     * @param producer The producer for this record
+     */
+    public ConsumerRecord(String topic,
+                          int partition,
+                          long offset,
+                          long timestamp,
+                          TimestampType timestampType,
+                          Long checksum,
+                          int serializedKeySize,
+                          int serializedValueSize,
+                          K key,
+                          V value,
+                          Headers headers,
+                          String producer) {
         if (topic == null)
             throw new IllegalArgumentException("Topic cannot be null");
         this.topic = topic;
@@ -134,7 +166,7 @@ public class ConsumerRecord<K, V> {
         this.key = key;
         this.value = value;
         this.headers = headers;
-        this.producer = null;
+        this.producer = producer;
     }
 
     /**
