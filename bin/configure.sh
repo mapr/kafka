@@ -80,7 +80,7 @@ function change_permissions() {
 
 function setup_warden_config() {
     if [ -f $WARDEN_KAFKA_CONNECT_DEST_CONF ]; then
-        return 0
+        rm -f $WARDEN_KAFKA_CONNECT_DEST_CONF
     fi
     cp $WARDEN_KAFKA_CONNECT_FILE $WARDEN_KAFKA_CONNECT_DEST_CONF
     chown ${MAPR_USER} ${WARDEN_KAFKA_CONNECT_DEST_CONF}
