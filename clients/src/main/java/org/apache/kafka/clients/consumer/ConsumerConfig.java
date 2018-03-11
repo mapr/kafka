@@ -493,6 +493,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         atLeast(30),
                                         Importance.LOW,
                                         STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        305000,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
                                 .define(STREAMS_HARDMOUNT_CONFIG,
                                         Type.BOOLEAN,
                                         true,

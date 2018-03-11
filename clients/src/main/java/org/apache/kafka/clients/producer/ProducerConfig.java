@@ -224,6 +224,11 @@ public class ProducerConfig extends AbstractConfig {
     public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
     private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
 
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
+
     /** <code>fs.mapr.hardmount</code> */
     public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
     private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
@@ -363,6 +368,12 @@ public class ProducerConfig extends AbstractConfig {
                                         atLeast(30),
                                         Importance.LOW,
                                         STREAMS_RPC_TIMEOUT_DOC)
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        30000,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
                                 .define(STREAMS_HARDMOUNT_CONFIG,
                                         Type.BOOLEAN,
                                         true,
