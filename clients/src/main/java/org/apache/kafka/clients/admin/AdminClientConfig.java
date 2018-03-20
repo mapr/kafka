@@ -106,6 +106,10 @@ public class AdminClientConfig extends AbstractConfig {
     public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
     private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
 
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
+
     /** <code>streams.admin.default.stream</code> **/
     public static final String STREAMS_ADMIN_DEFAULT_STREAM_CONFIG = "streams.admin.default.stream";
     private static final String STREAMS_ADMIN_DEFAULT_STREAM_DOC = "The default stream the admin prefixes the topic name with, if the "
@@ -156,6 +160,11 @@ public class AdminClientConfig extends AbstractConfig {
                                         atLeast(30000),
                                         Importance.LOW,
                                         STREAMS_RPC_TIMEOUT_MS_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
                                 .define(CONNECTIONS_MAX_IDLE_MS_CONFIG,
                                         Type.LONG,
                                         5 * 60 * 1000,

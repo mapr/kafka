@@ -220,11 +220,6 @@ public class ProducerConfig extends AbstractConfig {
             "The default is empty, which means transactions cannot be used.";
 
     /** STREAMS SPECIFIC SETTINGS **/
-    /** <code>fs.mapr.rpc.timeout</code> */
-    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
-    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
-
-    /** STREAMS SPECIFIC SETTINGS **/
     /** <code>streams.rpc.timeout.ms</code> */
     public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
     private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
@@ -362,12 +357,6 @@ public class ProducerConfig extends AbstractConfig {
                                         new ConfigDef.NonEmptyString(),
                                         Importance.LOW,
                                         TRANSACTIONAL_ID_DOC)
-                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
-                                        Type.INT,
-                                        300,
-                                        atLeast(30),
-                                        Importance.LOW,
-                                        STREAMS_RPC_TIMEOUT_DOC)
                                 .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
                                         Type.INT,
                                         30000,

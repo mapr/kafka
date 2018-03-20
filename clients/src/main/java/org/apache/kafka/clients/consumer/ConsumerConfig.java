@@ -227,10 +227,6 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
     private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
 
-    /** <code>fs.mapr.rpc.timeout</code> */
-    public static final String STREAMS_RPC_TIMEOUT_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_CONFIG;
-    private static final String STREAMS_RPC_TIMEOUT_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_DOC;
-
     /** <code>fs.mapr.hardmount</code> */
     public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
     private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
@@ -487,12 +483,6 @@ public class ConsumerConfig extends AbstractConfig {
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
-                                .define(STREAMS_RPC_TIMEOUT_CONFIG,
-                                        Type.INT,
-                                        300,
-                                        atLeast(30),
-                                        Importance.LOW,
-                                        STREAMS_RPC_TIMEOUT_DOC)
                                 .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
                                         Type.INT,
                                         305000,
