@@ -1537,5 +1537,6 @@ task maprPublicPublish() {
     ":connect:api:publishConnectApiPublicationToTargetrepoRepository",
     ":connect:json:publishConnectJsonPublicationToTargetrepoRepository",
     ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
+    "uploadCoreArchives_2_11",
     "uploadCoreArchives_2_12"
 }
