@@ -68,7 +68,7 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
 
     @Override
     public String applicationInternalStream() {
-        return (String)appConfigs().get(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG);
+        return StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM;
     }
 
     @Override

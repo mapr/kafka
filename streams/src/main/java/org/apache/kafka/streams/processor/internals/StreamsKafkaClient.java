@@ -133,9 +133,6 @@ public class StreamsKafkaClient {
     }
 
     private Set<String> filterUnexistingTopics(Set<String> topics) throws ExecutionException, InterruptedException {
-        if(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG).isEmpty()){
-            return topics;
-        }
         final Map <String, Set<String>> streamTopicsMap = new HashMap<>();
         for(String topic : topics){
             int colonIndex = topic.indexOf(":");
