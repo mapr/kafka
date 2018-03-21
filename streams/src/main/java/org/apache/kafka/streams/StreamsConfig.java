@@ -311,7 +311,7 @@ public class StreamsConfig extends AbstractConfig {
 
     /*** Mapr Streams specific configurations ***/
 
-    /** <code>streams.producer.default.stream</code> **/
+    /** {@code}streams.default.stream} */
     public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
     private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream to consume from and send the messages to, "
             + "if the topic name does not specify the stream.  For example, if a message is sent to exampleTopic and this parameter "
