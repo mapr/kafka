@@ -18,6 +18,7 @@ package org.apache.kafka.streams.kstream.internals;
 
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.mapr.Utils;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.StoreSupplier;
 
@@ -34,7 +35,12 @@ public class MaterializedInternal<K, V, S extends StateStore> extends Materializ
     public MaterializedInternal(final Materialized<K, V, S> materialized,
                                 final boolean queryable) {
         super(materialized);
-        this.queryable = queryable;
+        if (storeName() == null) {
+            queryable = false;
+            storeName = nameProvider.newStoreName(Utils.getShortTopicNameFromFullTopicName(generatedStorePrefix));
+        } else {
+            queryable = true;
+        }
     }
 
     public String storeName() {

@@ -36,4 +36,9 @@ public class Utils {
             throw new RuntimeException(String.format("Error occurred while invoking Method.invoke().\n==> %s.", e.getMessage()), e);
         }
     }
+
+    public static String getShortTopicNameFromFullTopicName(final String fullTopicName){
+        String [] arr = fullTopicName.split(":");
+        return (arr.length > 1) ? arr[1] : arr[0];
+    }
 }
