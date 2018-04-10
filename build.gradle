@@ -1536,6 +1536,7 @@ task maprPublicPublish() {
     ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
     ":connect:transforms:uploadArchives",
     ":log4j-appender:uploadArchives",
+    ":streams:uploadArchives",
     ":tools:uploadArchives",
     "uploadCoreArchives_2_11",
     "uploadCoreArchives_2_12"
