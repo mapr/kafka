@@ -19,6 +19,7 @@ package org.apache.kafka.streams.state.internals;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.kstream.internals.CacheFlushListener;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -75,7 +76,7 @@ class CachingWindowStore<K, V> extends WrappedStateStore.AbstractStateStore impl
     @SuppressWarnings("unchecked")
     private void initInternal(final ProcessorContext context) {
         this.context = (InternalProcessorContext) context;
-        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), underlying.name());
+        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), underlying.name(),  context.applicationInternalStream());
         serdes = new StateSerdes<>(topic,
                                    keySerde == null ? (Serde<K>) context.keySerde() : keySerde,
                                    valueSerde == null ? (Serde<V>) context.valueSerde() : valueSerde);

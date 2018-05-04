@@ -38,6 +38,9 @@ allprojects {
 
   repositories {
     mavenCentral()
+    maven {
+      url "http://packages.confluent.io/maven/"
+    }      
   }
   
   apply plugin: 'idea'
@@ -142,6 +145,7 @@ subprojects {
 
   if (!JavaVersion.current().isJava9Compatible())
     apply plugin: 'findbugs'
+  apply plugin: 'maven-publish'
 
   sourceCompatibility = 1.7
   targetCompatibility = 1.7
@@ -406,6 +410,18 @@ subprojects {
   def coverageGen = it.path == ':core' ? 'reportScoverage' : 'jacocoTestReport'
   task reportCoverage(dependsOn: [coverageGen])
 
+  publishing {
+    repositories {
+      maven {
+        name "targetrepo"
+        url mavenUrl
+        credentials {
+          username mavenUsername
+          password mavenPassword
+        }
+      }
+    }
+  }
 }
 
 gradle.taskGraph.whenReady { taskGraph ->
@@ -859,6 +875,45 @@ project(':clients') {
     include "**/org/apache/kafka/common/security/auth/*"
     include "**/org/apache/kafka/server/policy/*"
   }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("clients-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaClients(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-clients"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaClientsPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':tools') {
@@ -892,8 +947,8 @@ project(':tools') {
   javadoc {
     enabled = false
   }
-
-  tasks.create(name: "copyDependantLibs", type: Copy) {
+  
+	tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
       include('slf4j-log4j12*')
       include('log4j*jar')
@@ -908,6 +963,46 @@ project(':tools') {
   jar {
     dependsOn 'copyDependantLibs'
   }
+
+    test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+    File originalPom = file("tools-pom-template.xml")
+    List<Node> originalNodes = null
+
+    task eatPom() {
+      doFirst {
+        originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+      }
+    }
+
+    publishing {
+      publications {
+        kafkaTools(MavenPublication) {
+          groupId "org.apache.kafka"
+          artifactId "kafka-tools"
+          artifact jar
+          artifact(srcJar) {
+            classifier "sources"
+          }
+          artifact(testJar) {
+            classifier "test"
+          }
+          artifact(javadocJar) {
+            classifier "javadoc"
+          }
+
+          pom.withXml {
+            originalNodes.each { asNode().append(it) }
+          }
+        }
+      }
+    }
+    model {
+      tasks.generatePomFileForKafkaToolsPublication {
+        dependsOn "eatPom"
+      }
+    }
+
 }
 
 project(':streams') {
@@ -1137,6 +1232,44 @@ project(':log4j-appender') {
     enabled = false
   }
 
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("log4j-appender-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      kafkaAppender(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-log4j-appender"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForKafkaAppenderPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:api') {
@@ -1172,6 +1305,45 @@ project(':connect:api') {
 
   jar {
     dependsOn copyDependantLibs
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("connect-api-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectApi(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-api"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectApiPublication {
+      dependsOn "eatPom"
+    }
   }
 }
 
@@ -1250,6 +1422,56 @@ project(':connect:json') {
   jar {
     dependsOn copyDependantLibs
   }
+
+  artifacts {
+    archives testJar
+  }
+
+  configurations {
+    archives.extendsFrom(testCompile)
+  }
+
+  checkstyle {
+    configFile = new File(rootDir, "checkstyle/checkstyle.xml")
+  }
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  File originalPom = file("connect-json-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectJson(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-json"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectJsonPublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:runtime') {
@@ -1261,6 +1483,7 @@ project(':connect:runtime') {
     compile project(':clients')
     compile project(':tools')
     compile libs.slf4jApi
+    compile libs.restutils
 
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet
@@ -1305,6 +1528,19 @@ project(':connect:runtime') {
   jar {
     dependsOn copyDependantLibs
   }
+  /*
+  artifacts {
+    archives testJar
+  }
+
+  configurations {
+    archives.extendsFrom(testCompile)
+  }
+  */
+  checkstyle {
+    configFile = new File(rootDir, "checkstyle/checkstyle.xml")
+  }
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
 
   task genConnectConfigDocs(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
@@ -1327,6 +1563,44 @@ project(':connect:runtime') {
     standardOutput = new File(generatedDocsDir, "connect_metrics.html").newOutputStream()
   }
 
+  File originalPom = file("connect-runtime-pom-template.xml")
+  List<Node> originalNodes = null
+
+  task eatPom() {
+    doFirst {
+      originalNodes = PomUtil.parsePom(originalPom, maprVersion)
+    }
+  }
+
+  publishing {
+    publications {
+      connectRuntime(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-runtime"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        /*
+        artifact(testJar) {
+          classifier "test"
+        }
+        */
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        pom.withXml {
+          originalNodes.each { asNode().append(it) }
+        }
+      }
+    }
+  }
+  model {
+    tasks.generatePomFileForConnectRuntimePublication {
+      dependsOn "eatPom"
+    }
+  }
 }
 
 project(':connect:file') {
@@ -1374,4 +1648,26 @@ task aggregatedJavadoc(type: Javadoc) {
   includes = projectsWithJavadoc.collectMany { it.javadoc.getIncludes() }
   excludes = projectsWithJavadoc.collectMany { it.javadoc.getExcludes() }
   options.links "http://docs.oracle.com/javase/7/docs/api/"
+}
+
+task maprLocalPublish() {
+  dependsOn "jarAll",
+    ":clients:publishKafkaClientsPublicationToMavenLocal",
+    ":connect:api:publishConnectApiPublicationToMavenLocal",
+    ":connect:json:publishConnectJsonPublicationToMavenLocal",
+    ":connect:runtime:publishConnectRuntimePublicationToMavenLocal"
+}
+
+task maprPublicPublish() {
+  dependsOn "jarAll",
+    ":clients:publishKafkaClientsPublicationToTargetrepoRepository",
+    ":connect:api:publishConnectApiPublicationToTargetrepoRepository",
+    ":connect:json:publishConnectJsonPublicationToTargetrepoRepository",
+    ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
+    ":connect:transforms:uploadArchives",
+    ":log4j-appender:uploadArchives",
+    ":streams:uploadArchives",
+    ":tools:uploadArchives",
+    "uploadCoreArchives_2_11",
+    "uploadCoreArchives_2_12"
 }

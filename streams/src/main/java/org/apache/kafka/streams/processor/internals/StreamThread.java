@@ -743,7 +743,10 @@ public class StreamThread extends Thread {
      */
     private void runLoop() {
         long recordsProcessedBeforeCommit = UNLIMITED_RECORDS;
-        consumer.subscribe(builder.sourceTopicPattern(), rebalanceListener);
+
+        String pattern = builder.sourceTopicPattern().toString();
+        List<String> topics = Arrays.asList(pattern.split("\\|"));
+        consumer.subscribe(topics, rebalanceListener);
 
         while (isRunning()) {
             try {

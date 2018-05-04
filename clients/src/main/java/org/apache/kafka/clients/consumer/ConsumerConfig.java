@@ -223,13 +223,51 @@ public class ConsumerConfig extends AbstractConfig {
     public static final String INTERCEPTOR_CLASSES_DOC = "A list of classes to use as interceptors. "
                                                         + "Implementing the <code>org.apache.kafka.clients.consumer.ConsumerInterceptor</code> interface allows you to intercept (and possibly mutate) records "
                                                         + "received by the consumer. By default, there are no interceptors.";
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
 
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
+
+    /** <code>streams.consumer.default.stream</code> **/
+    public static final String STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG = "streams.consumer.default.stream";
+    private static final String STREAMS_CONSUMER_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from, "
+      + "if the topic name does not specify the stream.  For example, if consumer subscribes to exampleTopic and this parameter "
+      + "is set to /exampleStream, then the consumer will subscribe to /exampleStream:exampleTopic.  If consumer subscribes to "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
+    /** <code>streams.record.strip.streampath</code> **/
+    public static final String STREAMS_RECORD_STRIP_STREAMPATH_CONFIG = "streams.record.strip.streampath";
+    private static final String STREAMS_RECORD_STRIP_STREAMPATH_DOC = "Strip streamname from the consumer record.";
+
+    /** <code>streams.consumer.buffer.memory</code> **/
+    public static final String STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG = "streams.consumer.buffer.memory";
+    private static final String STREAMS_CONSUMER_BUFFER_MEMORY_DOC = "Size of memory the consumer can use to read ahead messages and cache before being consumed.";
+
+    public static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG = "streams.zerooffset.record.on.eof";
+    private static final String STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset 0 if there are no other pending messages for a topic partition.";
+
+    public static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG = "streams.negativeoffset.record.on.eof";
+    private static final String STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC = "Return special consumer record with offset -1001 if there are no other pending messages for a topic partition.";
+
+    /** <code> streams.clientside.partition.assignment </code */
+    public static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG = "streams.clientside.partition.assignment";
+    private static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_DOC = "Enable client side partition assignment. Default stream needs to be "
+        + "configured to use this feature. All clients in the same group should use the same streams.default.internal.stream.";
+    public static final boolean DEFAULT_STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT = false;
+
+    /** <code>streams.default.internal.stream</code> **/
+    public static final String STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG = "streams.default.internal.stream";
+    private static final String STREAMS_DEFAULT_INTERNAL_STREAM_DOC = "The default stream where all internal topics will be created.";
 
     /** <code>exclude.internal.topics</code> */
     public static final String EXCLUDE_INTERNAL_TOPICS_CONFIG = "exclude.internal.topics";
     private static final String EXCLUDE_INTERNAL_TOPICS_DOC = "Whether records from internal topics (such as offsets) should be exposed to the consumer. "
                                                             + "If set to <code>true</code> the only way to receive records from an internal topic is subscribing to it.";
     public static final boolean DEFAULT_EXCLUDE_INTERNAL_TOPICS = true;
+
 
     /**
      * <code>internal.leave.group.on.close</code>
@@ -253,12 +291,10 @@ public class ConsumerConfig extends AbstractConfig {
             " return the LSO";
 
     public static final String DEFAULT_ISOLATION_LEVEL = IsolationLevel.READ_UNCOMMITTED.toString().toLowerCase(Locale.ROOT);
-    
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
-                                        Type.LIST,
-                                        Collections.emptyList(),
-                                        new ConfigDef.NonNullValidator(),
+                                        Type.LIST, "",
                                         Importance.HIGH,
                                         CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
                                 .define(GROUP_ID_CONFIG, Type.STRING, "", Importance.HIGH, GROUP_ID_DOC)
@@ -290,7 +326,7 @@ public class ConsumerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         ENABLE_AUTO_COMMIT_DOC)
                                 .define(AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                                        Type.INT,
+                                        Type.LONG,
                                         5000,
                                         atLeast(0),
                                         Importance.LOW,
@@ -449,7 +485,53 @@ public class ConsumerConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         CommonClientConfigs.SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
+                                .withClientSaslSupport()
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        305000,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
+                                .define(STREAMS_RECORD_STRIP_STREAMPATH_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_RECORD_STRIP_STREAMPATH_DOC)
+                                .define(STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_CONSUMER_DEFAULT_STREAM_DOC)
+                                .define(STREAMS_CONSUMER_BUFFER_MEMORY_CONFIG,
+                                        Type.LONG,
+                                        64 * 1024 * 1024,
+                                        Importance.MEDIUM,
+                                        STREAMS_CONSUMER_BUFFER_MEMORY_DOC)
+                                .define(STREAMS_ZEROOFFSET_RECORD_ON_EOF_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_ZEROOFFSET_RECORD_ON_EOF_DOC)
+                                .define(STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_CONFIG,
+                                        Type.BOOLEAN,
+                                        false,
+                                        Importance.LOW,
+                                        STREAMS_NEGATIVEOFFSET_RECORD_ON_EOF_DOC)
+                                .define(STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG,
+                                        Type.BOOLEAN,
+                                        DEFAULT_STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT,
+                                        Importance.MEDIUM,
+                                        STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_DOC)
+                                .define(STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG ,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_DEFAULT_INTERNAL_STREAM_DOC);
 
     }
 

@@ -91,6 +91,16 @@ public class CommonClientConfigs {
                                                          + "elapses the client will resend the request if necessary or fail the request if "
                                                          + "retries are exhausted.";
 
+    /** STREAMS SPECIFIC SETTINGS **/
+
+    /** <code>fs.mapr.hardmount</code> **/
+    public static final String STREAMS_HARDMOUNT_CONFIG = "fs.mapr.hardmount";
+    public static final String STREAMS_HARDMOUNT_DOC = "If server is down/unreachable, keep retrying the RPC.";
+
+    /** <code>streams.rpc.timeout.ms</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
+    public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). ";
+
     /**
      * Postprocess the configuration so that exponential backoff is disabled when reconnect backoff
      * is explicitly configured but the maximum reconnect backoff is not explicitly configured.
@@ -110,5 +120,5 @@ public class CommonClientConfigs {
             rval.put(RECONNECT_BACKOFF_MAX_MS_CONFIG, parsedValues.get(RECONNECT_BACKOFF_MS_CONFIG));
         }
         return rval;
-    }
+		}
 }

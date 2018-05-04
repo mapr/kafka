@@ -46,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.mapr.GenericHFactory;
+
 /**
  * This class manages the coordination process with brokers for the Connect cluster group membership. It ties together
  * the Coordinator, which implements the group member protocol, with all the other pieces needed to drive the connection
@@ -64,7 +66,7 @@ public class WorkerGroupMember {
     private final Metrics metrics;
     private final Metadata metadata;
     private final long retryBackoffMs;
-    private final WorkerCoordinator coordinator;
+    private final GenericWorkerCoordinator coordinator;
 
     private boolean stopped = false;
 
@@ -74,14 +76,38 @@ public class WorkerGroupMember {
                              WorkerRebalanceListener listener,
                              Time time) {
         try {
-            this.time = time;
+        this.time = time;
 
-            String clientIdConfig = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG);
-            clientId = clientIdConfig.length() <= 0 ? "connect-" + CONNECT_CLIENT_ID_SEQUENCE.getAndIncrement() : clientIdConfig;
-            String groupId = config.getString(DistributedConfig.GROUP_ID_CONFIG);
+        String clientIdConfig = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG);
+        String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
+        this.clientId = clientIdConfig.length() <= 0 ? "connect-" + CONNECT_CLIENT_ID_SEQUENCE.getAndIncrement() : clientIdConfig;
+        String groupId = config.getString(DistributedConfig.GROUP_ID_CONFIG);
 
-            LogContext logContext = new LogContext("[Worker clientId=" + clientId + ", groupId=" + groupId + "] ");
-            this.log = logContext.logger(WorkerGroupMember.class);
+        LogContext logContext = new LogContext("[Worker clientId=" + clientId + ", groupId=" + groupId + "] ");
+        this.log = logContext.logger(WorkerGroupMember.class);
+
+        if (configTopic.startsWith("/") == true || configTopic.contains(":") == true) {
+          GenericHFactory<GenericWorkerCoordinator> coordFactory =
+            new GenericHFactory<GenericWorkerCoordinator>();
+          this.coordinator = coordFactory.getImplementorInstance(
+                            "com.mapr.streams.impl.MarlinWorkerCoordinatorV10",
+                            new Object [] {config,
+                                           config.getString(DistributedConfig.GROUP_ID_CONFIG),
+                                           restUrl,
+                                           configStorage,
+                                           listener},
+                            new Class [] {DistributedConfig.class,
+                                          String.class,
+                                          String.class,
+                                          ConfigBackingStore.class,
+                                          WorkerRebalanceListener.class});
+
+          // Not relevant / not supported by MAPR-STREAMS
+          this.client = null;
+          this.metrics = null;
+          this.metadata = null;
+          this.retryBackoffMs = 0;
+        } else {
 
             Map<String, String> metricsTags = new LinkedHashMap<>();
             metricsTags.put("client-id", clientId);
@@ -136,13 +162,14 @@ public class WorkerGroupMember {
 
             AppInfoParser.registerAppInfo(JMX_PREFIX, clientId, metrics);
             log.debug("Connect group member created");
-        } catch (Throwable t) {
+        }
+      } catch (Throwable t) {
             // call close methods if internal objects are already constructed
             // this is to prevent resource leak. see KAFKA-2121
             stop(true);
             // now propagate the exception
             throw new KafkaException("Failed to construct kafka consumer", t);
-        }
+      }
     }
 
     public void stop() {
@@ -164,7 +191,7 @@ public class WorkerGroupMember {
      * Interrupt any running poll() calls, causing a WakeupException to be thrown in the thread invoking that method.
      */
     public void wakeup() {
-        this.client.wakeup();
+        coordinator.wakeup();
     }
 
     /**

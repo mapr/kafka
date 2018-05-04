@@ -100,9 +100,29 @@ public class AdminClientConfig extends AbstractConfig {
 
     public static final String RETRIES_CONFIG = CommonClientConfigs.RETRIES_CONFIG;
 
+    /** STREAMS SPECIFIC SETTINGS **/
+    /** <code>streams.rpc.timeout.ms</code> */
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
+    private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
+
+    /** <code>fs.mapr.hardmount</code> */
+    public static final String STREAMS_HARDMOUNT_CONFIG = CommonClientConfigs.STREAMS_HARDMOUNT_CONFIG;
+    private static final String STREAMS_HARDMOUNT_DOC = CommonClientConfigs.STREAMS_HARDMOUNT_DOC;
+
+    /** <code>streams.admin.default.stream</code> **/
+    public static final String STREAMS_ADMIN_DEFAULT_STREAM_CONFIG = "streams.admin.default.stream";
+    private static final String STREAMS_ADMIN_DEFAULT_STREAM_DOC = "The default stream the admin prefixes the topic name with, if the "
+      + "topic name does not specify the stream.  For example, if admin wants to create a topic exampleTopic and this parameter is "
+      + "set to /exampleStream, then the full topic path will be /exampleStream:exampleTopic.  If the admin specifies the topic name as "
+      + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
+    public static final String ADMINCLIENT_CLASS_CONFIG = "org.apache.kafka.clients.admin";
+    private static final String ADMINCLIENT_CLASS_DOC = "The class to load during AdminClient.createInternal() method call. By default, it will load the "
+      + "MarlinAdminClientImpl class.";
+
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
-                                        Type.LIST,
+                                        Type.LIST, "",
                                         Importance.HIGH,
                                         BOOTSTRAP_SERVERS_DOC)
                                 .define(CLIENT_ID_CONFIG, Type.STRING, "", Importance.MEDIUM, CLIENT_ID_DOC)
@@ -133,6 +153,17 @@ public class AdminClientConfig extends AbstractConfig {
                                         atLeast(0),
                                         Importance.MEDIUM,
                                         REQUEST_TIMEOUT_MS_DOC)
+                                .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
+                                        Type.INT,
+                                        120000,
+                                        atLeast(30000),
+                                        Importance.LOW,
+                                        STREAMS_RPC_TIMEOUT_MS_DOC)
+                                .define(STREAMS_HARDMOUNT_CONFIG,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        STREAMS_HARDMOUNT_DOC)
                                 .define(CONNECTIONS_MAX_IDLE_MS_CONFIG,
                                         Type.LONG,
                                         5 * 60 * 1000,
@@ -165,7 +196,17 @@ public class AdminClientConfig extends AbstractConfig {
                                         Importance.MEDIUM,
                                         SECURITY_PROTOCOL_DOC)
                                 .withClientSslSupport()
-                                .withClientSaslSupport();
+                                .withClientSaslSupport()
+                                .define(STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_ADMIN_DEFAULT_STREAM_DOC)
+                                .define(ADMINCLIENT_CLASS_CONFIG,
+                                        Type.STRING,
+                                        "com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+                                        Importance.MEDIUM,
+                                        ADMINCLIENT_CLASS_DOC);
     }
 
     @Override

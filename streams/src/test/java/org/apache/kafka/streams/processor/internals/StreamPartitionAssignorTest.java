@@ -463,8 +463,9 @@ public class StreamPartitionAssignorTest {
     }
 
     @Test
-    public void testAssignWithStates() {
-        builder.setApplicationId(applicationId);
+    public void testAssignWithStates() throws Exception {
+        String applicationId = "test";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addSource(null, "source2", null, null, null, "topic2");
 
@@ -534,11 +535,8 @@ public class StreamPartitionAssignorTest {
         assertEquals(Utils.mkSet(task10, task11, task12), tasksForState(applicationId, "store3", tasks, topicGroups));
     }
 
-    private Set<TaskId> tasksForState(final String applicationId,
-                                      final String storeName,
-                                      final List<TaskId> tasks,
-                                      final Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups) {
-        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName);
+    private Set<TaskId> tasksForState(String applicationId, String storeName, List<TaskId> tasks, Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups) {
+        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName, "/stream1");
 
         Set<TaskId> ids = new HashSet<>();
         for (Map.Entry<Integer, InternalTopologyBuilder.TopicsInfo> entry : topicGroups.entrySet()) {
@@ -659,8 +657,9 @@ public class StreamPartitionAssignorTest {
     }
 
     @Test
-    public void testAssignWithInternalTopics() {
-        builder.setApplicationId(applicationId);
+    public void testAssignWithInternalTopics() throws Exception {
+        String applicationId = "test";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addInternalTopic("topicX");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addProcessor("processor1", new MockProcessorSupplier(), "source1");
@@ -691,7 +690,7 @@ public class StreamPartitionAssignorTest {
     @Test
     public void testAssignWithInternalTopicThatsSourceIsAnotherInternalTopic() {
         String applicationId = "test";
-        builder.setApplicationId(applicationId);
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addInternalTopic("topicX");
         builder.addSource(null, "source1", null, null, null, "topic1");
         builder.addProcessor("processor1", new MockProcessorSupplier(), "source1");
@@ -824,8 +823,9 @@ public class StreamPartitionAssignorTest {
     }
 
     @Test
-    public void shouldAddUserDefinedEndPointToSubscription() {
-        builder.setApplicationId(applicationId);
+    public void shouldAddUserDefinedEndPointToSubscription() throws Exception {
+        final String applicationId = "application-id";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source", null, null, null, "input");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addSink("sink", "output", null, null, null, "processor");
@@ -892,8 +892,9 @@ public class StreamPartitionAssignorTest {
     }
 
     @Test
-    public void shouldMapUserEndPointToTopicPartitions() {
-        builder.setApplicationId(applicationId);
+    public void shouldMapUserEndPointToTopicPartitions() throws Exception {
+        final String applicationId = "application-id";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         builder.addSource(null, "source", null, null, null, "topic1");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addSink("sink", "output", null, null, null, "processor");
@@ -922,8 +923,10 @@ public class StreamPartitionAssignorTest {
     }
 
     @Test
-    public void shouldThrowExceptionIfApplicationServerConfigIsNotHostPortPair() {
-        builder.setApplicationId(applicationId);
+    public void shouldThrowExceptionIfApplicationServerConfigIsNotHostPortPair() throws Exception {
+        final String myEndPoint = "localhost";
+        final String applicationId = "application-id";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         mockTaskManager(Collections.<TaskId>emptySet(), Collections.<TaskId>emptySet(), UUID.randomUUID(), builder);
         partitionAssignor.setInternalTopicManager(new MockInternalTopicManager(streamsConfig, mockClientSupplier.restoreConsumer));
@@ -938,7 +941,9 @@ public class StreamPartitionAssignorTest {
 
     @Test
     public void shouldThrowExceptionIfApplicationServerConfigPortIsNotAnInteger() {
-        builder.setApplicationId(applicationId);
+        final String myEndPoint = "localhost:j87yhk";
+        final String applicationId = "application-id";
+        builder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         try {
             configurePartitionAssignor(Collections.singletonMap(StreamsConfig.APPLICATION_SERVER_CONFIG, (Object) "localhost:j87yhk"));
@@ -953,7 +958,7 @@ public class StreamPartitionAssignorTest {
         final StreamsBuilder builder = new StreamsBuilder();
 
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         KStream<Object, Object> stream1 = builder
 
@@ -1073,7 +1078,7 @@ public class StreamPartitionAssignorTest {
         final StreamsBuilder builder = new StreamsBuilder();
 
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
 
         builder.stream("topic1").groupByKey().count();
 

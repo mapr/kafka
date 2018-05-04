@@ -18,6 +18,7 @@ package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
@@ -49,7 +50,7 @@ public class InMemoryKeyValueLoggedStore<K, V> extends WrappedStateStore.Abstrac
 
         // construct the serde
         StateSerdes<K, V>  serdes = new StateSerdes<>(
-            ProcessorStateManager.storeChangelogTopic(context.applicationId(), inner.name()),
+            ProcessorStateManager.storeChangelogTopic(context.applicationId(), inner.name(),  context.applicationInternalStream()),
             keySerde == null ? (Serde<K>) context.keySerde() : keySerde,
             valueSerde == null ? (Serde<V>) context.valueSerde() : valueSerde);
 

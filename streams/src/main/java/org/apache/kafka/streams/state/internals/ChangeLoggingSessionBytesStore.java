@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.kstream.internals.SessionKeySerde;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -47,7 +48,7 @@ class ChangeLoggingSessionBytesStore extends WrappedStateStore.AbstractStateStor
         bytesStore.init(context, root);
         topic = ProcessorStateManager.storeChangelogTopic(
                 context.applicationId(),
-                bytesStore.name());
+                bytesStore.name(),  context.applicationInternalStream());
         innerStateSerde = WindowStoreUtils.getInnerStateSerde(
                 topic);
         changeLogger = new StoreChangeLogger<>(

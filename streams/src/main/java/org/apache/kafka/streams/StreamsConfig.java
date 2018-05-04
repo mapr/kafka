@@ -138,6 +138,11 @@ public class StreamsConfig extends AbstractConfig {
     private final static long EOS_DEFAULT_COMMIT_INTERVAL_MS = 100L;
 
     /**
+     * The default stream where all internal topics will be created.
+     */
+     public static final String STREAMS_DEFAULT_INTERNAL_STREAM = "/var/mapr/kafka-internal-stream";
+
+    /**
      * Prefix used to provide default topic configs to be applied when creating internal topics.
      * These should be valid properties from {@link org.apache.kafka.common.config.TopicConfig TopicConfig}.
      * It is recommended to use {@link #topicPrefix(String)}.
@@ -361,6 +366,15 @@ public class StreamsConfig extends AbstractConfig {
     private static final String[] NON_CONFIGURABLE_PRODUCER_EOS_CONFIGS = new String[] {ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
                                                                                         ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION};
 
+    /*** Mapr Streams specific configurations ***/
+
+    /** {@code}streams.default.stream} */
+    public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+    private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream to consume from and send the messages to, "
+            + "if the topic name does not specify the stream.  For example, if a message is sent to exampleTopic and this parameter "
+            + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
+            + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -444,6 +458,11 @@ public class StreamsConfig extends AbstractConfig {
                     CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
                     Importance.MEDIUM,
                     CommonClientConfigs.SECURITY_PROTOCOL_DOC)
+            .define(STREAMS_DEFAULT_STREAM_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    STREAMS_DEFAULT_STREAM_DOC)
 
             // LOW
 
@@ -800,6 +819,9 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(APPLICATION_SERVER_CONFIG, getString(APPLICATION_SERVER_CONFIG));
         consumerProps.put(NUM_STANDBY_REPLICAS_CONFIG, getInt(NUM_STANDBY_REPLICAS_CONFIG));
         consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, StreamPartitionAssignor.class.getName());
+        consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, STREAMS_DEFAULT_INTERNAL_STREAM);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         consumerProps.put(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG, getLong(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG));
 
         // add admin retries configs for creating topics
@@ -850,6 +872,9 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-restore-consumer");
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
 
+        consumerProps.put(ConsumerConfig.STREAMS_DEFAULT_INTERNAL_STREAM_CONFIG, STREAMS_DEFAULT_INTERNAL_STREAM);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         return consumerProps;
     }
 
@@ -875,6 +900,8 @@ public class StreamsConfig extends AbstractConfig {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
         // add client id with stream client id prefix
         props.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-producer");
+
+        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
 
         return props;
     }

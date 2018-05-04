@@ -97,8 +97,12 @@ public class ProcessorStateManager extends AbstractStateManager {
     }
 
 
-    public static String storeChangelogTopic(final String applicationId, final String storeName) {
-        return applicationId + "-" + storeName + STATE_CHANGELOG_TOPIC_SUFFIX;
+    public static String storeChangelogTopic(final String applicationId, final String storeName, String internalStream) {
+        String topicName = applicationId + "-" + storeName + STATE_CHANGELOG_TOPIC_SUFFIX;
+        return internalStream.isEmpty() ?
+                topicName
+                :
+                internalStream + ":" + topicName;
     }
 
     @Override

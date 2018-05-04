@@ -144,6 +144,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ProcessorTopologyTestDriver {
 
     private final static String APPLICATION_ID = "test-driver-application";
+    private final static String INTERNAL_STREAM = "/sample-stream";
     private final static int PARTITION_ID = 0;
     private final static TaskId TASK_ID = new TaskId(0, PARTITION_ID);
 
@@ -175,7 +176,7 @@ public class ProcessorTopologyTestDriver {
      */
     public ProcessorTopologyTestDriver(final StreamsConfig config,
                                        final InternalTopologyBuilder builder) {
-        topology = builder.setApplicationId(APPLICATION_ID).build(null);
+        topology = builder.setApplicationIdAndInternalStream(APPLICATION_ID, INTERNAL_STREAM).build(null);
         final ProcessorTopology globalTopology  = builder.buildGlobalStateTopology();
 
         // Set up the consumer and producer ...

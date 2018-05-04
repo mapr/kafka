@@ -55,6 +55,8 @@ import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
@@ -71,6 +73,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+
+/* Streams Imports */
+import org.apache.kafka.clients.mapr.GenericHFactory;
 
 /**
  * A client that consumes records from a Kafka cluster.
@@ -549,22 +554,22 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     static final long DEFAULT_CLOSE_TIMEOUT_MS = 30 * 1000;
 
     // Visible for testing
-    final Metrics metrics;
-
+    Metrics metrics;
     private final Logger log;
-    private final String clientId;
-    private final ConsumerCoordinator coordinator;
-    private final Deserializer<K> keyDeserializer;
-    private final Deserializer<V> valueDeserializer;
-    private final Fetcher<K, V> fetcher;
-    private final ConsumerInterceptors<K, V> interceptors;
+    private String clientId;
+    private ConsumerCoordinator coordinator;
+    private Deserializer<K> keyDeserializer;
+    private Deserializer<V> valueDeserializer;
+    private Fetcher<K, V> fetcher;
+    private ConsumerInterceptors<K, V> interceptors;
 
-    private final Time time;
-    private final ConsumerNetworkClient client;
-    private final SubscriptionState subscriptions;
-    private final Metadata metadata;
-    private final long retryBackoffMs;
-    private final long requestTimeoutMs;
+    private Time time;
+    private ConsumerNetworkClient client;
+    private SubscriptionState subscriptions;
+    private Metadata metadata;
+    private long retryBackoffMs;
+    private long requestTimeoutMs;
+
     private volatile boolean closed = false;
     private List<PartitionAssignor> assignors;
 
@@ -573,6 +578,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
     private final AtomicInteger refcount = new AtomicInteger(0);
+		private final LogContext logContext;
+
+    // STREAMS SPECIFIC
+    private final ConsumerConfig config;
+    private boolean isStreams = false;
+    private boolean isStreamsClosed = false;
+    private Consumer<K, V> consumerDriver = null;
+    private String defaultStream = null;
 
     /**
      * A consumer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -649,17 +662,105 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private KafkaConsumer(ConsumerConfig config,
                           Deserializer<K> keyDeserializer,
                           Deserializer<V> valueDeserializer) {
+				String clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG);
+				if (clientId.isEmpty())
+						clientId = "consumer-" + CONSUMER_CLIENT_ID_SEQUENCE.getAndIncrement();
+				this.clientId = clientId;
+				String groupId = config.getString(ConsumerConfig.GROUP_ID_CONFIG);
+
+				this.logContext = new LogContext("[Consumer clientId=" + clientId + ", groupId=" + groupId + "] ");
+				this.log = logContext.logger(getClass());
+        log.debug("Starting the Kafka consumer");
+        this.config = config;
+        this.keyDeserializer = keyDeserializer;
+        this.valueDeserializer = valueDeserializer;
+        this.closed = false;
+        this.isStreams = false;
+        this.isStreamsClosed = false;
+
+        if (keyDeserializer == null) {
+          this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                                                              Deserializer.class);
+          this.keyDeserializer.configure(config.originals(), true);
+        } else {
+          config.ignore(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+          this.keyDeserializer = keyDeserializer;
+        }
+        if (valueDeserializer == null) {
+          this.valueDeserializer = config.getConfiguredInstance(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                                                                Deserializer.class);
+          this.valueDeserializer.configure(config.originals(), false);
+        } else {
+          config.ignore(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG);
+          this.valueDeserializer = valueDeserializer;
+        }
+
+        defaultStream = null;
         try {
-            String clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG);
-            if (clientId.isEmpty())
-                clientId = "consumer-" + CONSUMER_CLIENT_ID_SEQUENCE.getAndIncrement();
-            this.clientId = clientId;
-            String groupId = config.getString(ConsumerConfig.GROUP_ID_CONFIG);
+          defaultStream = config.getString(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG);
+          if (defaultStream == "") defaultStream = null;
+        } catch (Exception e) {}
 
-            LogContext logContext = new LogContext("[Consumer clientId=" + clientId + ", groupId=" + groupId + "] ");
-            this.log = logContext.logger(getClass());
+        if (defaultStream != null) {
+          initializeConsumer(defaultStream + ":");  // Just to be safe, add a ":", which will make it streams!
+        }
+    }
 
+    private void initializeConsumer(String topic) {
+      synchronized(this) {
+        if (isStreamsClosed) {
+          log.error("cannot initialize consumer. already closed.");
+          return;
+        }
+
+        if (consumerDriver != null) {
+          log.debug("initialized consumer already.");
+          return;
+        }
+				// load interceptors and make sure they get clientId
+				Map<String, Object> userProvidedConfigs = config.originals();
+				userProvidedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
+				List<ConsumerInterceptor<K, V>> interceptorList = (List) (new ConsumerConfig(userProvidedConfigs, false)).getConfiguredInstances(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
+								ConsumerInterceptor.class);
+				this.interceptors = interceptorList.isEmpty() ? null : new ConsumerInterceptors<>(interceptorList);
+
+        if (topic.startsWith("/") == true || topic.contains(":") == true) {
+
+          // Load the MarlinClient and associated jni classes first.
+          try {
+            Class.forName("com.mapr.streams.impl.MarlinClient");
+          } catch (Throwable e) {
+            throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.streams.impl.MarlinClient. " + e.getMessage()), e);
+          }
+
+          Consumer<K,V> ac;
+          GenericHFactory<Consumer<K, V>> consumerFactory = new GenericHFactory<Consumer<K, V>>();
+
+          ac =
+            consumerFactory.getImplementorInstance("com.mapr.streams.impl.listener.MarlinListenerV10",
+                                                   new Object [] {this.config,
+                                                                  this.keyDeserializer,
+                                                                  this.valueDeserializer,
+                                                                  this.interceptors},
+                                                   new Class[]
+                                                   {ConsumerConfig.class,
+                                                    Deserializer.class,
+                                                    Deserializer.class,
+                                                    ConsumerInterceptors.class});
+          isStreams = true;
+          consumerDriver = ac;
+        } else {
+          isStreams = false;
+          consumerDriver = this;
+
+          List<InetSocketAddress> kafkaaddresses = ClientUtils.parseAndValidateAddresses(config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+          if (kafkaaddresses.size() == 0 || kafkaaddresses.get(0).equals("")) {
+            throw new KafkaException("Bootstrap servers not specified in configuration");
+          }
+
+        try {
             log.debug("Initializing the Kafka consumer");
+						String groupId = config.getString(ConsumerConfig.GROUP_ID_CONFIG);
             this.requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG);
             int sessionTimeOutMs = config.getInt(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG);
             int fetchMaxWaitMs = config.getInt(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG);
@@ -678,12 +779,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             this.metrics = new Metrics(metricConfig, reporters, time);
             this.retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG);
 
-            // load interceptors and make sure they get clientId
-            Map<String, Object> userProvidedConfigs = config.originals();
-            userProvidedConfigs.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
-            List<ConsumerInterceptor<K, V>> interceptorList = (List) (new ConsumerConfig(userProvidedConfigs, false)).getConfiguredInstances(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
-                    ConsumerInterceptor.class);
-            this.interceptors = new ConsumerInterceptors<>(interceptorList);
             if (keyDeserializer == null) {
                 this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                         Deserializer.class);
@@ -757,7 +852,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     this.time,
                     retryBackoffMs,
                     config.getBoolean(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG),
-                    config.getInt(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
+                    config.getLong(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
                     this.interceptors,
                     config.getBoolean(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG),
                     config.getBoolean(ConsumerConfig.LEAVE_GROUP_ON_CLOSE_CONFIG));
@@ -792,6 +887,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             // now propagate the exception
             throw new KafkaException("Failed to construct kafka consumer", t);
         }
+        }
+      }
     }
 
     // visible for testing
@@ -810,6 +907,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                   long retryBackoffMs,
                   long requestTimeoutMs,
                   List<PartitionAssignor> assignors) {
+				this.config = null;
+				this.logContext = logContext;
         this.log = logContext.logger(getClass());
         this.clientId = clientId;
         this.coordinator = coordinator;
@@ -825,6 +924,104 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.retryBackoffMs = retryBackoffMs;
         this.requestTimeoutMs = requestTimeoutMs;
         this.assignors = assignors;
+		}
+
+    private boolean useDefaultStreamName(String topicname) {
+      return (!topicname.startsWith("/"));
+    }
+
+    private String addDefaultStreamNameToTopicName(String topicname) {
+      return (defaultStream + ":" + topicname);
+    }
+
+    private TopicPartition addDefaultStreamNameToTopicPartition(TopicPartition tp) {
+      return new TopicPartition(addDefaultStreamNameToTopicName(tp.topic()), tp.partition());
+    }
+
+    private TopicPartition getNewTopicPartitionWithDefaultStream(TopicPartition tp) {
+      if (defaultStream != null && useDefaultStreamName(tp.topic())) {
+        return addDefaultStreamNameToTopicPartition(tp);
+      }
+      return tp;
+    }
+
+    private String getNewTopicNameWithDefaultStream(String topic) {
+      if (defaultStream != null && useDefaultStreamName(topic)) {
+        return addDefaultStreamNameToTopicName(topic);
+      }
+      return topic;
+    }
+
+    private boolean checkIfPartitionsNeedDefaultStream(Collection<TopicPartition> partitions) {
+      boolean needDefault = false;
+      if (defaultStream != null) {
+        for (TopicPartition tp : partitions) {
+          if (useDefaultStreamName(tp.topic())) {
+            needDefault = true;
+            break;
+          }
+        }
+      }
+      return needDefault;
+    }
+
+    private boolean checkIfTopicsNeedDefaultStream(Collection<String> topics) {
+      boolean needDefault = false;
+      if (defaultStream != null) {
+        for (String topic : topics) {
+          if (useDefaultStreamName(topic)) {
+            needDefault = true;
+            break;
+          }
+        }
+      }
+      return needDefault;
+    }
+
+    private Collection<TopicPartition> getNewPartitionCollectionWithDefaultStream(Collection<TopicPartition> partitions) {
+      if (checkIfPartitionsNeedDefaultStream(partitions)) {
+        List<TopicPartition> newPartitions = new ArrayList<TopicPartition>(partitions.size());
+        for (TopicPartition partition : partitions) {
+          if (useDefaultStreamName(partition.topic())) {
+            partition = addDefaultStreamNameToTopicPartition(partition);
+          }
+          newPartitions.add(partition);
+        }
+        return newPartitions;
+      } else {
+        return partitions;
+      }
+    }
+
+    private Map<TopicPartition, ? extends Object> getNewPartitionMapWithDefaultStream(Map<TopicPartition, ? extends Object> partitions) {
+      if (checkIfPartitionsNeedDefaultStream(partitions.keySet())) {
+        Map<TopicPartition, Object> newPartitions = new HashMap<TopicPartition, Object>();
+        for (Map.Entry<TopicPartition, ? extends Object> entry : partitions.entrySet()) {
+          TopicPartition tp = entry.getKey();
+          if (useDefaultStreamName(tp.topic())) {
+            tp = addDefaultStreamNameToTopicPartition(tp);
+          }
+          newPartitions.put(tp, entry.getValue());
+        }
+        return newPartitions;
+      } else {
+        return partitions;
+      }
+    }
+
+    private Collection<String> getNewTopicCollectionWithDefaultStream(Collection<String> topics) {
+      if (checkIfTopicsNeedDefaultStream(topics)) {
+        List<String> newTopics = new ArrayList<String>(topics.size());
+        for (String topic : topics) {
+          if (useDefaultStreamName(topic)) {
+            topic = addDefaultStreamNameToTopicName(topic);
+          }
+          newTopics.add(topic);
+        }
+        return newTopics;
+      } else {
+        return topics;
+      }
     }
 
     /**
@@ -836,12 +1033,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @return The set of partitions currently assigned to this consumer
      */
     public Set<TopicPartition> assignment() {
+      if (consumerDriver == null) {
+        return (new HashSet<TopicPartition>());
+      } else if (isStreams) {
+        return consumerDriver.assignment();
+      } else {
         acquireAndEnsureOpen();
         try {
             return Collections.unmodifiableSet(new HashSet<>(this.subscriptions.assignedPartitions()));
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -850,12 +1053,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @return The set of topics currently subscribed to
      */
     public Set<String> subscription() {
+      if (consumerDriver == null) {
+        return (new HashSet<String>());
+      } else if (isStreams) {
+        return consumerDriver.subscription();
+      } else {
         acquireAndEnsureOpen();
         try {
             return Collections.unmodifiableSet(new HashSet<>(this.subscriptions.subscription()));
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -895,6 +1104,25 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Collection<String> topics, ConsumerRebalanceListener listener) {
+      if (topics.size() == 0) {
+        // Since there aren't any topics in this case, we can ignore the ConsumerRebalanceListener
+        log.debug("Subscribing to empty topics list");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(topics.iterator().next());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isStreams) {
+        topics = getNewTopicCollectionWithDefaultStream(topics);
+        consumerDriver.subscribe(topics, listener);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (topics == null) {
@@ -917,7 +1145,17 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
+
+     /**
+      * Retained for backward binary compatibility.
+      * See {@link #subscribe(Collection, ConsumerRebalanceListener)}
+      */
+     @Override
+     public void subscribe(List<String> topics, ConsumerRebalanceListener listener) {
+       subscribe((Collection<String>)topics, listener);
+      }
 
     /**
      * Subscribe to the given list of topics to get dynamically assigned partitions.
@@ -946,6 +1184,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * Retained for backward binary compatibility
+     * See {@link #subscribe(Collection)}
+     */
+    @Override
+    public void subscribe(List<String> topics) {
+      subscribe(topics, new NoOpConsumerRebalanceListener());
+    }
+
+    /**
      * Subscribe to all topics matching specified pattern to get dynamically assigned partitions.
      * The pattern matching will be done periodically against all topics existing at the time of check.
      * This can be controlled through the {@code metadata.max.age.ms} configuration: by lowering
@@ -966,6 +1213,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Pattern pattern, ConsumerRebalanceListener listener) {
+      if (consumerDriver == null) {
+        initializeConsumer(pattern.toString());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isStreams) {
+        pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
+        consumerDriver.subscribe(pattern, listener);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (pattern == null)
@@ -981,6 +1241,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1009,6 +1270,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * This also clears any partitions directly assigned through {@link #assign(Collection)}.
      */
     public void unsubscribe() {
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isStreams) {
+        consumerDriver.unsubscribe();
+      } else {
         acquireAndEnsureOpen();
         try {
             log.debug("Unsubscribed all topics or patterns and assigned partitions");
@@ -1018,6 +1287,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1041,6 +1311,24 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void assign(Collection<TopicPartition> partitions) {
+      if (partitions.size() == 0) {
+        log.debug("assigning empty partitions list");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot subscribe");
+        return;
+      }
+
+      if (isStreams) {
+        partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+        consumerDriver.assign(partitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1067,6 +1355,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * Retained for backward binary compatibility.
+     * See {@link #assign(Collection)}
+     */
+    @Override
+    public void assign(List<TopicPartition> partitions) {
+      assign((Collection<TopicPartition>)partitions);
     }
 
     /**
@@ -1100,6 +1398,17 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isStreams) {
+        ConsumerRecords<K,V> records  = consumerDriver.poll(timeout);
+        if (this.interceptors != null) {
+          records = this.interceptors.onConsume(records);
+        }
+        return records;
+      } else {
         acquireAndEnsureOpen();
         try {
             if (timeout < 0)
@@ -1134,6 +1443,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1213,12 +1523,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync() {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isStreams) {
+        consumerDriver.commitSync();
+      } else {
         acquireAndEnsureOpen();
         try {
             coordinator.commitOffsetsSync(subscriptions.allConsumed(), Long.MAX_VALUE);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1252,12 +1570,34 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync(final Map<TopicPartition, OffsetAndMetadata> offsets) {
+      if (offsets.size() == 0) {
+        log.debug("commitSync called with empty offsets");
+        return;
+      }
+
+      if (consumerDriver == null) {
+        Set<TopicPartition> partitions = offsets.keySet();
+        initializeConsumer((partitions.iterator().next()).topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot commit");
+        return;
+      }
+
+      if (isStreams) {
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, OffsetAndMetadata> newoffsets =
+            (Map<TopicPartition, OffsetAndMetadata> )getNewPartitionMapWithDefaultStream(offsets);
+        consumerDriver.commitSync(newoffsets);
+      } else {
         acquireAndEnsureOpen();
         try {
             coordinator.commitOffsetsSync(new HashMap<>(offsets), Long.MAX_VALUE);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1288,12 +1628,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(OffsetCommitCallback callback) {
+      if (consumerDriver == null) {
+        throw new IllegalStateException("No active subscriptions");
+      }
+
+      if (isStreams) {
+        consumerDriver.commitAsync(callback);
+      } else {
         acquireAndEnsureOpen();
         try {
             commitAsync(subscriptions.allConsumed(), callback);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1318,6 +1666,28 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, OffsetCommitCallback callback) {
+      if (offsets.size() == 0) {
+        log.debug("commitAsync with no offsets");
+        callback.onComplete(offsets, null /*exception*/);
+        return;
+      }
+
+      if (consumerDriver == null) {
+        Set<TopicPartition> partitions = offsets.keySet();
+        initializeConsumer((partitions.iterator().next()).topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot commit");
+        return;
+      }
+
+      if (isStreams) {
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, OffsetAndMetadata> newOffsets =
+              (Map<TopicPartition, OffsetAndMetadata>)getNewPartitionMapWithDefaultStream(offsets);
+        consumerDriver.commitAsync(newOffsets, callback);
+      } else {
         acquireAndEnsureOpen();
         try {
             log.debug("Committing offsets: {}", offsets);
@@ -1325,6 +1695,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1337,6 +1708,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void seek(TopicPartition partition, long offset) {
+      if (offset < 0) {
+          throw new IllegalArgumentException("seek offset must not be a negative number");
+      }
+
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isStreams) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
+        consumerDriver.seek(partition, offset);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (offset < 0)
@@ -1347,6 +1735,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1357,6 +1746,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws IllegalArgumentException if {@code partitions} is {@code null} or the provided TopicPartition is not assigned to this consumer
      */
     public void seekToBeginning(Collection<TopicPartition> partitions) {
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isStreams) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+        consumerDriver.seekToBeginning(partitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1370,6 +1772,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * @deprecated use {@link #subscribe(Collection, ConsumerRebalanceListener)} instead.
+     */
+    @Deprecated
+    public void seekToBeginning(TopicPartition... partitions) {
+      seekToBeginning(Arrays.asList(partitions));
     }
 
     /**
@@ -1383,6 +1794,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws IllegalArgumentException if {@code partitions} is {@code null} or the provided TopicPartition is not assigned to this consumer
      */
     public void seekToEnd(Collection<TopicPartition> partitions) {
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot seek");
+        return;
+      }
+
+      if (isStreams) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+        consumerDriver.seekToEnd(partitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (partitions == null) {
@@ -1396,6 +1820,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * @deprecated use {@link #seekToEnd(Collection)} instead.
+     */
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions) {
+      seekToEnd(Arrays.asList(partitions));
     }
 
     /**
@@ -1420,6 +1853,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
      */
     public long position(TopicPartition partition) {
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get position");
+        throw new NoOffsetForPartitionException(partition);
+      }
+
+      if (isStreams) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
+        return consumerDriver.position(partition);
+      } else {
         acquireAndEnsureOpen();
         try {
             if (!this.subscriptions.isAssigned(partition))
@@ -1435,6 +1881,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1456,6 +1903,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public OffsetAndMetadata committed(TopicPartition partition) {
+      if (consumerDriver == null) {
+        initializeConsumer(partition.topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get committed");
+        throw new NoOffsetForPartitionException(partition);
+      }
+
+      if (isStreams) {
+        partition = getNewTopicPartitionWithDefaultStream(partition);
+        return consumerDriver.committed(partition);
+      } else {
         acquireAndEnsureOpen();
         try {
             Map<TopicPartition, OffsetAndMetadata> offsets = coordinator.fetchCommittedOffsets(Collections.singleton(partition));
@@ -1463,6 +1923,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1470,7 +1931,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
+      if (consumerDriver == null) {
+        log.info("consumed not initialized, cannot get metrics");
+        return null;
+      }
+
+      if (isStreams) {
+        return consumerDriver.metrics();
+      } else {
         return Collections.unmodifiableMap(this.metrics.metrics());
+      }
     }
 
     /**
@@ -1491,6 +1961,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public List<PartitionInfo> partitionsFor(String topic) {
+      if (consumerDriver == null) {
+        initializeConsumer(topic);
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get partitionsFor " + topic);
+        return null;
+      }
+
+      if (isStreams) {
+        topic = getNewTopicNameWithDefaultStream(topic);
+        return consumerDriver.partitionsFor(topic);
+      } else {
         acquireAndEnsureOpen();
         try {
             Cluster cluster = this.metadata.fetch();
@@ -1504,6 +1987,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1521,12 +2005,73 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<String, List<PartitionInfo>> listTopics() {
+      if (consumerDriver == null) {
+        log.info("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isStreams) {
+        if (defaultStream == null) {
+          throw new KafkaException("Cannot get listTopics() without default stream name");
+        }
+        return consumerDriver.listTopics(defaultStream);
+      } else {
         acquireAndEnsureOpen();
         try {
             return fetcher.getAllTopicMetadata(requestTimeoutMs);
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * Get metadata about partitions for all topics of the stream. This method will issue a remote
+     * call to the server.
+     *
+     * @return The map of topics and its partitions
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+      if (consumerDriver == null) {
+        initializeConsumer(stream + ":");
+      }
+
+      if (consumerDriver == null) {
+        log.info("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isStreams) {
+        return consumerDriver.listTopics(stream);
+      } else {
+        throw new KafkaException("Unsupported method for KafkaConsumer");
+      }
+    }
+
+    /**
+     * Get metadata about partitions for all topics of the stream that matches the pattern.  If the pattern does not contain a stream name,
+     * and the default stream name is specified, then the default stream is used.
+     *
+     * @return The map of topics and its partitions
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+      if (consumerDriver == null) {
+        initializeConsumer(pattern.toString() + ":");
+      }
+
+      if (consumerDriver == null) {
+        log.info("consumer closed or not initialized, cannot listTopics");
+        return new HashMap<String, List<PartitionInfo>>();
+      }
+
+      if (isStreams) {
+        pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
+        return consumerDriver.listTopics(pattern);
+      } else {
+        throw new KafkaException("Unsupported method for KafkaConsumer");
+      }
     }
 
     /**
@@ -1539,6 +2084,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void pause(Collection<TopicPartition> partitions) {
+     if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot pause");
+        return;
+      }
+
+      if (isStreams) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+        consumerDriver.pause(partitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             log.debug("Pausing partitions {}", partitions);
@@ -1548,6 +2106,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * @deprecated use {@link #pause(Collection)} instead.
+     */
+    @Deprecated
+    public void pause(TopicPartition... partitions) {
+      pause(Arrays.asList(partitions));
     }
 
     /**
@@ -1559,6 +2126,19 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void resume(Collection<TopicPartition> partitions) {
+     if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot resume");
+        return;
+      }
+
+      if (isStreams) {
+				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+        consumerDriver.resume(partitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             log.debug("Resuming partitions {}", partitions);
@@ -1568,6 +2148,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
+    }
+
+    /**
+     * @deprecated use {@link #resume(Collection)} instead.
+     */
+    @Deprecated
+    public void resume(TopicPartition... partitions) {
+      resume(Arrays.asList(partitions));
     }
 
     /**
@@ -1577,12 +2166,18 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Set<TopicPartition> paused() {
+      if (consumerDriver == null) {
+        return (new HashSet<TopicPartition>());
+      } else if (isStreams) {
+        return consumerDriver.paused();
+      } else {
         acquireAndEnsureOpen();
         try {
             return Collections.unmodifiableSet(subscriptions.pausedPartitions());
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1605,8 +2200,27 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws org.apache.kafka.common.errors.UnsupportedVersionException if the broker does not support looking up
      *         the offsets by timestamp
      */
+    @SuppressWarnings("unchecked")
     @Override
     public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
+      if (timestampsToSearch.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      if (consumerDriver == null) {
+        initializeConsumer(timestampsToSearch.keySet().iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get offsetsForTimes");
+        return new HashMap<TopicPartition, OffsetAndTimestamp>();
+      }
+
+      if (isStreams) {
+        @SuppressWarnings("unchecked")
+        Map<TopicPartition, Long> newTimestampsToSearch =
+            (Map<TopicPartition, Long>)getNewPartitionMapWithDefaultStream(timestampsToSearch);
+        return consumerDriver.offsetsForTimes(newTimestampsToSearch);
+      } else {
         acquireAndEnsureOpen();
         try {
             for (Map.Entry<TopicPartition, Long> entry : timestampsToSearch.entrySet()) {
@@ -1620,6 +2234,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1638,12 +2253,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions) {
+      if (partitions.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get endOffsets");
+        return new HashMap<TopicPartition, Long>();
+      }
+
+      if (isStreams) {
+        Collection<TopicPartition>  newPartitions =
+                                  getNewPartitionCollectionWithDefaultStream(partitions);
+        return consumerDriver.beginningOffsets(newPartitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             return fetcher.beginningOffsets(partitions, requestTimeoutMs);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1669,12 +2302,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions) {
+      if (partitions.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      if (consumerDriver == null) {
+        initializeConsumer(partitions.iterator().next().topic());
+      }
+
+      if (consumerDriver == null) {
+        log.error("consumer closed, cannot get endOffsets");
+        return new HashMap<TopicPartition, Long>();
+      }
+
+      if (isStreams) {
+        Collection<TopicPartition>  newPartitions =
+                                  getNewPartitionCollectionWithDefaultStream(partitions);
+        return consumerDriver.endOffsets(newPartitions);
+      } else {
         acquireAndEnsureOpen();
         try {
             return fetcher.endOffsets(partitions, requestTimeoutMs);
         } finally {
             release();
         }
+      }
     }
 
     /**
@@ -1689,7 +2340,25 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void close() {
+     Consumer<K, V> consumerDriverToDelete = null;
+
+      synchronized(this) {
+        if (isStreamsClosed) {
+          return;
+        }
+        isStreamsClosed = true;
+        if (consumerDriver == null) {
+          return;
+        }
+        consumerDriverToDelete = consumerDriver;
+        consumerDriver = null;
+      }
+
+      if (isStreams) {
+        consumerDriverToDelete.close();
+      } else {
         close(DEFAULT_CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      }
     }
 
     /**
@@ -1708,17 +2377,34 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws org.apache.kafka.common.KafkaException for any other error during close
      */
     public void close(long timeout, TimeUnit timeUnit) {
-        if (timeout < 0)
-            throw new IllegalArgumentException("The timeout cannot be negative.");
+      if (timeout < 0) {
+        throw new IllegalArgumentException("The timeout cannot be negative.");
+      }
+
+      Consumer<K, V> consumerDriverToDelete = null;
+      synchronized(this) {
+        if (isStreamsClosed) {
+          return;
+        }
+        isStreamsClosed = true;
+        if (consumerDriver == null) {
+          return;
+        }
+
+        consumerDriverToDelete = consumerDriver;
+        consumerDriver = null;
+      }
+
+      if (isStreams) {
+        consumerDriverToDelete.close(timeout, timeUnit);
+      } else {
         acquire();
         try {
-            if (!closed) {
-                closed = true;
-                close(timeUnit.toMillis(timeout), false);
-            }
+          close(timeUnit.toMillis(timeout), false);
         } finally {
-            release();
+          release();
         }
+      }
     }
 
     /**
@@ -1728,7 +2414,21 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void wakeup() {
+      if (consumerDriver == null) {
+        log.info("consumed not initialized, cannot wakeup");
+        return;
+      }
+
+      if (closed || isStreamsClosed) {
+        log.error("Consumer closed, cannot wake up.");
+        return;
+      }
+
+      if (isStreams) {
+        consumerDriver.wakeup();
+      } else {
         this.client.wakeup();
+      }
     }
 
     private ClusterResourceListeners configureClusterResourceListeners(Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer, List<?>... candidateLists) {

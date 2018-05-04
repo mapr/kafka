@@ -45,8 +45,6 @@ should_include_file() {
   fi
 }
 
-base_dir=$(dirname $0)/..
-
 if [ -z "$SCALA_VERSION" ]; then
   SCALA_VERSION=2.11.12
 fi
@@ -55,93 +53,19 @@ if [ -z "$SCALA_BINARY_VERSION" ]; then
   SCALA_BINARY_VERSION=$(echo $SCALA_VERSION | cut -f 1-2 -d '.')
 fi
 
-# run ./gradlew copyDependantLibs to get all dependant jars in a local dir
-shopt -s nullglob
-for dir in "$base_dir"/core/build/dependant-libs-${SCALA_VERSION}*;
-do
-  CLASSPATH="$CLASSPATH:$dir/*"
-done
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
 
-for file in "$base_dir"/examples/build/libs/kafka-examples*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
+# Set up Java classpath, start with $MAPR_CONF
+CLASSPATH=$MAPR_CONF
+# Add MapR jars
+CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
+# Add logger jars
+CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
+# Add 3rd party jars
+CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
 
-if [ -z "$UPGRADE_KAFKA_STREAMS_TEST_VERSION" ]; then
-  clients_lib_dir=$(dirname $0)/../clients/build/libs
-  streams_lib_dir=$(dirname $0)/../streams/build/libs
-  rocksdb_lib_dir=$(dirname $0)/../streams/build/dependant-libs-${SCALA_VERSION}
-else
-  clients_lib_dir=/opt/kafka-$UPGRADE_KAFKA_STREAMS_TEST_VERSION/libs
-  streams_lib_dir=$clients_lib_dir
-  rocksdb_lib_dir=$streams_lib_dir
-fi
-
-
-for file in "$clients_lib_dir"/kafka-clients*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for file in "$streams_lib_dir"/kafka-streams*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-if [ -z "$UPGRADE_KAFKA_STREAMS_TEST_VERSION" ]; then
-  for file in "$base_dir"/streams/examples/build/libs/kafka-streams-examples*.jar;
-  do
-    if should_include_file "$file"; then
-      CLASSPATH="$CLASSPATH":"$file"
-    fi
-  done
-else
-  VERSION_NO_DOTS=`echo $UPGRADE_KAFKA_STREAMS_TEST_VERSION | sed 's/\.//g'`
-  SHORT_VERSION_NO_DOTS=${VERSION_NO_DOTS:0:((${#VERSION_NO_DOTS} - 1))} # remove last char, ie, bug-fix number
-  for file in "$base_dir"/streams/upgrade-system-tests-$SHORT_VERSION_NO_DOTS/build/libs/kafka-streams-upgrade-system-tests*.jar;
-  do
-    if should_include_file "$file"; then
-      CLASSPATH="$CLASSPATH":"$file"
-    fi
-  done
-fi
-
-for file in "$rocksdb_lib_dir"/rocksdb*.jar;
-do
-  CLASSPATH="$CLASSPATH":"$file"
-done
-
-for file in "$base_dir"/tools/build/libs/kafka-tools*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-
-for dir in "$base_dir"/tools/build/dependant-libs-${SCALA_VERSION}*;
-do
-  CLASSPATH="$CLASSPATH:$dir/*"
-done
-
-for cc_pkg in "api" "transforms" "runtime" "file" "json" "tools"
-do
-  for file in "$base_dir"/connect/${cc_pkg}/build/libs/connect-${cc_pkg}*.jar;
-  do
-    if should_include_file "$file"; then
-      CLASSPATH="$CLASSPATH":"$file"
-    fi
-  done
-  if [ -d "$base_dir/connect/${cc_pkg}/build/dependant-libs" ] ; then
-    CLASSPATH="$CLASSPATH:$base_dir/connect/${cc_pkg}/build/dependant-libs/*"
-  fi
-done
-
+base_dir=$(dirname $0)/..
 # classpath addition for release
 for file in "$base_dir"/libs/*;
 do
@@ -150,13 +74,16 @@ do
   fi
 done
 
-for file in "$base_dir"/core/build/libs/kafka_${SCALA_BINARY_VERSION}*.jar;
-do
-  if should_include_file "$file"; then
-    CLASSPATH="$CLASSPATH":"$file"
-  fi
-done
-shopt -u nullglob
+# Add kafka Connect plugins to classpath
+if [ ! -z $CONNECTORS_CLASSPATH ]; then
+    CLASSPATH="$CLASSPATH$CONNECTORS_CLASSPATH"
+fi
+
+# Remove old guava from classpath
+CLASSPATH=$(echo $CLASSPATH |sed 's/\/opt\/mapr\/lib\/guava-14.0.1.jar//')
+
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
 
 if [ -z "$CLASSPATH" ] ; then
   echo "Classpath is empty. Please build the project first e.g. by running './gradlew jar -PscalaVersion=$SCALA_VERSION'"
@@ -219,6 +146,13 @@ if [ "x$KAFKA_DEBUG" != "x" ]; then
 
     echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
     KAFKA_OPTS="$JAVA_DEBUG_OPTS $KAFKA_OPTS"
+fi
+
+env=$MAPR_CONF/env.sh
+[ -f $env ] && . $env
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  KAFKA_OPTS="$KAFKA_OPTS -Dhadoop.login=hybrid"
 fi
 
 # Which java to use

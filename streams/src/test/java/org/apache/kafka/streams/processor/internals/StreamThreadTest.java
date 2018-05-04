@@ -95,7 +95,7 @@ public class StreamThreadTest {
         processId = UUID.randomUUID();
 
         internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(internalStreamsBuilder);
-        internalTopologyBuilder.setApplicationId(applicationId);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream");
         streamsMetadataState = new StreamsMetadataState(internalTopologyBuilder, StreamsMetadataState.UNKNOWN_HOST);
     }
 

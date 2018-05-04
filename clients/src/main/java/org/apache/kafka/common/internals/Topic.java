@@ -43,7 +43,7 @@ public class Topic {
                     " characters, topic name: " + topic);
         if (!containsValidPattern(topic))
             throw new InvalidTopicException("Topic name \"" + topic + "\" is illegal, it contains a character other than " +
-                    "ASCII alphanumerics, '.', '_' and '-'");
+                    "ASCII alphanumerics, '.', '_', '/', ':' and '-'");
     }
 
     public static boolean isInternal(String topic) {
@@ -80,7 +80,7 @@ public class Topic {
 
             // We don't use Character.isLetterOrDigit(c) because it's slower
             boolean validChar = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || c == '.' ||
-                    c == '_' || c == '-';
+                    c == '_' || c == '-' || c == '/' || c == ':';
             if (!validChar)
                 return false;
         }

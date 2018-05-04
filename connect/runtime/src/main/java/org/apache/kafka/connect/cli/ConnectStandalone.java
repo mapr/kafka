@@ -73,6 +73,10 @@ public class ConnectStandalone {
             Map<String, String> workerProps = !workerPropsFile.isEmpty() ?
                     Utils.propsToStringMap(Utils.loadProps(workerPropsFile)) : Collections.<String, String>emptyMap();
 
+            // Load the MarlinClient and associated jni classes first.
+            log.info("Loading MarlinClient");
+            Class.forName("com.mapr.streams.impl.MarlinClient");
+
             log.info("Scanning for plugin classes. This might take a moment ...");
             Plugins plugins = new Plugins(workerProps);
             plugins.compareAndSwapWithDelegatingLoader();

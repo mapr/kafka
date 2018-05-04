@@ -103,7 +103,7 @@ public class InternalTopologyBuilderTest {
     @Test
     public void shouldAddPatternSourceWithoutOffsetReset() {
         final Pattern expectedPattern = Pattern.compile("test-.*");
-        
+
         builder.addSource(null, "source", null, stringSerde.deserializer(), stringSerde.deserializer(), Pattern.compile("test-.*"));
 
         assertEquals(expectedPattern.pattern(), builder.sourceTopicPattern().pattern());
@@ -211,7 +211,7 @@ public class InternalTopologyBuilderTest {
 
     @Test
     public void testSourceTopics() {
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource(null, "source-1", null, null, null, "topic-1");
         builder.addSource(null, "source-2", null, null, null, "topic-2");
         builder.addSource(null, "source-3", null, null, null, "topic-3");
@@ -300,7 +300,7 @@ public class InternalTopologyBuilderTest {
     public void testAddStateStore() {
         final StateStoreSupplier supplier = new MockStateStoreSupplier("store-1", false);
         builder.addStateStore(supplier);
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource(null, "source-1", null, null, null, "topic-1");
         builder.addProcessor("processor-1", new MockProcessorSupplier(), "source-1");
 
@@ -315,7 +315,7 @@ public class InternalTopologyBuilderTest {
 
     @Test
     public void testTopicGroups() {
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addInternalTopic("topic-1x");
         builder.addSource(null, "source-1", null, null, null, "topic-1", "topic-1x");
         builder.addSource(null, "source-2", null, null, null, "topic-2");
@@ -348,7 +348,7 @@ public class InternalTopologyBuilderTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testTopicGroupsByStateStore() {
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         builder.addSource(null, "source-1", null, null, null, "topic-1", "topic-1x");
         builder.addSource(null, "source-2", null, null, null, "topic-2");
         builder.addSource(null, "source-3", null, null, null, "topic-3");
@@ -371,9 +371,9 @@ public class InternalTopologyBuilderTest {
         final Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups = builder.topicGroups();
 
         final Map<Integer, InternalTopologyBuilder.TopicsInfo> expectedTopicGroups = new HashMap<>();
-        final String store1 = ProcessorStateManager.storeChangelogTopic("X", "store-1");
-        final String store2 = ProcessorStateManager.storeChangelogTopic("X", "store-2");
-        final String store3 = ProcessorStateManager.storeChangelogTopic("X", "store-3");
+        final String store1 = ProcessorStateManager.storeChangelogTopic("X", "store-1", "/stream1");
+        final String store2 = ProcessorStateManager.storeChangelogTopic("X", "store-2", "/stream1");
+        final String store3 = ProcessorStateManager.storeChangelogTopic("X", "store-3", "/stream1");
         expectedTopicGroups.put(0, new InternalTopologyBuilder.TopicsInfo(
             Collections.<String>emptySet(), mkSet("topic-1", "topic-1x", "topic-2"),
             Collections.<String, InternalTopicConfig>emptyMap(),
@@ -403,7 +403,7 @@ public class InternalTopologyBuilderTest {
         builder.addProcessor("processor-2", new MockProcessorSupplier(), "source-2", "processor-1");
         builder.addProcessor("processor-3", new MockProcessorSupplier(), "source-3", "source-4");
 
-        builder.setApplicationId("X");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
         final ProcessorTopology topology0 = builder.build(0);
         final ProcessorTopology topology1 = builder.build(1);
         final ProcessorTopology topology2 = builder.build(2);
@@ -460,7 +460,7 @@ public class InternalTopologyBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldNotSetApplicationIdToNull() throws Exception {
-        builder.setApplicationId(null);
+        builder.setApplicationIdAndInternalStream(null, null);
     }
 
     @SuppressWarnings("deprecation")
@@ -499,7 +499,7 @@ public class InternalTopologyBuilderTest {
 
     @Test
     public void shouldCorrectlyMapStateStoreToInternalTopics() throws Exception {
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addInternalTopic("internal-topic");
         builder.addSource(null, "source", null, null, null, "internal-topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
@@ -512,7 +512,7 @@ public class InternalTopologyBuilderTest {
     @SuppressWarnings("unchecked")
     @Test
     public void shouldAddInternalTopicConfigForWindowStores() throws Exception {
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addSource(null, "source", null, null, null, "topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addStateStore(new RocksDBWindowStoreSupplier("store", 30000, 3, false, null, null, 10000, true, Collections.<String, String>emptyMap(), false), "processor");
@@ -530,7 +530,7 @@ public class InternalTopologyBuilderTest {
     @SuppressWarnings("unchecked")
     @Test
     public void shouldAddInternalTopicConfigForNonWindowStores() throws Exception {
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addSource(null, "source", null, null, null, "topic");
         builder.addProcessor("processor", new MockProcessorSupplier(), "source");
         builder.addStateStore(new MockStateStoreSupplier("store", true), "processor");
@@ -547,7 +547,7 @@ public class InternalTopologyBuilderTest {
     @SuppressWarnings("unchecked")
     @Test
     public void shouldAddInternalTopicConfigForRepartitionTopics() throws Exception {
-        builder.setApplicationId("appId");
+        builder.setApplicationIdAndInternalStream("appId", "/sample-stream");
         builder.addInternalTopic("foo");
         builder.addSource(null, "source", null, null, null, "foo");
         final InternalTopologyBuilder.TopicsInfo topicsInfo = builder.topicGroups().values().iterator().next();
@@ -634,7 +634,7 @@ public class InternalTopologyBuilderTest {
         updatedTopics.add("topic-A");
 
         builder.updateSubscriptions(subscriptionUpdates, null);
-        builder.setApplicationId("test-id");
+        builder.setApplicationIdAndInternalStream("test-id", "/sample-stream");
 
         final Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups = builder.topicGroups();
         assertTrue(topicGroups.get(0).sourceTopics.contains("topic-foo"));
@@ -722,7 +722,7 @@ public class InternalTopologyBuilderTest {
         updatedTopics.add("topic-A");
 
         builder.updateSubscriptions(subscriptionUpdates, "test-thread");
-        builder.setApplicationId("test-app");
+        builder.setApplicationIdAndInternalStream("test-app", "/sample-stream");
 
         final Map<String, List<String>> stateStoreAndTopics = builder.stateStoreNameToSourceTopics();
         final List<String> topics = stateStoreAndTopics.get("testStateStore");

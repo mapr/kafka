@@ -31,6 +31,7 @@ public class StateStoreTestUtils {
 
     public static <K, V> KeyValueStore<K, V> newKeyValueStore(final String name,
                                                               final String applicationId,
+                                                              final String internalStream,
                                                               final Class<K> keyType,
                                                               final Class<V> valueType) {
         final InMemoryKeyValueStoreSupplier<K, V> supplier = new InMemoryKeyValueStoreSupplier<>(name,
@@ -44,7 +45,7 @@ public class StateStoreTestUtils {
         stateStore.init(
             new MockProcessorContext(
                 StateSerdes.withBuiltinTypes(
-                    ProcessorStateManager.storeChangelogTopic(applicationId, name),
+                    ProcessorStateManager.storeChangelogTopic(applicationId, name, internalStream),
                     keyType,
                     valueType),
                 new NoOpRecordCollector()),
