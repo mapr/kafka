@@ -331,7 +331,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     @SuppressWarnings("unchecked")
-    private KafkaProducer(ProducerConfig config, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
+    KafkaProducer(ProducerConfig config,
+                  Serializer<K> keySerializer,
+                  Serializer<V> valueSerializer,
+                  Metadata metadata,
+                  KafkaClient kafkaClient) {
 			Map<String, Object> userProvidedConfigs = config.originals();
 			this.producerConfig = config;
 			String clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG);
@@ -497,7 +501,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             }
             ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config);
             Sensor throttleTimeSensor = Sender.throttleTimeSensor(metricsRegistry.senderMetrics);
-            KafkaClient client = kafkaClient != null ? kafkaClient : new NetworkClient(
+            KafkaClient client = new NetworkClient(
                     new Selector(config.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
                             this.metrics, time, "producer", channelBuilder, logContext),
                     this.metadata,
@@ -1316,6 +1320,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             }
             throw new KafkaException("Failed to close kafka producer", exception);
         }
+      }
     }
 
     private ClusterResourceListeners configureClusterResourceListeners(Serializer<K> keySerializer, Serializer<V> valueSerializer, List<?>... candidateLists) {

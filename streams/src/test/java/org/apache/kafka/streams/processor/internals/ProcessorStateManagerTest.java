@@ -31,6 +31,7 @@ import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.state.internals.OffsetCheckpoint;
 import org.apache.kafka.test.MockBatchingStateRestoreListener;
 import org.apache.kafka.test.MockStateStore;
+import org.apache.kafka.test.MockStateStoreSupplier;
 import org.apache.kafka.test.NoOpProcessorContext;
 import org.apache.kafka.test.TestUtils;
 import org.junit.After;
@@ -68,8 +69,8 @@ public class ProcessorStateManagerTest {
     private final String nonPersistentStoreName = "nonPersistentStore";
     private final String persistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreName, "/stream1");
     private final String nonPersistentStoreTopicName = ProcessorStateManager.storeChangelogTopic(applicationId, nonPersistentStoreName, "/stream1");
-    private final MockStateStoreSupplier.MockStateStore persistentStore = new MockStateStoreSupplier.MockStateStore(persistentStoreName, true);
-    private final MockStateStoreSupplier.MockStateStore nonPersistentStore = new MockStateStoreSupplier.MockStateStore(nonPersistentStoreName, false);
+    private final MockStateStore persistentStore = new MockStateStore(persistentStoreName, true);
+    private final MockStateStore nonPersistentStore = new MockStateStore(nonPersistentStoreName, false);
     private final TopicPartition persistentStorePartition = new TopicPartition(persistentStoreTopicName, 1);
     private final String storeName = "mockStateStore";
     private final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, storeName, "/stream1");
@@ -292,7 +293,7 @@ public class ProcessorStateManagerTest {
         final HashMap<TopicPartition, Long> ackedOffsets = new HashMap<>();
         ackedOffsets.put(new TopicPartition(persistentStoreTopicName, 1), 123L);
         ackedOffsets.put(new TopicPartition(nonPersistentStoreTopicName, 1), 456L);
-        ackedOffsets.put(new TopicPartition(ProcessorStateManager.storeChangelogTopic(applicationId, "otherTopic", ), 1), 789L);
+        ackedOffsets.put(new TopicPartition(ProcessorStateManager.storeChangelogTopic(applicationId, "otherTopic", "/stream1"), 1), 789L);
 
         final ProcessorStateManager stateMgr = new ProcessorStateManager(
             taskId,

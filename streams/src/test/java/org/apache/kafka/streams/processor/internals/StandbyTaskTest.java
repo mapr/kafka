@@ -81,6 +81,7 @@ public class StandbyTaskTest {
     private final String storeName2 = "store2";
     private final String storeChangelogTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1, "/stream1");
     private final String storeChangelogTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2, "/stream1");
+    private final String globalStoreName = "ktable1";
 
     private final TopicPartition partition1 = new TopicPartition(storeChangelogTopicName1, 1);
     private final TopicPartition partition2 = new TopicPartition(storeChangelogTopicName2, 1);

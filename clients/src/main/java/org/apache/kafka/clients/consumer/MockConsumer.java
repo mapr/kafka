@@ -312,6 +312,13 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
             subscriptions.requestOffsetReset(tp, OffsetResetStrategy.LATEST);
     }
 
+    @Override
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions) {
+      seekToEnd(Arrays.asList(partitions));
+    }
+
+
     // needed for cases where you make a second call to endOffsets
     public synchronized void addEndOffsets(final Map<TopicPartition, Long> newOffsets) {
         innerUpdateEndOffsets(newOffsets, false);

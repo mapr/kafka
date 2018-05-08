@@ -34,6 +34,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
+import org.apache.kafka.streams.mapr.Utils;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.PunctuationType;
 import org.apache.kafka.streams.processor.Punctuator;
@@ -212,7 +213,10 @@ public class TopologyTestDriver implements Closeable {
         mockTime = new MockTime(initialWallClockTimeMs);
 
         internalTopologyBuilder = topology.internalTopologyBuilder;
-        internalTopologyBuilder.setApplicationId(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG));
+        Utils.internalStreamExistanceCheck(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG),
+                                                                  StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
+        internalTopologyBuilder.setDefaultStream(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
 
         processorTopology = internalTopologyBuilder.build(null);
         final ProcessorTopology globalTopology  = internalTopologyBuilder.buildGlobalStateTopology();
