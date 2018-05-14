@@ -1493,6 +1493,7 @@ project(':connect:runtime') {
     compile libs.jettyServlet
     compile libs.jettyServlets
     compile libs.jettyClient
+    compile libs.jpam
     compile(libs.reflections)
     compile(libs.mavenArtifact)
 

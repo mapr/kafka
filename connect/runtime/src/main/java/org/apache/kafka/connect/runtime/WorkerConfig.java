@@ -25,10 +25,7 @@ import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.connect.storage.SimpleHeaderConverter;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.ValidString.in;
@@ -176,7 +173,20 @@ public class WorkerConfig extends AbstractConfig {
     public static final String METRICS_NUM_SAMPLES_CONFIG = CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG;
     public static final String METRICS_RECORDING_LEVEL_CONFIG = CommonClientConfigs.METRICS_RECORDING_LEVEL_CONFIG;
     public static final String METRIC_REPORTER_CLASSES_CONFIG = CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG;
-
+    public static final String AUTHENTICATION_METHOD_CONFIG = "authentication.method";
+    public static final String AUTHENTICATION_METHOD_BASIC = "BASIC";
+    public static final String AUTHENTICATION_METHOD_NONE = "NONE";
+    public static final String AUTHENTICATION_METHOD_DOC =
+          "Method of authentication. Must be BASIC to enable authentication. "
+                  + "You must supply a valid JAAS config file for the 'java.security.auth.login.config'"
+                  + " system property for the appropriate authentication provider.";
+    public static final String AUTHENTICATION_REALM_CONFIG = "authentication.realm";
+    public static final String AUTHENTICATION_REALM_DOC =
+          "Security realm to be used in authentication.";
+    public static final String AUTHENTICATION_ROLES_CONFIG = "authentication.roles";
+    public static final String AUTHENTICATION_ROLES_DOC = "Valid roles to authenticate against.";
+    public static final List<String> AUTHENTICATION_ROLES_DEFAULT =
+          Collections.unmodifiableList(Arrays.asList("*"));
     /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
      * bootstrap their own ConfigDef.
@@ -236,7 +246,22 @@ public class WorkerConfig extends AbstractConfig {
                         ConfigDef.Type.STRING, "none", ConfigDef.Importance.LOW, BrokerSecurityConfigs.SSL_CLIENT_AUTH_DOC)
                 .define(HEADER_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         HEADER_CONVERTER_CLASS_DEFAULT,
-                        Importance.LOW, HEADER_CONVERTER_CLASS_DOC);
+                        Importance.LOW, HEADER_CONVERTER_CLASS_DOC)
+                .define(AUTHENTICATION_METHOD_CONFIG,
+                        Type.STRING,
+                        AUTHENTICATION_METHOD_BASIC,
+                        Importance.LOW,
+                        AUTHENTICATION_METHOD_DOC)
+                .define(AUTHENTICATION_REALM_CONFIG,
+                        Type.STRING,
+                        "jpamLogin",
+                        Importance.LOW,
+                        AUTHENTICATION_REALM_DOC)
+                .define(AUTHENTICATION_ROLES_CONFIG,
+                        Type.LIST,
+                        AUTHENTICATION_ROLES_DEFAULT,
+                        Importance.LOW,
+                        AUTHENTICATION_ROLES_DOC);
     }
 
     @Override
