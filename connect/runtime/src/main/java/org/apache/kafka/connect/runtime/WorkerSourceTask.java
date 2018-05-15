@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -45,6 +46,7 @@ import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,7 @@ class WorkerSourceTask extends WorkerTask {
     private final OffsetStorageWriter offsetWriter;
     private final Time time;
     private final SourceTaskMetricsGroup sourceTaskMetricsGroup;
-
+    private String taskOwner;
     private List<SourceRecord> toSend;
     private boolean lastSendFailed; // Whether the last send failed *synchronously*, i.e. never made it into the producer's RecordAccumulator
     // Use IdentityHashMap to ensure correctness with duplicate records. This is a HashMap because
@@ -127,6 +129,7 @@ class WorkerSourceTask extends WorkerTask {
 
     @Override
     public void initialize(TaskConfig taskConfig) {
+        taskOwner = taskConfig.getString(TaskConfig.TASK_USER_CONFIG);
         try {
             this.taskConfig = taskConfig.originalsStrings();
         } catch (Throwable t) {
@@ -245,31 +248,23 @@ class WorkerSourceTask extends WorkerTask {
                 }
             }
             try {
-                final String topic = producerRecord.topic();
-                producer.send(
-                        producerRecord,
-                        new Callback() {
+                if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+                    try {
+                        UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskOwner,
+                          UserGroupInformation.getCurrentUser());
+                        ugi.doAs(new PrivilegedExceptionAction<Object>() {
                             @Override
-                            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                                if (e != null) {
-                                    // Given the default settings for zero data loss, this should basically never happen --
-                                    // between "infinite" retries, indefinite blocking on full buffers, and "infinite" request
-                                    // timeouts, callbacks with exceptions should never be invoked in practice. If the
-                                    // user overrode these settings, the best we can do is notify them of the failure via
-                                    // logging.
-                                    log.error("{} failed to send record to {}: {}", this, topic, e);
-                                    log.debug("{} Failed record: {}", this, preTransformRecord);
-                                } else {
-                                    log.trace("{} Wrote record successfully: topic {} partition {} offset {}",
-                                            this,
-                                            recordMetadata.topic(), recordMetadata.partition(),
-                                            recordMetadata.offset());
-                                    commitTaskRecord(preTransformRecord);
-                                }
-                                recordSent(producerRecord);
-                                counter.completeRecord();
+                            public Object run() {
+                                produceRecord(producerRecord, preTransformRecord, counter);
+                                return null;
                             }
                         });
+                    } catch (Exception e) {
+                         log.error("{} failed to impersonate user {}: {}", this, taskOwner, e);
+                    }
+                } else {
+                    produceRecord(producerRecord, preTransformRecord, counter);
+                }
                 lastSendFailed = false;
             } catch (RetriableException e) {
                 log.warn("{} Failed to send {}, backing off before retrying:", this, producerRecord, e);
@@ -453,6 +448,31 @@ class WorkerSourceTask extends WorkerTask {
         outstandingMessages = outstandingMessagesBacklog;
         outstandingMessagesBacklog = temp;
         flushing = false;
+    }
+
+    private void produceRecord(final ProducerRecord producerRecord, final SourceRecord preTransformRecord,
+                            final SourceRecordWriteCounter counter) {
+       final String topic = producerRecord.topic();
+        producer.send(
+              producerRecord,
+              new Callback() {
+                  @Override
+                  public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                      if (e != null) {
+                          log.error("{} failed to send record to {}: {}", this, topic, e);
+                          log.debug("{} Failed record: {}", this, preTransformRecord);
+                      } else {
+                          log.trace("{} Wrote record successfully: topic {} partition {} offset {}",
+                            this,
+                            recordMetadata.topic(), recordMetadata.partition(),
+                            recordMetadata.offset());
+                          commitTaskRecord(preTransformRecord);
+                      }
+                      recordSent(producerRecord);
+                      counter.completeRecord();
+                  }
+
+              });
     }
 
     @Override

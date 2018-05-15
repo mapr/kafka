@@ -137,6 +137,10 @@ public class Worker {
      */
     public void start() {
         log.info("Worker starting");
+        if ((config.getBoolean(WorkerConfig.REST_DOAS_CONFIG)) &&
+              ! config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG).equals(WorkerConfig.AUTHENTICATION_METHOD_BASIC)){
+            throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+        }
 
         offsetBackingStore.start();
         sourceTaskOffsetCommitter = new SourceTaskOffsetCommitter(config);
@@ -371,6 +375,7 @@ public class Worker {
             String connType = connConfig.getString(ConnectorConfig.CONNECTOR_CLASS_CONFIG);
             ClassLoader connectorLoader = plugins.delegatingLoader().connectorLoader(connType);
             savedLoader = Plugins.compareAndSwapLoaders(connectorLoader);
+            taskProps.put(TaskConfig.TASK_USER_CONFIG, connProps.get("connector.user"));
             final TaskConfig taskConfig = new TaskConfig(taskProps);
             final Class<? extends Task> taskClass = taskConfig.getClass(TaskConfig.TASK_CLASS_CONFIG).asSubclass(Task.class);
             final Task task = plugins.newTask(taskClass);

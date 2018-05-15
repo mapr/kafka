@@ -49,7 +49,9 @@ import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.apache.kafka.connect.util.SinkUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.hadoop.security.UserGroupInformation;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -167,15 +169,35 @@ class WorkerSinkTask extends WorkerTask {
 
     @Override
     public void execute() {
-        initializeAndStart();
-        try {
-            while (!isStopping())
-                iteration();
-        } finally {
-            // Make sure any uncommitted data has been committed and the task has
-            // a chance to clean up its state
-            closePartitions();
-        }
+        if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+            try {
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                  UserGroupInformation.getCurrentUser());
+                ugi.doAs(new PrivilegedExceptionAction() {
+                    @Override
+                    public Object run() {
+                      startTaskLoop();
+                      return null;
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+      } else {
+          startTaskLoop();
+      }
+    }
+
+    private void startTaskLoop() {
+      initializeAndStart();
+      try {
+        while (!isStopping())
+          iteration();
+      } finally {
+        // Make sure any uncommitted data has been committed and the task has
+        // a chance to clean up its state
+        closePartitions();
+      }
     }
 
     protected void iteration() {
@@ -437,7 +459,7 @@ class WorkerSinkTask extends WorkerTask {
     private KafkaConsumer<byte[], byte[]> createConsumer() {
         // Include any unknown worker configs so consumer configs can be set globally on the worker
         // and through to the task
-        Map<String, Object> props = new HashMap<>();
+        final Map<String, Object> props = new HashMap<>();
 
         props.put(ConsumerConfig.GROUP_ID_CONFIG, SinkUtils.consumerGroupId(id.connector()));
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -451,7 +473,18 @@ class WorkerSinkTask extends WorkerTask {
 
         KafkaConsumer<byte[], byte[]> newConsumer;
         try {
-            newConsumer = new KafkaConsumer<>(props);
+            if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                  UserGroupInformation.getCurrentUser());
+                newConsumer = ugi.doAs(new PrivilegedExceptionAction<KafkaConsumer>() {
+                    @Override
+                    public KafkaConsumer run() {
+                        return new KafkaConsumer<>(props);
+                    }
+                });
+            } else {
+                newConsumer = new KafkaConsumer<>(props);
+            }
         } catch (Throwable t) {
             throw new ConnectException("Failed to create consumer", t);
         }

@@ -25,7 +25,12 @@ import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.connect.storage.SimpleHeaderConverter;
 
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Collections;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.ValidString.in;
@@ -123,6 +128,11 @@ public class WorkerConfig extends AbstractConfig {
     private static final String REST_PORT_DOC
             = "Port for the REST API to listen on.";
     public static final int REST_PORT_DEFAULT = 8083;
+
+    public static final String REST_DOAS_CONFIG = "connect.enable.doAs";
+    private static final String REST_DOAS_DOC
+            = "Port for the REST API to listen on.";
+    public static final boolean REST_DOAS_DEFAULT = true;
 
     public static final String LISTENERS_CONFIG = "listeners";
     private static final String LISTENERS_DOC
@@ -261,7 +271,12 @@ public class WorkerConfig extends AbstractConfig {
                         Type.LIST,
                         AUTHENTICATION_ROLES_DEFAULT,
                         Importance.LOW,
-                        AUTHENTICATION_ROLES_DOC);
+                        AUTHENTICATION_ROLES_DOC)
+                .define(REST_DOAS_CONFIG,
+                        Type.BOOLEAN,
+                        REST_DOAS_DEFAULT,
+                        Importance.MEDIUM,
+                        REST_DOAS_DOC);
     }
 
     @Override

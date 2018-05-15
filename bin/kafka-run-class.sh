@@ -226,6 +226,7 @@ CLASSPATH=${CLASSPATH#:}
 
 # If Cygwin is detected, classpath is converted to Windows format.
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
+export MAPR_IMPERSONATION_ENABLED=true
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
