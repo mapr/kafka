@@ -81,7 +81,7 @@ public class KStreamTestDriver extends ExternalResource {
                       final Serde<?> keySerde,
                       final Serde<?> valSerde,
                       final long cacheSize) {
-        builder.setApplicationIdAndInternalStream("TestDriver", "/sample-stream");
+        builder.setApplicationIdAndInternalStream("TestDriver", "/sample-stream", "/sample-stream");
         topology = builder.build(null);
         globalTopology = builder.buildGlobalStateTopology();
         final ThreadCache cache = new ThreadCache(logContext, cacheSize, new MockStreamsMetrics(new Metrics()));
@@ -121,7 +121,8 @@ public class KStreamTestDriver extends ExternalResource {
                       final long cacheSize) {
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
 
-        internalTopologyBuilder.setApplicationIdAndInternalStream("TestDriver", "/sample-stream");
+        internalTopologyBuilder.setApplicationIdAndInternalStream("TestDriver",
+                "/sample-stream", "/sample-stream");
         topology = internalTopologyBuilder.build(null);
         globalTopology = internalTopologyBuilder.buildGlobalStateTopology();
 

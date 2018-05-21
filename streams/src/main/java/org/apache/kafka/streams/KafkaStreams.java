@@ -645,8 +645,10 @@ public class KafkaStreams {
         reporters.add(new JmxReporter(JMX_PREFIX));
         metrics = new Metrics(metricConfig, reporters, time);
 
-        Utils.internalStreamExistanceCheck(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
-        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
+        Utils.createInternalStreamsIfNotExist();
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId,
+                StreamsConfig.STREAMS_INTERNAL_STREAM_NOTCOMPACTED,
+                StreamsConfig.STREAMS_INTERNAL_STREAM_COMPACTED);
         internalTopologyBuilder.setDefaultStream(config.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
 
         // sanity check to fail-fast in case we cannot build a ProcessorTopology due to an exception

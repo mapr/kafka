@@ -124,6 +124,7 @@ public class InternalTopologyBuilder {
 
     /** Mapr Streams Specific **/
     private String internalStream = null;
+    private String internalStreamCompacted = null;
 
     private String defaultStream = null;
 
@@ -391,11 +392,14 @@ public class InternalTopologyBuilder {
         }
     }
 
-    public synchronized final InternalTopologyBuilder setApplicationIdAndInternalStream(final String applicationId, String internalStream) {
+    public synchronized final InternalTopologyBuilder setApplicationIdAndInternalStream(final String applicationId,
+                                                                                        final String internalStream,
+                                                                                        final String internalStreamCompacted) {
         Objects.requireNonNull(applicationId, "applicationId can't be null");
         Objects.requireNonNull(internalStream, "internalStream can't be null");
         this.applicationId = applicationId;
         this.internalStream = internalStream;
+        this.internalStreamCompacted = internalStreamCompacted;
 
         return this;
     }
@@ -1020,7 +1024,7 @@ public class InternalTopologyBuilder {
 
                     // remember the changelog topic if this state store is change-logging enabled
                     if (stateStoreFactory.loggingEnabled() && !storeToChangelogTopic.containsKey(stateStoreName)) {
-                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName, internalStream);
+                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName, internalStreamCompacted);
                         storeToChangelogTopic.put(stateStoreName, changelogTopic);
                     }
                     stateStoreMap.put(stateStoreName, stateStoreFactory.build());
@@ -1099,7 +1103,7 @@ public class InternalTopologyBuilder {
                 // if the node is connected to a state, add to the state topics
                 for (final StateStoreFactory stateFactory : stateFactories.values()) {
                     if (stateFactory.loggingEnabled() && stateFactory.users().contains(node)) {
-                        final String name = ProcessorStateManager.storeChangelogTopic(applicationId, stateFactory.name(), internalStream);
+                        final String name = ProcessorStateManager.storeChangelogTopic(applicationId, stateFactory.name(), internalStreamCompacted);
                         final InternalTopicConfig internalTopicConfig = createChangelogTopicConfig(stateFactory, name);
                         stateChangelogTopics.put(name, internalTopicConfig);
                     }

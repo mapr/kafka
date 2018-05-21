@@ -128,8 +128,10 @@ public class TopologyBuilder {
     public TopologyBuilder() {}
 
     /** This class is not part of public API and should never be used by a developer. */
-    public synchronized final TopologyBuilder setApplicationIdAndInternalStream(final String applicationId, String internalStream) {
-        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, internalStream);
+    public synchronized final TopologyBuilder setApplicationIdAndInternalStream(final String applicationId,
+                                                                                String internalStream,
+                                                                                String internalStreamCompacted) {
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, internalStream, internalStreamCompacted);
         return this;
     }
 

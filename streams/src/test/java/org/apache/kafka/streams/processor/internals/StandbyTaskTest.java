@@ -316,7 +316,7 @@ public class StandbyTaskTest {
 
         final StreamsConfig config = createConfig(baseDir);
         final InternalTopologyBuilder internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(builder);
-        final ProcessorTopology topology = internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream").build(0);
+        final ProcessorTopology topology = internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream", "/sample-stream").build(0);
 
         new StandbyTask(taskId, partitions, topology, consumer, changelogReader, config,
             new MockStreamsMetrics(new Metrics()), stateDirectory);

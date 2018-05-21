@@ -1,40 +1,85 @@
 package org.apache.kafka.streams.mapr;
 
+import com.mapr.streams.Admin;
+import com.mapr.streams.StreamDescriptor;
+import com.mapr.streams.Streams;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.mapr.InternalStreamNotExistException;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.IOException;
+
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 
 public class Utils {
-    public static void internalStreamExistanceCheck(String internalStream){
-        String configurationClassName = "org.apache.hadoop.conf.Configuration";
-        String streamsClassName = "com.mapr.streams.Streams";
-        String adminClassName = "com.mapr.streams.Admin";
-        String newAdminMethodName = "newAdmin";
-        String streamExistsMethodName = "streamExists";
+
+    public static FileSystem fs;
+
+    static {
         try {
-            Class<?> configurationClass = Class.forName(configurationClassName);
-            Class<?> streamsClass = Class.forName(streamsClassName);
-            Class<?> adminClass = Class.forName(adminClassName);
-            Method newAdminMethod = streamsClass.getMethod(newAdminMethodName,configurationClass);
-            Method streamExistsMethod = adminClass.getMethod(streamExistsMethodName, String.class);
-            Object configuration = configurationClass.newInstance();
-            Object admin = newAdminMethod.invoke(null,configuration);
-            Boolean res = (Boolean) streamExistsMethod.invoke(admin, internalStream);
-            if(!res){
-                throw new InternalStreamNotExistException(internalStream);
-            }
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(String.format("Error occurred while invoking Class.forName().\n==> %s.", e.getMessage()), e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(String.format("Error occurred while invoking Class.getMethod().\n==> %s.", e.getMessage()), e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(String.format("Error occurred while invoking Class.newInstance().\n==> %s.", e.getMessage()), e);
-        } catch (InstantiationException e) {
-            throw new RuntimeException(String.format("Error occurred while invoking Class.newInstance().\n==> %s.", e.getMessage()), e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(String.format("Error occurred while invoking Method.invoke().\n==> %s.", e.getMessage()), e);
+            Configuration conf = new Configuration();
+            fs = FileSystem.get(conf);
+        }catch (IOException e){
+            throw new KafkaException(e);
         }
+    }
+
+    /**
+     * The method creates internal streams (without log compaction and with log compaction)
+     * and appropriate paths if they don't exist.
+     *
+     */
+    public static void createInternalStreamsIfNotExist() {
+        try {
+            if (!maprFSpathExists(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER)) {
+                throw new KafkaException(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER + " doesn't exist");
+            }
+            if (!maprFSpathExists(StreamsConfig.STREAMS_INTERNAL_STREAM_FOLDER)) {
+                maprFSpathCreate(StreamsConfig.STREAMS_INTERNAL_STREAM_FOLDER);
+            }
+            if (!streamExists(StreamsConfig.STREAMS_INTERNAL_STREAM_NOTCOMPACTED)) {
+                createStream(StreamsConfig.STREAMS_INTERNAL_STREAM_NOTCOMPACTED);
+            }
+            if (!streamExists(StreamsConfig.STREAMS_INTERNAL_STREAM_COMPACTED)) {
+                createStream(StreamsConfig.STREAMS_INTERNAL_STREAM_COMPACTED);
+            }
+            if(!streamExists(StreamsConfig.STREAMS_CLI_SIDE_ASSIGNMENT_INTERNAL_STREAM)){
+                throw new InternalStreamNotExistException(StreamsConfig.STREAMS_CLI_SIDE_ASSIGNMENT_INTERNAL_STREAM + " doesn't exist");
+            }
+        }catch (IOException e) {
+            throw new KafkaException(e);
+        }
+    }
+
+    public static boolean streamExists(String streamName){
+        try {
+            Configuration conf = new Configuration();
+            Admin admin = Streams.newAdmin(conf);
+            return admin.streamExists(streamName);
+        } catch (IOException e){
+            throw new KafkaException(e);
+        }
+    }
+
+    private static void createStream(String streamName) {
+        try {
+            Configuration conf = new Configuration();
+            Admin admin = Streams.newAdmin(conf);
+            StreamDescriptor desc = Streams.newStreamDescriptor();
+            admin.createStream(streamName, desc);
+        } catch (IOException e){
+            throw new KafkaException(e);
+        }
+    }
+
+    private static boolean maprFSpathExists(String path) throws IOException {
+        return fs.exists(new Path(path));
+    }
+
+    private static void maprFSpathCreate(String path) throws IOException {
+        fs.mkdirs(new Path(path));
     }
 
     public static String getShortTopicNameFromFullTopicName(final String fullTopicName){

@@ -176,7 +176,9 @@ public class ProcessorTopologyTestDriver {
      */
     public ProcessorTopologyTestDriver(final StreamsConfig config,
                                        final InternalTopologyBuilder builder) {
-        topology = builder.setApplicationIdAndInternalStream(APPLICATION_ID, INTERNAL_STREAM).build(null);
+        topology = builder.setApplicationIdAndInternalStream(APPLICATION_ID,
+                INTERNAL_STREAM,
+                INTERNAL_STREAM).build(null);
         final ProcessorTopology globalTopology  = builder.buildGlobalStateTopology();
 
         // Set up the consumer and producer ...

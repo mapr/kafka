@@ -213,9 +213,10 @@ public class TopologyTestDriver implements Closeable {
         mockTime = new MockTime(initialWallClockTimeMs);
 
         internalTopologyBuilder = topology.internalTopologyBuilder;
-        Utils.internalStreamExistanceCheck(StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
+        Utils.createInternalStreamsIfNotExist();
         internalTopologyBuilder.setApplicationIdAndInternalStream(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG),
-                                                                  StreamsConfig.STREAMS_DEFAULT_INTERNAL_STREAM);
+                StreamsConfig.STREAMS_INTERNAL_STREAM_NOTCOMPACTED,
+                StreamsConfig.STREAMS_INTERNAL_STREAM_COMPACTED);
         internalTopologyBuilder.setDefaultStream(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
 
         processorTopology = internalTopologyBuilder.build(null);
