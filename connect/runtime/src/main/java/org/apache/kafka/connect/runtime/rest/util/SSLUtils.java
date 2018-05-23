@@ -21,7 +21,12 @@ import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import org.apache.hadoop.conf.Configuration;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +35,9 @@ import java.util.Map;
  * Helper class for setting up SSL for RestServer and RestClient
  */
 public class SSLUtils {
-    /**
+  private static final Logger log = LoggerFactory.getLogger(SSLUtils.class);
+
+  /**
      * Configures SSL/TLS for HTTPS Jetty Server / Client
      */
     public static SslContextFactory createSslContextFactory(WorkerConfig config) {
@@ -45,7 +52,7 @@ public class SSLUtils {
 
         SslContextFactory ssl = new SslContextFactory();
 
-        configureSslContextFactoryKeyStore(ssl, sslConfigValues);
+        configureSslContextFactoryKeyStore(config, ssl, sslConfigValues);
         configureSslContextFactoryTrustStore(ssl, sslConfigValues);
         configureSslContextFactoryAlgorithms(ssl, sslConfigValues);
         configureSslContextFactoryAuthentication(ssl, sslConfigValues);
@@ -56,21 +63,60 @@ public class SSLUtils {
         return ssl;
     }
 
+  private static String getFromCredentialsPath(String name, String credentialsPath){
+    Method getPasswordMethod;
+
+    try {
+      // Only supported in Hadoop 2.6.0+
+      getPasswordMethod = Configuration.class.getMethod("getPassword", String.class);
+    } catch (NoSuchMethodException e) {
+      // Not supported
+      getPasswordMethod = null;
+    }
+    Configuration hadoopConf = new Configuration();
+
+    if (getPasswordMethod != null) {
+      hadoopConf.set("hadoop.security.credential.provider.path", credentialsPath);
+      try {
+        char[] pass = (char[]) getPasswordMethod.invoke(hadoopConf, name);
+        return pass == null ? "" : new String(pass);
+      } catch (IllegalAccessException e) {
+        log.error("Could not load password " + e);
+        throw new IllegalArgumentException("Could not load password for [" + name + "]", e);
+      } catch (InvocationTargetException e) {
+        log.error("Could not load password " + e);
+        throw new IllegalArgumentException("Could not load password for [" + name + "]", e);
+      }
+    } else
+      return "";
+  }
     /**
      * Configures KeyStore related settings in SslContextFactory
      */
-    protected static void configureSslContextFactoryKeyStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
+    protected static void configureSslContextFactoryKeyStore(WorkerConfig config, SslContextFactory ssl, Map<String, Object> sslConfigValues) {
         ssl.setKeyStoreType((String) getOrDefault(sslConfigValues, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
 
         String sslKeystoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
         if (sslKeystoreLocation != null)
             ssl.setKeyStorePath(sslKeystoreLocation);
-
+        String credentialsPath = config.getString(WorkerConfig.HADOOP_CREDENTIALS_PROVIDER_PATH);
         Password sslKeystorePassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+        Password sslKeyPassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+
+        if (!credentialsPath.isEmpty()) {
+            String tmpKeystorePassword = getFromCredentialsPath((SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG), credentialsPath);
+            String tmpKeyPassword = getFromCredentialsPath((SslConfigs.SSL_KEY_PASSWORD_CONFIG), credentialsPath);
+
+            if (!tmpKeystorePassword.isEmpty())
+                sslKeystorePassword = new Password(tmpKeystorePassword);
+
+            if (!tmpKeyPassword.isEmpty())
+                sslKeyPassword = new Password(tmpKeyPassword);
+        }
+
         if (sslKeystorePassword != null)
             ssl.setKeyStorePassword(sslKeystorePassword.value());
 
-        Password sslKeyPassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
         if (sslKeyPassword != null)
             ssl.setKeyManagerPassword(sslKeyPassword.value());
     }

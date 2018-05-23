@@ -197,7 +197,12 @@ public class WorkerConfig extends AbstractConfig {
     public static final String AUTHENTICATION_ROLES_DOC = "Valid roles to authenticate against.";
     public static final List<String> AUTHENTICATION_ROLES_DEFAULT =
           Collections.unmodifiableList(Arrays.asList("*"));
-    /**
+
+    public static final String HADOOP_CREDENTIALS_PROVIDER_PATH = "connect.hadoop.security.credential.provider.path";
+    public static final String HADOOP_CREDENTIALS_PROVIDER_PATH_DOC = "Path to Hadoop Credentials Provider to store SSL passwords";
+    public static final String DEFAULT_HADOOP_CREDENTIALS_PROVIDER_PATH = "";
+
+  /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
      * bootstrap their own ConfigDef.
      * @return a ConfigDef with all the common options specified
@@ -276,7 +281,12 @@ public class WorkerConfig extends AbstractConfig {
                         Type.BOOLEAN,
                         REST_DOAS_DEFAULT,
                         Importance.MEDIUM,
-                        REST_DOAS_DOC);
+                        REST_DOAS_DOC)
+                .define(HADOOP_CREDENTIALS_PROVIDER_PATH,
+                        Type.STRING,
+                        DEFAULT_HADOOP_CREDENTIALS_PROVIDER_PATH,
+                        Importance.MEDIUM,
+                        HADOOP_CREDENTIALS_PROVIDER_PATH_DOC);
     }
 
     @Override
