@@ -101,7 +101,7 @@ public class ConnectorsResource {
         checkAndPutConnectorConfigName(name, configs);
 
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
-        configs.put("connector.user", httpRequest.getRemoteUser());
+        configs.put("task.user", httpRequest.getRemoteUser());
         herder.putConnectorConfig(name, configs, false, cb);
         Herder.Created<ConnectorInfo> info = completeOrForwardRequest(cb, "/connectors", "POST", createRequest,
                 new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
@@ -147,7 +147,7 @@ public class ConnectorsResource {
         Herder.Created<ConnectorInfo> createdInfo = completeOrForwardRequest(cb, "/connectors/" + connector + "/config",
                 "PUT", connectorConfig, new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
         Response.ResponseBuilder response;
-        connectorConfig.put("connector.user", httpRequest.getRemoteUser());
+        connectorConfig.put("task.user", httpRequest.getRemoteUser());
 
         if (createdInfo.created()) {
             URI location = UriBuilder.fromUri("/connectors").path(connector).build();

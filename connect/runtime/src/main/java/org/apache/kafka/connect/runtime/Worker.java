@@ -375,7 +375,7 @@ public class Worker {
             String connType = connConfig.getString(ConnectorConfig.CONNECTOR_CLASS_CONFIG);
             ClassLoader connectorLoader = plugins.delegatingLoader().connectorLoader(connType);
             savedLoader = Plugins.compareAndSwapLoaders(connectorLoader);
-            taskProps.put(TaskConfig.TASK_USER_CONFIG, connProps.get("connector.user"));
+            taskProps.put(TaskConfig.TASK_USER_CONFIG, connProps.get("task.user"));
             final TaskConfig taskConfig = new TaskConfig(taskProps);
             final Class<? extends Task> taskClass = taskConfig.getClass(TaskConfig.TASK_CLASS_CONFIG).asSubclass(Task.class);
             final Task task = plugins.newTask(taskClass);
