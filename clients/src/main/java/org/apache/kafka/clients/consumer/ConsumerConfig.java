@@ -255,7 +255,7 @@ public class ConsumerConfig extends AbstractConfig {
     /** <code> streams.clientside.partition.assignment </code */
     public static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG = "streams.clientside.partition.assignment";
     private static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_DOC = "Enable client side partition assignment. Default stream needs to be "
-        + "configured to use this feature. All clients in the same group should use the same streams.default.internal.stream.";
+      + "configured to use this feature. All clients in the same group should use the same streams.clientside.partition.assignment.internal.stream.";
     public static final boolean DEFAULT_STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT = false;
 
     /** <code>streams.default.internal.stream</code> **/
@@ -267,6 +267,11 @@ public class ConsumerConfig extends AbstractConfig {
     private static final String EXCLUDE_INTERNAL_TOPICS_DOC = "Whether records from internal topics (such as offsets) should be exposed to the consumer. "
                                                             + "If set to <code>true</code> the only way to receive records from an internal topic is subscribing to it.";
     public static final boolean DEFAULT_EXCLUDE_INTERNAL_TOPICS = true;
+
+  /** <code> streams.clientside.partition.assignment </code */
+  public static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM = "streams.clientside.partition.assignment.internal.stream";
+  private static final String STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM_DOC = "Internal stream used for performing client side partition assignment."
+      + "All clients in the same group should use the same streams.clientside.partition.assignment.internal.stream.";
 
 
     /**
@@ -531,7 +536,12 @@ public class ConsumerConfig extends AbstractConfig {
                                         Type.STRING,
                                         "",
                                         Importance.MEDIUM,
-                                        STREAMS_DEFAULT_INTERNAL_STREAM_DOC);
+                                        STREAMS_DEFAULT_INTERNAL_STREAM_DOC)
+                                .define(STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM,
+                                        Type.STRING,
+                                        "",
+                                        Importance.MEDIUM,
+                                        STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM_DOC);
 
     }
 
