@@ -42,15 +42,7 @@ import java.security.Principal;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 
 public class SslFactory implements Reconfigurable {
@@ -65,7 +57,9 @@ public class SslFactory implements Reconfigurable {
     private SecurityStore keystore = null;
     private SecurityStore truststore;
     private String[] cipherSuites;
+    private String[] disabledcipherSuites;
     private String[] enabledProtocols;
+    private String[] disabledProtocols;
     private String endpointIdentification;
     private SecureRandom secureRandomImplementation;
     private SSLContext sslContext;
@@ -93,11 +87,21 @@ public class SslFactory implements Reconfigurable {
             this.cipherSuites = cipherSuitesList.toArray(new String[cipherSuitesList.size()]);
 
         @SuppressWarnings("unchecked")
+        List<String> disabledCipherSuitesList = (List<String>) configs.get(SslConfigs.SSL_DISABLED_CIPHER_SUITES_CONFIG);
+        if (disabledCipherSuitesList != null && !disabledCipherSuitesList.isEmpty())
+            this.disabledcipherSuites = disabledCipherSuitesList.toArray(new String[disabledCipherSuitesList.size()]);
+
+        @SuppressWarnings("unchecked")
         List<String> enabledProtocolsList = (List<String>) configs.get(SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG);
         if (enabledProtocolsList != null && !enabledProtocolsList.isEmpty())
             this.enabledProtocols = enabledProtocolsList.toArray(new String[enabledProtocolsList.size()]);
 
-        String endpointIdentification = (String) configs.get(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
+        @SuppressWarnings("unchecked")
+        List<String> disabledProtocolsList = (List<String>) configs.get(SslConfigs.SSL_DISABLED_PROTOCOLS_CONFIG);
+        if (disabledProtocolsList != null && !disabledProtocolsList.isEmpty())
+            this.disabledProtocols = disabledProtocolsList.toArray(new String[disabledProtocolsList.size()]);
+
+      String endpointIdentification = (String) configs.get(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
         if (endpointIdentification != null)
             this.endpointIdentification = endpointIdentification;
 
@@ -224,8 +228,14 @@ public class SslFactory implements Reconfigurable {
 
     private SSLEngine createSslEngine(SSLContext sslContext, String peerHost, int peerPort) {
         SSLEngine sslEngine = sslContext.createSSLEngine(peerHost, peerPort);
-        if (cipherSuites != null) sslEngine.setEnabledCipherSuites(cipherSuites);
-        if (enabledProtocols != null) sslEngine.setEnabledProtocols(enabledProtocols);
+
+        Set<String> suites = new HashSet<>(Arrays.asList(cipherSuites));
+        suites.removeAll(Arrays.asList(disabledcipherSuites));
+        if (cipherSuites != null) sslEngine.setEnabledCipherSuites(suites.toArray(new String[suites.size()]));
+
+        Set<String> protocols = new HashSet<>(Arrays.asList(enabledProtocols));
+        protocols.removeAll(Arrays.asList(disabledProtocols));
+        if (enabledProtocols != null) sslEngine.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
 
         // SSLParameters#setEndpointIdentificationAlgorithm enables endpoint validation
         // only in client mode. Hence, validation is enabled only for clients.

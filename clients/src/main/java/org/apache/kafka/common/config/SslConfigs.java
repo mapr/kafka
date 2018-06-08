@@ -53,7 +53,7 @@ public class SslConfigs {
             + "Allowed values in recent JVMs are TLS, TLSv1.1 and TLSv1.2. SSL, SSLv2 and SSLv3 "
             + "may be supported in older JVMs, but their usage is discouraged due to known security vulnerabilities.";
 
-    public static final String DEFAULT_SSL_PROTOCOL = "TLS";
+    public static final String DEFAULT_SSL_PROTOCOL = "TLSv1.2";
 
     public static final String SSL_PROVIDER_CONFIG = "ssl.provider";
     public static final String SSL_PROVIDER_DOC = "The name of the security provider used for SSL connections. Default value is the default security provider of the JVM.";
@@ -62,11 +62,21 @@ public class SslConfigs {
     public static final String SSL_CIPHER_SUITES_DOC = "A list of cipher suites. This is a named combination of authentication, encryption, MAC and key exchange algorithm used to negotiate the security settings for a network connection using TLS or SSL network protocol. "
             + "By default all the available cipher suites are supported.";
 
+    public static final String SSL_DISABLED_CIPHER_SUITES_CONFIG = "ssl.cipher.suites.exclude";
+    protected static final String SSL_DISABLED_CIPHER_SUITES_DOC = "A list of excluded SSL cipher suites. Leave blank to use Jetty's defaults.";
+    protected static final String SSL_DISABLED_CIPHER_SUITES_DEFAULT = "TLS_DHE.*, TLS_EDH.*, .*RC4.*, .*MD5.*, .*DES.*";
+
     public static final String SSL_ENABLED_PROTOCOLS_CONFIG = "ssl.enabled.protocols";
     public static final String SSL_ENABLED_PROTOCOLS_DOC = "The list of protocols enabled for SSL connections.";
-    public static final String DEFAULT_SSL_ENABLED_PROTOCOLS = "TLSv1.2,TLSv1.1,TLSv1";
+    public static final String DEFAULT_SSL_ENABLED_PROTOCOLS = "TLSv1.2,TLSv1.1";
 
-    public static final String SSL_KEYSTORE_TYPE_CONFIG = "ssl.keystore.type";
+    public static final String SSL_DISABLED_PROTOCOLS_CONFIG = "ssl.disabled.protocols";
+    protected static final String SSL_DISABLED_PROTOCOLS_DOC = "The list of protocols disabled for SSL connections. Comma-separated list. "
+          + "Leave blank to use Jetty's defaults.";
+    protected static final String SSL_DISABLED_PROTOCOLS_DEFAULT = "SSLv3, TLSv1.0";
+
+
+  public static final String SSL_KEYSTORE_TYPE_CONFIG = "ssl.keystore.type";
     public static final String SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. "
             + "This is optional for client.";
     public static final String DEFAULT_SSL_KEYSTORE_TYPE = "JKS";
@@ -135,7 +145,9 @@ public class SslConfigs {
                 .define(SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG, ConfigDef.Type.STRING, SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM, ConfigDef.Importance.LOW, SslConfigs.SSL_KEYMANAGER_ALGORITHM_DOC)
                 .define(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG, ConfigDef.Type.STRING, SslConfigs.DEFAULT_SSL_TRUSTMANAGER_ALGORITHM, ConfigDef.Importance.LOW, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_DOC)
                 .define(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, ConfigDef.Type.STRING, null, ConfigDef.Importance.LOW, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC)
-                .define(SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG, ConfigDef.Type.STRING, null, ConfigDef.Importance.LOW, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_DOC);
+                .define(SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG, ConfigDef.Type.STRING, null, ConfigDef.Importance.LOW, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_DOC)
+                .define(SslConfigs.SSL_DISABLED_PROTOCOLS_CONFIG, ConfigDef.Type.LIST, SSL_DISABLED_PROTOCOLS_DEFAULT, ConfigDef.Importance.MEDIUM, SSL_DISABLED_PROTOCOLS_DOC)
+                .define(SSL_DISABLED_CIPHER_SUITES_CONFIG, ConfigDef.Type.LIST, SSL_DISABLED_CIPHER_SUITES_DEFAULT, ConfigDef.Importance.LOW, SSL_DISABLED_CIPHER_SUITES_DOC);
     }
 
     public static final Set<String> RECONFIGURABLE_CONFIGS = Utils.mkSet(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG,
