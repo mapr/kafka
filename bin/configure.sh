@@ -125,9 +125,13 @@ function configure_secure_mode() {
 
 
 function create_properties_file_with_ssl_config() {
+		if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
+			export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+		fi
+
 		if ! hadoop fs -test -f "$KAFKA_CONNECT_CREDENTIALS_FILE"; then
-			su "$MAPR_USER" -c hadoop credential create "ssl.keystore.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
-			su "$MAPR_USER" -c hadoop credential create "ssl.key.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+			sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+			sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
 	    fi
         cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_CONNECT_PORT}
