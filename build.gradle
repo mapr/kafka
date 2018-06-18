@@ -42,11 +42,11 @@ allprojects {
       url "http://packages.confluent.io/maven/"
     }
     maven {
-      url "http://repositorycv.mapr.com/nexus/content/repositories/mapr-public/"
+      url "http://repository.mapr.com/nexus/content/repositories/mapr-public/"
     }
     if (project.hasProperty('cvmirror') && project.getProperty('cvmirror') == 'true') {
       maven {
-        url 'http://repo.mapr/artifactory/remote-repos/'
+        url 'http://repositorycv.mapr.com/nexus/content/repositories/mapr-public/'
       }
     }
   }
