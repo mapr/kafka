@@ -42,7 +42,7 @@ allprojects {
       url "http://packages.confluent.io/maven/"
     }
     maven {
-      url "http://repository.mapr.com/nexus/content/repositories/mapr-public/"
+      url "http://repositorycv.mapr.com/nexus/content/repositories/mapr-public/"
     }
     if (project.hasProperty('cvmirror') && project.getProperty('cvmirror') == 'true') {
       maven {
