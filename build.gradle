@@ -1508,6 +1508,10 @@ project(':connect:runtime') {
     compile libs.jettyServlets
     compile libs.jettyClient
     compile libs.jpam
+    compile (libs.maprSecurityWeb) {
+        transitive = false
+    }
+
     compile(libs.reflections)
     compile(libs.mavenArtifact)
 

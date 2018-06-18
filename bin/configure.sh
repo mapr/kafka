@@ -43,7 +43,7 @@ KAFKA_VERSION_FILE=${MAPR_HOME}/kafka/kafkaversion
 DAEMON_CONF=${MAPR_HOME}/conf/daemon.conf
 VERSION=1.1.1
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
-KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-4.0.0.restart}
+KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-4.1.0.restart}
 
 
 
@@ -51,16 +51,12 @@ KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DI
 KAFKA_CONNECT_CERTIFICATES_DIR=${KAFKA_CONNECT_CERTIFICATES_DIR:-${KAFKA_HOME}/config}
 KAFKA_CONNECT_CERT=${KAFKA_CONNECT_CERT:-${KAFKA_CONNECT_CERTIFICATES_DIR}/cert.pem}
 KAFKA_CONNECT_DEST_STORE=${KAFKA_CONNECT_DEST_STORE:-${KAFKA_CONNECT_CERTIFICATES_DIR}/keystore.p12}
-KAFKA_CONNECT_DEST_STORE_PASSWD=${KAFKA_CONNECT_DEST_STORE_PASSWD:-'mapr123'}
 KAFKA_CONNECT_OPENSSL_KEY=${KAFKA_CONNECT_OPENSSL_KEY:-${KAFKA_CONNECT_CERTIFICATES_DIR}/key.pem}
-
-MAPR_CLDB_SSL_KEYSTORE=${MAPR_CLDB_SSL_KEYSTORE:-${MAPR_HOME}/conf/ssl_keystore}
-MAPR_CLDB_SSL_TRUSTSTORE=${MAPR_CLDB_SSL_TRUSTSTORE:-${MAPR_HOME}/conf/ssl_truststore}
-KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD=${KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD:-'mapr123'}
-KAFKA_CONNECT_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=${KAFKA_CONNECT_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD:-'mapr123'}
 
 KAFKA_CONNECT_CREDENTIALS_FILE="/user/${MAPR_USER}/kafkaconnect.jceks"
 KAFKA_CONNECT_CREDENTIALS_PROP="jceks://maprfs/user/${MAPR_USER}/kafkaconnect.jceks"
+
+base_dir=$(dirname $0)
 
 function write_version_file() {
     if [ -f ${KAFKA_VERSION_FILE} ]; then
@@ -128,14 +124,18 @@ function create_properties_file_with_ssl_config() {
 		if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
 			export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
 		fi
+		keystoreFile=$1
+		keystorePass=$2
+
+		serverKeyPassword=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI serverKeyPassword 2>/dev/null`
 
 		if ! hadoop fs -test -f "$KAFKA_CONNECT_CREDENTIALS_FILE"; then
-			sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
-			sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+			sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$keystorePass" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+			sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
 	    fi
         cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_CONNECT_PORT}
-		ssl.keystore.location=${MAPR_CLDB_SSL_KEYSTORE}
+		ssl.keystore.location=${keystoreFile}
 		connect.hadoop.security.credential.provider.path=${KAFKA_CONNECT_CREDENTIALS_PROP}
 		EOL
 }
@@ -147,6 +147,12 @@ function create_standard_properties_file() {
 }
 
 function generate_cert_and_key() {
+	MAPR_CLDB_SSL_KEYSTORE=$1
+	KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD=$2
+
+	MAPR_CLDB_SSL_TRUSTSTORE=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI truststoreFile 2>/dev/null`
+	KAFKA_CONNECT_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI truststorePassword 2>/dev/null`
+
     { ALIAS="$(getClusterName)"; } 2>/dev/null
     keytool -v -exportcert -alias "${ALIAS}" -keystore "${MAPR_CLDB_SSL_TRUSTSTORE}" -rfc -file "${KAFKA_CONNECT_CERT}" \
         -storepass "${KAFKA_CONNECT_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD}" 2>/dev/null
@@ -159,7 +165,7 @@ function generate_cert_and_key() {
         -srckeystore "${MAPR_CLDB_SSL_KEYSTORE}" -destkeystore "${KAFKA_CONNECT_DEST_STORE}" \
         -srcstoretype JKS -deststoretype PKCS12 \
         -srcstorepass "${KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" \
-        -deststorepass "${KAFKA_CONNECT_DEST_STORE_PASSWD}" 2>/dev/null
+        -deststorepass "${KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
 
     if [ $? -ne 0 ] ; then
         logWarn 'Warning: No keystore has been imported due to keytool error.'
@@ -169,7 +175,7 @@ function generate_cert_and_key() {
     fi
 
     openssl pkcs12 -in "${KAFKA_CONNECT_DEST_STORE}" -nodes -nocerts -out "${KAFKA_CONNECT_OPENSSL_KEY}" \
-        -passin "pass:${KAFKA_CONNECT_DEST_STORE_PASSWD}" 2>/dev/null
+        -passin "pass:${KAFKA_CONNECT_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
     if [ $? -ne 0 ] ; then
         logWarn 'Warning: No PKCS12 has been converted due to openssl error.'
         return 1
@@ -188,11 +194,15 @@ function enable_ssl() {
     if ! check_mapr_cldb_truststore; then
         return 1
     fi
-    create_properties_file_with_ssl_config
 
-    if ! generate_cert_and_key; then
-        return 1
-    fi
+	keystoreFile=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI keystoreFile 2>/dev/null`
+	keystorePass=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI keystorePass 2>/dev/null`
+
+	create_properties_file_with_ssl_config ${keystoreFile} ${keystorePass}
+
+	if ! generate_cert_and_key ${keystoreFile} ${keystorePass} ; then
+		return 1
+	fi
 
     chown -R ${MAPR_USER} ${KAFKA_CONNECT_CERTIFICATES_DIR}
     chgrp -R ${MAPR_GROUP} ${KAFKA_CONNECT_CERTIFICATES_DIR}

@@ -82,7 +82,6 @@ versions += [
   zookeeper: "3.4.10",
   jfreechart: "1.0.0",
   mavenArtifact: "3.5.3",
-  maprStreams: "6.1.0-mapr-SNAPSHOT",
   restutils: "4.0.0"
 ]
 
@@ -122,6 +121,7 @@ libs += [
   kafkaStreams_10: "org.apache.kafka:kafka-streams:$versions.kafka_10",
   log4j: "log4j:log4j:$versions.log4j",
   lz4: "org.lz4:lz4-java:$versions.lz4",
+  maprSecurityWeb: "com.mapr.security:mapr-security-web:$maprVersion",
   metrics: "com.yammer.metrics:metrics-core:$versions.metrics",
   powermockJunit4: "org.powermock:powermock-module-junit4:$versions.powermock",
   powermockEasymock: "org.powermock:powermock-api-easymock:$versions.powermock",
@@ -140,6 +140,6 @@ libs += [
   zookeeper: "org.apache.zookeeper:zookeeper:$versions.zookeeper",
   jfreechart: "jfreechart:jfreechart:$versions.jfreechart",
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
-  maprStreams: "com.mapr.streams:mapr-streams:$versions.maprStreams",
+  maprStreams: "com.mapr.streams:mapr-streams:$maprVersion",
   restutils: "io.confluent:rest-utils:$versions.restutils"
 ]
