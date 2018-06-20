@@ -121,9 +121,6 @@ function configure_secure_mode() {
 
 
 function create_properties_file_with_ssl_config() {
-		if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
-			export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
-		fi
 		keystoreFile=$1
 		keystorePass=$2
 
@@ -187,6 +184,10 @@ function generate_cert_and_key() {
 }
 
 function enable_ssl() {
+	if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
+		export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+	fi
+
     if ! check_mapr_cldb_keystore; then
         return 1
     fi
@@ -196,7 +197,7 @@ function enable_ssl() {
     fi
 
 	keystoreFile=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI keystoreFile 2>/dev/null`
-	keystorePass=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI keystorePass 2>/dev/null`
+	keystorePass=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI keystorePass`
 
 	create_properties_file_with_ssl_config ${keystoreFile} ${keystorePass}
 
