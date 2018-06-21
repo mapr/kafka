@@ -1024,6 +1024,10 @@ project(':streams') {
     compile (libs.maprStreams){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
+      transitive = false
+    }
+    compile (libs.hadoopCommon) {
+      transitive = false
     }
 
     testCompile project(':clients').sourceSets.test.output
