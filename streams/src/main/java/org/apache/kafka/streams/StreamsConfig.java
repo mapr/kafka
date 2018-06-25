@@ -138,16 +138,17 @@ public class StreamsConfig extends AbstractConfig {
     private final static long EOS_DEFAULT_COMMIT_INTERVAL_MS = 100L;
 
     /**
-     * The default internal stream is used for cli-side partition assignment.
+     * MapR specific constants.
      */
      public static final String STREAMS_INTERNAL_STREAM_COMMON_FOLDER = "/apps/kafka-streams/";
-     public static final String STREAMS_INTERNAL_STREAM_FOLDER =
-             STREAMS_INTERNAL_STREAM_COMMON_FOLDER + System.getProperty("user.name") + "/";
-     public static final String STREAMS_INTERNAL_STREAM_NOTCOMPACTED = STREAMS_INTERNAL_STREAM_FOLDER +
+
+     private final String streamsInternalStreamFolder =
+             STREAMS_INTERNAL_STREAM_COMMON_FOLDER + getString(APPLICATION_ID_CONFIG) + "/";
+     private final String streamsInternalStreamNotcompacted = streamsInternalStreamFolder +
             "kafka-internal-stream";
-     public static final String STREAMS_INTERNAL_STREAM_COMPACTED = STREAMS_INTERNAL_STREAM_NOTCOMPACTED +
+     private final String streamsInternalStreamCompacted = streamsInternalStreamNotcompacted +
             "-compacted";
-    public static final String STREAMS_CLI_SIDE_ASSIGNMENT_INTERNAL_STREAM = STREAMS_INTERNAL_STREAM_COMPACTED;
+     private final String streamsCliSideAssignmentInternalStream = streamsInternalStreamCompacted;
 
     /**
      * Prefix used to provide default topic configs to be applied when creating internal topics.
@@ -827,7 +828,7 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(NUM_STANDBY_REPLICAS_CONFIG, getInt(NUM_STANDBY_REPLICAS_CONFIG));
         consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, StreamPartitionAssignor.class.getName());
         consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
-        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, STREAMS_CLI_SIDE_ASSIGNMENT_INTERNAL_STREAM);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, streamsCliSideAssignmentInternalStream);
         consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         consumerProps.put(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG, getLong(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG));
 
@@ -880,7 +881,7 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
 
         consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
-        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, STREAMS_CLI_SIDE_ASSIGNMENT_INTERNAL_STREAM);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, streamsCliSideAssignmentInternalStream);
         consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         return consumerProps;
     }
@@ -1061,6 +1062,22 @@ public class StreamsConfig extends AbstractConfig {
         }
 
         return parsed;
+    }
+
+    public String getStreamsInternalStreamFolder() {
+        return streamsInternalStreamFolder;
+    }
+
+    public String getStreamsInternalStreamNotcompacted() {
+        return streamsInternalStreamNotcompacted;
+    }
+
+    public String getStreamsInternalStreamCompacted() {
+        return streamsInternalStreamCompacted;
+    }
+
+    public String getStreamsCliSideAssignmentInternalStream() {
+        return streamsCliSideAssignmentInternalStream;
     }
 
     public static void main(final String[] args) {

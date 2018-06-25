@@ -1029,6 +1029,9 @@ project(':streams') {
     compile (libs.hadoopCommon) {
       transitive = false
     }
+    compile(libs.maprFs){
+      transitive = false
+    }
 
     testCompile project(':clients').sourceSets.test.output
     testCompile project(':core')

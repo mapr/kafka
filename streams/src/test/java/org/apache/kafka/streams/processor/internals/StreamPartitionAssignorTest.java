@@ -727,9 +727,9 @@ public class StreamPartitionAssignorTest {
         final StreamsBuilder builder = new StreamsBuilder();
 
         final InternalTopologyBuilder internalTopologyBuilder = StreamsBuilderTest.internalTopologyBuilder(builder);
-        org.apache.kafka.streams.mapr.Utils.createInternalStreamsIfNotExist();
+        org.apache.kafka.streams.mapr.Utils.createAppDirAndInternalStreamsIfNotExist(streamsConfig);
         internalTopologyBuilder.setApplicationIdAndInternalStream(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG),
-                                                                  StreamsConfig.STREAMS_INTERNAL_STREAM_NOTCOMPACTED, "/sample-stream");
+                streamsConfig.getStreamsInternalStreamNotcompacted(), "/sample-stream");
         internalTopologyBuilder.setDefaultStream(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
 
         // KStream with 3 partitions

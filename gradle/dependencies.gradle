@@ -141,5 +141,6 @@ libs += [
   jfreechart: "jfreechart:jfreechart:$versions.jfreechart",
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   maprStreams: "com.mapr.streams:mapr-streams:$maprVersion",
+  maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
   restutils: "io.confluent:rest-utils:$versions.restutils"
 ]
