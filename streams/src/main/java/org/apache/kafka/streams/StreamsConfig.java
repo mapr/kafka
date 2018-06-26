@@ -107,7 +107,6 @@ import static org.apache.kafka.common.requests.IsolationLevel.READ_COMMITTED;
  * Kafka Streams requires at least the following properties to be set:
  * <ul>
  *  <li>{@link #APPLICATION_ID_CONFIG "application.id"}</li>
- *  <li>{@link #BOOTSTRAP_SERVERS_CONFIG "bootstrap.servers"}</li>
  * </ul>
  *
  * By default, Kafka Streams does not allow users to overwrite the following properties (Streams setting shown in parentheses):
@@ -202,9 +201,6 @@ public class StreamsConfig extends AbstractConfig {
     /**{@code user.endpoint} */
     public static final String APPLICATION_SERVER_CONFIG = "application.server";
     private static final String APPLICATION_SERVER_DOC = "A host:port pair pointing to an embedded user defined endpoint that can be used for discovering the locations of state stores within a single KafkaStreams application";
-
-    /** {@code bootstrap.servers} */
-    public static final String BOOTSTRAP_SERVERS_CONFIG = CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 
     /** {@code buffered.records.per.partition} */
     public static final String BUFFERED_RECORDS_PER_PARTITION_CONFIG = "buffered.records.per.partition";
@@ -392,10 +388,6 @@ public class StreamsConfig extends AbstractConfig {
                     Type.STRING,
                     Importance.HIGH,
                     APPLICATION_ID_DOC)
-            .define(BOOTSTRAP_SERVERS_CONFIG, // required with no default value
-                    Type.LIST,
-                    Importance.HIGH,
-                    CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
             .define(REPLICATION_FACTOR_CONFIG,
                     Type.INT,
                     1,
@@ -758,8 +750,8 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.putAll(getClientCustomProps());
         consumerProps.putAll(clientProvidedProps);
 
-        // bootstrap.servers should be from StreamsConfig
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        // bootstrap.servers is not needed for MapR-ES
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "thisisnotused");
         // remove deprecate ZK config
         consumerProps.remove(ZOOKEEPER_CONNECT_CONFIG);
 
@@ -905,7 +897,7 @@ public class StreamsConfig extends AbstractConfig {
         props.putAll(getClientCustomProps());
         props.putAll(clientProvidedProps);
 
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "thisisnotused");
         // add client id with stream client id prefix
         props.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-producer");
 
