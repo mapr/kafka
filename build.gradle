@@ -574,6 +574,15 @@ project(':core') {
 
   dependencies {
     compile project(':clients')
+    compile (libs.maprStreams){
+      transitive = false
+    }
+    compile (libs.hadoopCommon) {
+      transitive = false
+    }
+    compile(libs.maprFs){
+      transitive = false
+    }
     compile libs.jacksonDatabind
     compile libs.joptSimple
     compile libs.metrics

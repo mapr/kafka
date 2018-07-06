@@ -16,19 +16,27 @@
  */
 package kafka.tools;
 
+import com.mapr.streams.Admin;
+import com.mapr.streams.Streams;
+import com.mapr.streams.impl.admin.AssignInfo;
+import com.mapr.streams.impl.admin.MarlinAdminImpl;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
 import kafka.utils.CommandLineUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.mapr.util.MapRTopicUtils;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.annotation.InterfaceStability;
@@ -79,7 +87,6 @@ public class StreamsResetter {
     private static final int EXIT_CODE_SUCCESS = 0;
     private static final int EXIT_CODE_ERROR = 1;
 
-    private static OptionSpec<String> bootstrapServerOption;
     private static OptionSpec<String> applicationIdOption;
     private static OptionSpec<String> inputTopicsOption;
     private static OptionSpec<String> intermediateTopicsOption;
@@ -106,7 +113,7 @@ public class StreamsResetter {
                    final Properties config) {
         int exitCode = EXIT_CODE_SUCCESS;
 
-        KafkaAdminClient kafkaAdminClient = null;
+        AdminClient kafkaAdminClient = null;
 
         try {
             parseArguments(args);
@@ -118,13 +125,38 @@ public class StreamsResetter {
             if (options.has(commandConfigOption)) {
                 properties.putAll(Utils.loadProps(options.valueOf(commandConfigOption)));
             }
-            properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, options.valueOf(bootstrapServerOption));
 
-            validateNoActiveConsumers(groupId, properties);
-            kafkaAdminClient = (KafkaAdminClient) AdminClient.create(properties);
+            kafkaAdminClient = AdminClient.create(properties);
+
+            final String appDir = String.format("/apps/kafka-streams/%s",groupId);
+            final String internalStream = String.format("%s/kafka-internal-stream", appDir);
+            final String internalStreamCompacted = String.format("%s/kafka-internal-stream-compacted", appDir);
+
+            final Admin admin = Streams.newAdmin(new Configuration());
 
             allTopics.clear();
-            allTopics.addAll(kafkaAdminClient.listTopics().names().get(60, TimeUnit.SECONDS));
+            List<String> allInternalNotCompactedTopics = new LinkedList<>();
+            if(admin.streamExists(internalStream)) {
+                allInternalNotCompactedTopics = MapRTopicUtils.addStreamNameToTopics(
+                        new ArrayList<String>(kafkaAdminClient
+                                .listTopics(internalStream)
+                                .names()
+                                .get(60, TimeUnit.SECONDS)),
+                        internalStream);
+                validateNoActiveConsumers(internalStream, groupId, allInternalNotCompactedTopics);
+            }
+            allTopics.addAll(allInternalNotCompactedTopics);
+            List<String> allInternalCompactedTopics = new LinkedList<>();
+            if(admin.streamExists(internalStreamCompacted)) {
+                allInternalCompactedTopics = MapRTopicUtils.addStreamNameToTopics(
+                        new ArrayList<String>(kafkaAdminClient
+                                .listTopics(internalStreamCompacted)
+                                .names()
+                                .get(60, TimeUnit.SECONDS)),
+                        internalStreamCompacted);
+                validateNoActiveConsumers(internalStreamCompacted, groupId, allInternalCompactedTopics);
+            }
+            allTopics.addAll(allInternalCompactedTopics);
 
             if (dryRun) {
                 System.out.println("----Dry run displays the actions which will be performed when running Streams Reset Tool----");
@@ -132,8 +164,8 @@ public class StreamsResetter {
 
             final HashMap<Object, Object> consumerConfig = new HashMap<>(config);
             consumerConfig.putAll(properties);
-            exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, dryRun);
-            maybeDeleteInternalTopics(kafkaAdminClient, dryRun);
+            exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, kafkaAdminClient, dryRun);
+            maybeDeleteInternalTopicsStreamsDirs(kafkaAdminClient, dryRun, internalStream, internalStreamCompacted, appDir);
 
         } catch (final Throwable e) {
             exitCode = EXIT_CODE_ERROR;
@@ -148,18 +180,26 @@ public class StreamsResetter {
         return exitCode;
     }
 
-    private void validateNoActiveConsumers(final String groupId,
-                                           final Properties properties) {
-        kafka.admin.AdminClient olderAdminClient = null;
+    private void validateNoActiveConsumers(final String streamName,
+                                           final String groupId,
+                                           final List<String> topics) {
+        MarlinAdminImpl adminClient = null;
         try {
-            olderAdminClient = kafka.admin.AdminClient.create(properties);
-            if (!olderAdminClient.describeConsumerGroup(groupId, 0).consumers().get().isEmpty()) {
-                throw new IllegalStateException("Consumer group '" + groupId + "' is still active. "
-                                                + "Make sure to stop all running application instances before running the reset tool.");
+            adminClient = new MarlinAdminImpl(new Configuration());
+            for(String topic : topics){
+                List<AssignInfo> infoLst = adminClient.listAssigns(streamName,groupId, topic);
+                for(AssignInfo info : infoLst){
+                    if(info.numListeners() > 0){
+                        throw new IllegalStateException("Consumer group '" + groupId + "' is still active. "
+                                + "Make sure to stop all running application instances before running the reset tool.");
+                    }
+                }
             }
+        } catch (IOException e) {
+            throw new KafkaException(e);
         } finally {
-            if (olderAdminClient != null) {
-                olderAdminClient.close();
+            if (adminClient != null) {
+                adminClient.close();
             }
         }
     }
@@ -172,11 +212,6 @@ public class StreamsResetter {
             .ofType(String.class)
             .describedAs("id")
             .required();
-        bootstrapServerOption = optionParser.accepts("bootstrap-servers", "Comma-separated list of broker urls with format: HOST1:PORT1,HOST2:PORT2")
-            .withRequiredArg()
-            .ofType(String.class)
-            .defaultsTo("localhost:9092")
-            .describedAs("urls");
         inputTopicsOption = optionParser.accepts("input-topics", "Comma-separated list of user input topics. For these topics, the tool will reset the offset to the earliest available offset.")
             .withRequiredArg()
             .ofType(String.class)
@@ -212,9 +247,6 @@ public class StreamsResetter {
         executeOption = optionParser.accepts("execute", "Execute the command.");
         dryRunOption = optionParser.accepts("dry-run", "Display the actions that would be performed without executing the reset commands.");
 
-        // TODO: deprecated in 1.0; can be removed eventually
-        optionParser.accepts("zookeeper", "Zookeeper option is deprecated by bootstrap.servers, as the reset tool would no longer access Zookeeper directly.");
-
         try {
             options = optionParser.parse(args);
         } catch (final OptionException e) {
@@ -244,10 +276,65 @@ public class StreamsResetter {
         CommandLineUtils.checkInvalidArgs(optionParser, options, shiftByOption, allScenarioOptions.$minus(shiftByOption));
     }
 
-    private int maybeResetInputAndSeekToEndIntermediateTopicOffsets(final Map consumerConfig, final boolean dryRun) throws Exception {
-        final List<String> inputTopics = options.valuesOf(inputTopicsOption);
-        final List<String> intermediateTopics = options.valuesOf(intermediateTopicsOption);
+    private class SplitTopicListResult {
+        private final List<String> topicsToSubscribe;
+        private final List<String> notFoundedTopics;
+
+        public SplitTopicListResult(final List<String> topicsToSubscribe,
+                                    final List<String> notFoundedTopics) {
+            this.topicsToSubscribe = topicsToSubscribe;
+            this.notFoundedTopics = notFoundedTopics;
+        }
+
+        public List<String> getTopicsToSubscribe() {
+            return topicsToSubscribe;
+        }
+
+        public List<String> getNotFoundedTopics() {
+            return notFoundedTopics;
+        }
+    }
+
+    private SplitTopicListResult splitTopicListOnSubcribeAndNotFoundedLists(
+            final Map<String, Set<String>> groupedTopicsByStreamName,
+            final Map<String, Set<String>> allGroupedTopicsByStreamName){
+        final ArrayList<String> topicsToSubscribe = new ArrayList<>();
+        final ArrayList<String> notFoundInputTopics = new ArrayList<>();
+        for (final Map.Entry<String, Set<String>> entry: groupedTopicsByStreamName.entrySet()){
+            final String streamName = entry.getKey();
+            final Set<String> inputTopicsForStream = entry.getValue();
+            final Set<String> allTopicsForStream = allGroupedTopicsByStreamName.get(streamName);
+            for(final String inputTopic : inputTopicsForStream){
+                final String fullTopicName = MapRTopicUtils.buildFullTopicName(streamName, inputTopic);
+                if (!allTopicsForStream.contains(inputTopic)) {
+                    notFoundInputTopics.add(fullTopicName);
+                } else {
+                    topicsToSubscribe.add(fullTopicName);
+                }
+            }
+        }
+
+        return new SplitTopicListResult(topicsToSubscribe, notFoundInputTopics);
+    }
+
+    private int maybeResetInputAndSeekToEndIntermediateTopicOffsets(final Map consumerConfig,
+                                                                    final AdminClient adminClient,
+                                                                    final boolean dryRun) throws Exception {
+        final String defaultStream = ""; //TODO: will be changed after support of default stream is added
+        final List<String> inputTopics = MapRTopicUtils
+                .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(inputTopicsOption), defaultStream);
+        final List<String> intermediateTopics =  MapRTopicUtils
+                .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(intermediateTopicsOption), defaultStream);
         int topicNotFound = EXIT_CODE_SUCCESS;
+
+        final Map<String, Set<String>> groupedInputTopics = MapRTopicUtils
+                .groupTopicsByStreamName(inputTopics);
+        final Map<String, Set<String>> groupedIntermediateTopics = MapRTopicUtils
+                .groupTopicsByStreamName(intermediateTopics);
+        final Set<String> allStreamNames = groupedInputTopics.keySet();
+        allStreamNames.addAll(groupedIntermediateTopics.keySet());
+        final Map<String, Set<String>> allTopicsGroupedByStreamName = MapRTopicUtils
+                .allTopicsForStreamSet(allStreamNames);
 
         final List<String> notFoundInputTopics = new ArrayList<>();
         final List<String> notFoundIntermediateTopics = new ArrayList<>();
@@ -268,20 +355,14 @@ public class StreamsResetter {
 
         final Set<String> topicsToSubscribe = new HashSet<>(inputTopics.size() + intermediateTopics.size());
 
-        for (final String topic : inputTopics) {
-            if (!allTopics.contains(topic)) {
-                notFoundInputTopics.add(topic);
-            } else {
-                topicsToSubscribe.add(topic);
-            }
-        }
-        for (final String topic : intermediateTopics) {
-            if (!allTopics.contains(topic)) {
-                notFoundIntermediateTopics.add(topic);
-            } else {
-                topicsToSubscribe.add(topic);
-            }
-        }
+        final SplitTopicListResult inputTopicsSplitResult = splitTopicListOnSubcribeAndNotFoundedLists(groupedInputTopics,
+                allTopicsGroupedByStreamName);
+        topicsToSubscribe.addAll(inputTopicsSplitResult.topicsToSubscribe);
+        notFoundInputTopics.addAll(inputTopicsSplitResult.notFoundedTopics);
+        final SplitTopicListResult intermediateTopicsSplitResult = splitTopicListOnSubcribeAndNotFoundedLists(groupedIntermediateTopics,
+                allTopicsGroupedByStreamName);
+        topicsToSubscribe.addAll(intermediateTopicsSplitResult.topicsToSubscribe);
+        notFoundInputTopics.addAll(intermediateTopicsSplitResult.notFoundedTopics);
 
         if (!notFoundInputTopics.isEmpty()) {
             System.out.println("Following input topics are not found, skipping them");
@@ -569,21 +650,24 @@ public class StreamsResetter {
         return options.valuesOf(intermediateTopicsOption).contains(topic);
     }
 
-    private void maybeDeleteInternalTopics(final KafkaAdminClient adminClient, final boolean dryRun) {
+    private void maybeDeleteInternalTopicsStreamsDirs(final AdminClient adminClient, final boolean dryRun, String internalStream, String internalStreamCompacted, String appDir) {
 
         System.out.println("Deleting all internal/auto-created topics for application " + options.valueOf(applicationIdOption));
         List<String> topicsToDelete = new ArrayList<>();
         for (final String listing : allTopics) {
-            if (isInternalTopic(listing)) {
                 if (!dryRun) {
                     topicsToDelete.add(listing);
                 } else {
                     System.out.println("Topic: " + listing);
                 }
-            }
         }
         if (!dryRun) {
             doDelete(topicsToDelete, adminClient);
+            doDeleteForStreamsAndAppDir(internalStream, internalStreamCompacted, appDir);
+        }else {
+            System.out.println("MapR-ES Stream: " + internalStream);
+            System.out.println("MapR-ES Stream: " + internalStreamCompacted);
+            System.out.println("MapR-FS Directory: " + appDir);
         }
         System.out.println("Done.");
     }
@@ -609,10 +693,27 @@ public class StreamsResetter {
         }
     }
 
+    public void doDeleteForStreamsAndAppDir(final String internalStream,
+                                            final String internalStreamCompacted,
+                                            final String appDir){
+        try {
+            final Configuration conf = new Configuration();
+            final FileSystem fs =  FileSystem.get(conf);
+            final Admin admin = Streams.newAdmin(conf);
 
-    private boolean isInternalTopic(final String topicName) {
-        return topicName.startsWith(options.valueOf(applicationIdOption) + "-")
-            && (topicName.endsWith("-changelog") || topicName.endsWith("-repartition"));
+            if(admin.streamExists(internalStream)){
+                admin.deleteStream(internalStream);
+            }
+            if(admin.streamExists(internalStreamCompacted)){
+                admin.deleteStream(internalStreamCompacted);
+            }
+            final Path p = new Path(appDir);
+            if(fs.exists(p)){
+                fs.delete(p, true);
+            }
+        } catch (IOException e) {
+            throw new KafkaException(e);
+        }
     }
 
     private void printHelp(OptionParser parser) throws IOException {
