@@ -125,10 +125,13 @@ function create_properties_file_with_ssl_config() {
 		keystorePass=$2
 
 		serverKeyPassword=`exec $base_dir/kafka-run-class.sh org.apache.kafka.connect.tools.KafkaSSLPropertiesCLI serverKeyPassword 2>/dev/null`
+        if [ -z "$MAPR_TICKETFILE_LOCATION" ] && [ -e "${MAPR_HOME}/conf/mapruserticket" ]; then
+            export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+        fi
 
-		if ! hadoop fs -test -f "$KAFKA_CONNECT_CREDENTIALS_FILE"; then
-			sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$keystorePass" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
-			sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+		if ! sudo -u $MAPR_USER -E hadoop fs -test -f "$KAFKA_CONNECT_CREDENTIALS_FILE"; then
+			sudo -u "$MAPR_USER" -E hadoop credential create "ssl.keystore.password" -value "$keystorePass" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
+			sudo -u "$MAPR_USER" -E hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_CONNECT_CREDENTIALS_PROP"
 	    fi
         cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_CONNECT_PORT}
