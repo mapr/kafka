@@ -20,22 +20,18 @@ import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.rest.errors.SSLConfigException;
+import org.apache.kafka.connect.tools.KafkaSSLPropertiesReader;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Helper class for setting up SSL for RestServer and RestClient
  */
 public class SSLUtils {
-  private static final Logger log = LoggerFactory.getLogger(SSLUtils.class);
 
   /**
      * Configures SSL/TLS for HTTPS Jetty Server / Client
@@ -52,7 +48,7 @@ public class SSLUtils {
 
         SslContextFactory ssl = new SslContextFactory();
 
-        configureSslContextFactoryKeyStore(config, ssl, sslConfigValues);
+        configureSslContextFactoryKeyStore(ssl, sslConfigValues);
         configureSslContextFactoryTrustStore(ssl, sslConfigValues);
         configureSslContextFactoryAlgorithms(ssl, sslConfigValues);
         configureSslContextFactoryAuthentication(ssl, sslConfigValues);
@@ -63,62 +59,29 @@ public class SSLUtils {
         return ssl;
     }
 
-  private static String getFromCredentialsPath(String name, String credentialsPath){
-    Method getPasswordMethod;
-
-    try {
-      // Only supported in Hadoop 2.6.0+
-      getPasswordMethod = Configuration.class.getMethod("getPassword", String.class);
-    } catch (NoSuchMethodException e) {
-      // Not supported
-      getPasswordMethod = null;
-    }
-    Configuration hadoopConf = new Configuration();
-
-    if (getPasswordMethod != null) {
-      hadoopConf.set("hadoop.security.credential.provider.path", credentialsPath);
-      try {
-        char[] pass = (char[]) getPasswordMethod.invoke(hadoopConf, name);
-        return pass == null ? "" : new String(pass);
-      } catch (IllegalAccessException e) {
-        log.error("Could not load password " + e);
-        throw new IllegalArgumentException("Could not load password for [" + name + "]", e);
-      } catch (InvocationTargetException e) {
-        log.error("Could not load password " + e);
-        throw new IllegalArgumentException("Could not load password for [" + name + "]", e);
-      }
-    } else
-      return "";
-  }
     /**
      * Configures KeyStore related settings in SslContextFactory
      */
-    protected static void configureSslContextFactoryKeyStore(WorkerConfig config, SslContextFactory ssl, Map<String, Object> sslConfigValues) {
-        ssl.setKeyStoreType((String) getOrDefault(sslConfigValues, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
+    private static void configureSslContextFactoryKeyStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
+        ssl.setKeyStoreType((String) getOrDefault(
+                sslConfigValues,
+                SslConfigs.SSL_KEYSTORE_TYPE_CONFIG,
+                SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
 
-        String sslKeystoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
-        if (sslKeystoreLocation != null)
-            ssl.setKeyStorePath(sslKeystoreLocation);
-        String credentialsPath = config.getString(WorkerConfig.HADOOP_CREDENTIALS_PROVIDER_PATH);
-        Password sslKeystorePassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-        Password sslKeyPassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+        String sslKeystoreLocation = KafkaSSLPropertiesReader.getClientKeystoreLocation();
+        if (sslKeystoreLocation == null)
+            throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+        ssl.setKeyStorePath(sslKeystoreLocation);
 
-        if (!credentialsPath.isEmpty()) {
-            String tmpKeystorePassword = getFromCredentialsPath((SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG), credentialsPath);
-            String tmpKeyPassword = getFromCredentialsPath((SslConfigs.SSL_KEY_PASSWORD_CONFIG), credentialsPath);
+        String sslKeystorePassword = KafkaSSLPropertiesReader.getClientKeystorePassword();
+        if (Objects.equals(sslKeystorePassword, ""))
+            throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+        ssl.setKeyStorePassword(sslKeystorePassword);
 
-            if (!tmpKeystorePassword.isEmpty())
-                sslKeystorePassword = new Password(tmpKeystorePassword);
-
-            if (!tmpKeyPassword.isEmpty())
-                sslKeyPassword = new Password(tmpKeyPassword);
-        }
-
-        if (sslKeystorePassword != null)
-            ssl.setKeyStorePassword(sslKeystorePassword.value());
-
-        if (sslKeyPassword != null)
-            ssl.setKeyManagerPassword(sslKeyPassword.value());
+        String sslKeyPassword = KafkaSSLPropertiesReader.getClientKeyPassword();
+        if (Objects.equals(sslKeyPassword, ""))
+            throw new SSLConfigException(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+        ssl.setKeyManagerPassword(sslKeyPassword);
     }
 
     protected static Object getOrDefault(Map<String, Object> configMap, String key, Object defaultValue) {
