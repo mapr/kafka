@@ -100,6 +100,7 @@ public class StreamsResetter {
     private static OptionSpecBuilder dryRunOption;
     private static OptionSpecBuilder executeOption;
     private static OptionSpec<String> commandConfigOption;
+    private static OptionSpec<String> defaultStreamOption;
 
     private OptionSet options = null;
     private final List<String> allTopics = new LinkedList<>();
@@ -244,6 +245,10 @@ public class StreamsResetter {
             .withRequiredArg()
             .ofType(String.class)
             .describedAs("file name");
+        defaultStreamOption = optionParser.accepts("default-stream", "Default stream that is used if topic is specified without stream.")
+                .withRequiredArg()
+                .ofType(String.class)
+                .describedAs("default-stream");
         executeOption = optionParser.accepts("execute", "Execute the command.");
         dryRunOption = optionParser.accepts("dry-run", "Display the actions that would be performed without executing the reset commands.");
 
@@ -320,7 +325,7 @@ public class StreamsResetter {
     private int maybeResetInputAndSeekToEndIntermediateTopicOffsets(final Map consumerConfig,
                                                                     final AdminClient adminClient,
                                                                     final boolean dryRun) throws Exception {
-        final String defaultStream = ""; //TODO: will be changed after support of default stream is added
+        String defaultStream = options.has(defaultStreamOption) ? options.valueOf(defaultStreamOption) : "";
         final List<String> inputTopics = MapRTopicUtils
                 .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(inputTopicsOption), defaultStream);
         final List<String> intermediateTopics =  MapRTopicUtils

@@ -35,6 +35,11 @@ public class MapRTopicUtils {
         for(String topic : topics){
             String decoratedTopic = topic;
             if(!topic.contains(":")){
+                if(defaultStream.isEmpty()){
+                    throw new InvalidTopicException(String.format(
+                            "Default stream is not specified. Short topic name %s is invalid.",
+                            topic));
+                }
                 decoratedTopic = String.format("%s:%s", defaultStream, topic);
             }
             validateFullTopicName(decoratedTopic);
