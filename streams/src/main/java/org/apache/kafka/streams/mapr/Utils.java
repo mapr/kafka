@@ -61,10 +61,10 @@ public class Utils {
                 maprFSpathCreate(config.getStreamsInternalStreamFolder(), aceList);
             }
             if (!streamExists(config.getStreamsInternalStreamNotcompacted())) {
-                createStream(config.getStreamsInternalStreamNotcompacted());
+                createStream(config.getStreamsInternalStreamNotcompacted(), false);
             }
             if (!streamExists(config.getStreamsInternalStreamCompacted())) {
-                createStream(config.getStreamsInternalStreamCompacted());
+                createStream(config.getStreamsInternalStreamCompacted(), true);
             }
             if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
                 throw new InternalStreamNotExistException(config.getStreamsCliSideAssignmentInternalStream() + " doesn't exist");
@@ -84,12 +84,16 @@ public class Utils {
         }
     }
 
-    private static void createStream(String streamName) {
+    private static void createStream(String streamName, boolean logCompactionEnabled) {
         try {
             Configuration conf = new Configuration();
             Admin admin = Streams.newAdmin(conf);
             StreamDescriptor desc = Streams.newStreamDescriptor();
             admin.createStream(streamName, desc);
+            if(logCompactionEnabled) {
+                desc.setCompact(logCompactionEnabled);
+                admin.editStream(streamName, desc);
+            }
         } catch (IOException e){
             throw new KafkaException(e);
         }
