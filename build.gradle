@@ -1504,7 +1504,7 @@ project(':connect:runtime') {
     compile project(':tools')
     compile libs.slf4jApi
     compile libs.restutils
-    compile (libs.hadoopCommon) {
+    compileOnly (libs.hadoopCommon) {
         transitive = false
     }
     compile libs.jacksonJaxrsJsonProvider
