@@ -68,20 +68,34 @@ public class SSLUtils {
                 SslConfigs.SSL_KEYSTORE_TYPE_CONFIG,
                 SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
 
-        String sslKeystoreLocation = KafkaSSLPropertiesReader.getClientKeystoreLocation();
-        if (sslKeystoreLocation == null)
-            throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
-        ssl.setKeyStorePath(sslKeystoreLocation);
+        String sslKeystoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+        if (sslKeystoreLocation != null)
+            ssl.setKeyStorePath(sslKeystoreLocation);
+        else {
+            sslKeystoreLocation = KafkaSSLPropertiesReader.getClientKeystoreLocation();
+            if (sslKeystoreLocation == null)
+                throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
+            ssl.setKeyStorePath(sslKeystoreLocation);
+        }
+        Password sslKeystorePassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+        if (sslKeystorePassword != null)
+            ssl.setKeyStorePassword(sslKeystorePassword.value());
+        else {
+            String tmpSslKeystorePassword = KafkaSSLPropertiesReader.getClientKeystorePassword();
+            if (Objects.equals(tmpSslKeystorePassword, ""))
+                throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
+            ssl.setKeyStorePassword(tmpSslKeystorePassword);
+        }
 
-        String sslKeystorePassword = KafkaSSLPropertiesReader.getClientKeystorePassword();
-        if (Objects.equals(sslKeystorePassword, ""))
-            throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-        ssl.setKeyStorePassword(sslKeystorePassword);
-
-        String sslKeyPassword = KafkaSSLPropertiesReader.getClientKeyPassword();
-        if (Objects.equals(sslKeyPassword, ""))
-            throw new SSLConfigException(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
-        ssl.setKeyManagerPassword(sslKeyPassword);
+        Password sslKeyPassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+        if (sslKeyPassword != null)
+            ssl.setKeyManagerPassword(sslKeyPassword.value());
+        else {
+            String tmpSslKeyPassword = KafkaSSLPropertiesReader.getClientKeyPassword();
+            if (Objects.equals(tmpSslKeyPassword, ""))
+                throw new SSLConfigException(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
+            ssl.setKeyManagerPassword(tmpSslKeyPassword);
+        }
     }
 
     protected static Object getOrDefault(Map<String, Object> configMap, String key, Object defaultValue) {
