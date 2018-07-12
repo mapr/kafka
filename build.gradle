@@ -574,15 +574,11 @@ project(':core') {
 
   dependencies {
     compile project(':clients')
-    compileOnly (libs.maprStreams){
-      transitive = false
-    }
-    compileOnly (libs.hadoopCommon) {
-      transitive = false
-    }
-    compileOnly (libs.maprFs){
-      transitive = false
-    }
+
+    compileOnly (libs.maprStreams)
+    compileOnly (libs.hadoopCommon)
+    compileOnly (libs.maprFs)
+
     compile libs.jacksonDatabind
     compile libs.joptSimple
     compile libs.metrics
@@ -1035,12 +1031,8 @@ project(':streams') {
       exclude group: 'com.mapr.db', module: 'maprdb'
       transitive = false
     }
-    compile (libs.hadoopCommon) {
-      transitive = false
-    }
-    compile(libs.maprFs){
-      transitive = false
-    }
+    compileOnly (libs.hadoopCommon)
+    compileOnly(libs.maprFs)
 
     testCompile project(':clients').sourceSets.test.output
     testCompile project(':core')
