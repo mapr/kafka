@@ -84,7 +84,7 @@ public class Utils {
         }
     }
 
-    private static void createStream(String streamName, boolean logCompactionEnabled) {
+    public static void createStream(String streamName, boolean logCompactionEnabled) {
         try {
             Configuration conf = new Configuration();
             Admin admin = Streams.newAdmin(conf);
@@ -99,11 +99,11 @@ public class Utils {
         }
     }
 
-    private static boolean maprFSpathExists(String path) throws IOException {
+    public static boolean maprFSpathExists(String path) throws IOException {
         return fs.exists(new Path(path));
     }
 
-    private static void maprFSpathCreate(String pathStr, ArrayList<MapRFileAce> aces) throws IOException {
+    public static void maprFSpathCreate(String pathStr, ArrayList<MapRFileAce> aces) throws IOException {
         Path path = new Path(pathStr);
         fs.mkdirs(path);
 
