@@ -78,7 +78,7 @@ public class SSLUtils {
             ssl.setKeyStorePath(sslKeystoreLocation);
         }
         Password sslKeystorePassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-        if (sslKeystorePassword != null)
+        if (!Objects.equals(sslKeystorePassword.value(), ""))
             ssl.setKeyStorePassword(sslKeystorePassword.value());
         else {
             String tmpSslKeystorePassword = KafkaSSLPropertiesReader.getClientKeystorePassword();
@@ -88,7 +88,7 @@ public class SSLUtils {
         }
 
         Password sslKeyPassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
-        if (sslKeyPassword != null)
+        if (!Objects.equals(sslKeyPassword.value(), ""))
             ssl.setKeyManagerPassword(sslKeyPassword.value());
         else {
             String tmpSslKeyPassword = KafkaSSLPropertiesReader.getClientKeyPassword();
