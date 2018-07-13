@@ -42,7 +42,7 @@ allprojects {
       url "http://packages.confluent.io/maven/"
     }
     maven {
-      url "http://repository.mapr.com/nexus/content/repositories/mapr-public/"
+      url "http://maven.corp.maprtech.com/nexus/content/repositories/mapr-public/"
     }
     if (project.hasProperty('cvmirror') && project.getProperty('cvmirror') == 'true') {
       maven {
@@ -50,7 +50,7 @@ allprojects {
       }
     }
   }
-  
+
   apply plugin: 'idea'
   apply plugin: 'org.owasp.dependencycheck'
   apply plugin: 'com.github.ben-manes.versions'
@@ -257,7 +257,7 @@ subprojects {
     useJUnit {
       excludeCategories 'org.apache.kafka.test.IntegrationTest'
     }
-    
+
   }
 
   jar {
@@ -454,8 +454,8 @@ def fineTuneEclipseClasspathFile(eclipse, project) {
       if (project.name.equals('core')) {
         cp.entries.findAll { it.kind == "src" && it.path.equals("src/test/scala") }*.excludes = ["integration/", "other/", "unit/"]
       }
-      /* 
-       * Set all eclipse build output to go to 'build_eclipse' directory. This is to ensure that gradle and eclipse use different 
+      /*
+       * Set all eclipse build output to go to 'build_eclipse' directory. This is to ensure that gradle and eclipse use different
        * build output directories, and also avoid using the eclpise default of 'bin' which clashes with some of our script directories.
        * https://discuss.gradle.org/t/eclipse-generated-files-should-be-put-in-the-same-place-as-the-gradle-generated-files/6986/2
        */
@@ -620,7 +620,7 @@ project(':core') {
     scoverage libs.scoveragePlugin
     scoverage libs.scoverageRuntime
   }
-  
+
   scoverage {
     reportDir = file("${rootProject.buildDir}/scoverage")
     highlighting = false
@@ -960,7 +960,7 @@ project(':tools') {
   javadoc {
     enabled = false
   }
-  
+
 	tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
       include('slf4j-log4j12*')
@@ -1074,6 +1074,29 @@ project(':streams') {
     main = 'org.apache.kafka.streams.StreamsConfig'
     if( !generatedDocsDir.exists() ) { generatedDocsDir.mkdirs() }
     standardOutput = new File(generatedDocsDir, "streams_config.html").newOutputStream()
+  }
+
+  publishing {
+    publications {
+      kafkaStreams(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-streams"
+        artifact jar
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(testJar) {
+          classifier "test"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+
+        // pom.withXml {
+        //   originalNodes.each { asNode().append(it) }
+        // }
+      }
+    }
   }
 }
 
@@ -1693,8 +1716,8 @@ task maprPublicPublish() {
     ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
     ":connect:transforms:uploadArchives",
     ":log4j-appender:uploadArchives",
-    ":streams:uploadArchives",
-    ":tools:uploadArchives",
+    ":streams:publishKafkaStreamsPublicationToTargetrepoRepository",
+    ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
     "uploadCoreArchives_2_11",
     "uploadCoreArchives_2_12"
 }
