@@ -244,64 +244,68 @@ public class StreamThread extends Thread {
 
         @Override
         public void onPartitionsAssigned(final Collection<TopicPartition> assignment) {
-            log.debug("at state {}: partitions {} assigned at the end of consumer rebalance.\n" +
-                            "\tcurrent suspended active tasks: {}\n" +
-                            "\tcurrent suspended standby tasks: {}\n",
-                    streamThread.state,
-                    assignment,
-                    taskManager.suspendedActiveTaskIds(),
-                    taskManager.suspendedStandbyTaskIds());
+            synchronized (taskManager) {
+                log.debug("at state {}: partitions {} assigned at the end of consumer rebalance.\n" +
+                                "\tcurrent suspended active tasks: {}\n" +
+                                "\tcurrent suspended standby tasks: {}\n",
+                        streamThread.state,
+                        assignment,
+                        taskManager.suspendedActiveTaskIds(),
+                        taskManager.suspendedStandbyTaskIds());
 
-            final long start = time.milliseconds();
-            try {
-                if (streamThread.setState(State.PARTITIONS_ASSIGNED) == null) {
-                    return;
+                final long start = time.milliseconds();
+                try {
+                    if (streamThread.setState(State.PARTITIONS_ASSIGNED) == null) {
+                        return;
+                    }
+                    taskManager.createTasks(assignment);
+                } catch (final Throwable t) {
+                    log.error("Error caught during partition assignment, " +
+                            "will abort the current process and re-throw at the end of rebalance: {}", t.getMessage());
+                    streamThread.setRebalanceException(t);
+                } finally {
+                    log.info("partition assignment took {} ms.\n" +
+                                    "\tcurrent active tasks: {}\n" +
+                                    "\tcurrent standby tasks: {}\n" +
+                                    "\tprevious active tasks: {}\n",
+                            time.milliseconds() - start,
+                            taskManager.activeTaskIds(),
+                            taskManager.standbyTaskIds(),
+                            taskManager.prevActiveTaskIds());
                 }
-                taskManager.createTasks(assignment);
-            } catch (final Throwable t) {
-                log.error("Error caught during partition assignment, " +
-                        "will abort the current process and re-throw at the end of rebalance: {}", t.getMessage());
-                streamThread.setRebalanceException(t);
-            } finally {
-                log.info("partition assignment took {} ms.\n" +
-                                 "\tcurrent active tasks: {}\n" +
-                                 "\tcurrent standby tasks: {}\n" +
-                                 "\tprevious active tasks: {}\n",
-                         time.milliseconds() - start,
-                         taskManager.activeTaskIds(),
-                         taskManager.standbyTaskIds(),
-                         taskManager.prevActiveTaskIds());
             }
         }
 
         @Override
         public void onPartitionsRevoked(final Collection<TopicPartition> assignment) {
-            log.debug("at state {}: partitions {} revoked at the beginning of consumer rebalance.\n" +
-                    "\tcurrent assigned active tasks: {}\n" +
-                    "\tcurrent assigned standby tasks: {}\n",
-                streamThread.state,
-                assignment,
-                taskManager.activeTaskIds(),
-                taskManager.standbyTaskIds());
+            synchronized (taskManager) {
+                log.debug("at state {}: partitions {} revoked at the beginning of consumer rebalance.\n" +
+                                "\tcurrent assigned active tasks: {}\n" +
+                                "\tcurrent assigned standby tasks: {}\n",
+                        streamThread.state,
+                        assignment,
+                        taskManager.activeTaskIds(),
+                        taskManager.standbyTaskIds());
 
-            if (streamThread.setState(State.PARTITIONS_REVOKED) != null) {
-                final long start = time.milliseconds();
-                try {
-                    // suspend active tasks
-                    taskManager.suspendTasksAndState();
-                } catch (final Throwable t) {
-                    log.error("Error caught during partition revocation, " +
-                              "will abort the current process and re-throw at the end of rebalance: {}", t.getMessage());
-                    streamThread.setRebalanceException(t);
-                } finally {
-                    streamThread.clearStandbyRecords();
+                if (streamThread.setState(State.PARTITIONS_REVOKED) != null) {
+                    final long start = time.milliseconds();
+                    try {
+                        // suspend active tasks
+                        taskManager.suspendTasksAndState();
+                    } catch (final Throwable t) {
+                        log.error("Error caught during partition revocation, " +
+                                "will abort the current process and re-throw at the end of rebalance: {}", t.getMessage());
+                        streamThread.setRebalanceException(t);
+                    } finally {
+                        streamThread.clearStandbyRecords();
 
-                    log.info("partition revocation took {} ms.\n" +
-                                    "\tsuspended active tasks: {}\n" +
-                                    "\tsuspended standby tasks: {}",
-                            time.milliseconds() - start,
-                            taskManager.suspendedActiveTaskIds(),
-                            taskManager.suspendedStandbyTaskIds());
+                        log.info("partition revocation took {} ms.\n" +
+                                        "\tsuspended active tasks: {}\n" +
+                                        "\tsuspended standby tasks: {}",
+                                time.milliseconds() - start,
+                                taskManager.suspendedActiveTaskIds(),
+                                taskManager.suspendedStandbyTaskIds());
+                    }
                 }
             }
         }
@@ -750,7 +754,9 @@ public class StreamThread extends Thread {
 
         while (isRunning()) {
             try {
-                recordsProcessedBeforeCommit = runOnce(recordsProcessedBeforeCommit);
+                synchronized (taskManager) {
+                    recordsProcessedBeforeCommit = runOnce(recordsProcessedBeforeCommit);
+                }
             } catch (final TaskMigratedException ignoreAndRejoinGroup) {
                 log.warn("Detected task {} that got migrated to another thread: {} " +
                         "This implies that the thread may have missed a rebalance and dropped out of the consumer group. " +
