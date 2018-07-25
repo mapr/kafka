@@ -1,19 +1,20 @@
 package org.apache.kafka.streams.mapr;
 
+import com.mapr.fs.AceHelper;
 import com.mapr.fs.MapRFileSystem;
 import com.mapr.fs.proto.Common;
 import com.mapr.streams.Admin;
 import com.mapr.streams.StreamDescriptor;
 import com.mapr.streams.Streams;
-import org.apache.hadoop.fs.permission.AclEntry;
 import com.mapr.fs.MapRFileAce;
+import org.apache.hadoop.io.PermissionNotMatchException;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.mapr.InternalStreamNotExistException;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -22,17 +23,6 @@ import org.apache.hadoop.fs.Path;
 
 public class Utils {
 
-    public static FileSystem fs;
-
-    static {
-        try {
-            Configuration conf = new Configuration();
-            fs = FileSystem.get(conf);
-        }catch (IOException e){
-            throw new KafkaException(e);
-        }
-    }
-
     /**
      * The method creates internal streams (without log compaction and with log compaction)
      * and appropriate paths if they don't exist.
@@ -40,14 +30,14 @@ public class Utils {
      */
     public static void createAppDirAndInternalStreamsIfNotExist(StreamsConfig config) {
         try {
-            if (!maprFSpathExists(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER)) {
+            FileSystem fs = FileSystem.get(new Configuration());
+            if (!maprFSpathExists(fs, StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER)) {
                 throw new KafkaException(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER + " doesn't exist");
             }
-            if (!maprFSpathExists(config.getStreamsInternalStreamFolder())) {
+            String currentUser = UserGroupInformation.getCurrentUser().getUserName();
+            if (!maprFSpathExists(fs, config.getStreamsInternalStreamFolder())) {
                 // Creation of application forler with appropriate aces
-                String currentUser = System.getProperty("user.name");
                 ArrayList<MapRFileAce> aceList = new ArrayList<MapRFileAce>();
-
                 MapRFileAce ace = new MapRFileAce(MapRFileAce.AccessType.READDIR);
                 ace.setBooleanExpression("u:" + currentUser);
                 aceList.add(ace);
@@ -58,7 +48,13 @@ public class Utils {
                 ace.setBooleanExpression("u:" + currentUser);
                 aceList.add(ace);
 
-                maprFSpathCreate(config.getStreamsInternalStreamFolder(), aceList);
+                maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(), aceList);
+            }else {
+                String errorMessage = "User: "
+                        + currentUser
+                        + " has no permissions to run KStreams application with ID: "
+                        + config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
+                validateDirectoryPerms(fs, config.getStreamsInternalStreamFolder(), currentUser, errorMessage);
             }
             if (!streamExists(config.getStreamsInternalStreamNotcompacted())) {
                 createStream(config.getStreamsInternalStreamNotcompacted(), false);
@@ -70,6 +66,49 @@ public class Utils {
                 throw new InternalStreamNotExistException(config.getStreamsCliSideAssignmentInternalStream() + " doesn't exist");
             }
         }catch (IOException e) {
+            throw new KafkaException(e);
+        }
+    }
+
+    private static boolean validatePermsHelper(MapRFileAce ace,
+                                               String userBoolExpr){
+        try {
+            String[] boolExprs = ace.getBooleanExpression().split(",");
+            for (String boolExpr : boolExprs) {
+                if ((AceHelper.toPostfix(boolExpr)).equals(userBoolExpr)) {
+                    return true;
+                }
+            }
+        } catch(IOException e){
+            throw new KafkaException(e);
+        }
+        return false;
+    }
+
+    public static void validateDirectoryPerms(FileSystem fs, String path, String user, String errorMsg){
+        try {
+            List<MapRFileAce> aces = ((MapRFileSystem) fs).getAces(new Path(path));
+            boolean readDirAce = false;
+            boolean addChild = false;
+            boolean lookupDir = false;
+            String userBoolExpr = AceHelper.toPostfix(String.format("u:%s", user));
+            for(MapRFileAce ace : aces) {
+                boolean userHasPerms = validatePermsHelper(ace, userBoolExpr);
+                if(ace.getAccessType().equals(MapRFileAce.AccessType.READDIR)){
+                    readDirAce = userHasPerms;
+                }
+                if(ace.getAccessType().equals(MapRFileAce.AccessType.ADDCHILD)){
+                    addChild = userHasPerms;
+                }
+                if(ace.getAccessType().equals(MapRFileAce.AccessType.LOOKUPDIR)){
+                    lookupDir = userHasPerms;
+                }
+            }
+            boolean userHasAllNeededPerms = readDirAce && lookupDir && addChild;
+            if(!userHasAllNeededPerms) {
+                throw new PermissionNotMatchException(errorMsg);
+            }
+        } catch (IOException e){
             throw new KafkaException(e);
         }
     }
@@ -99,11 +138,11 @@ public class Utils {
         }
     }
 
-    public static boolean maprFSpathExists(String path) throws IOException {
+    public static boolean maprFSpathExists(FileSystem fs, String path) throws IOException {
         return fs.exists(new Path(path));
     }
 
-    public static void maprFSpathCreate(String pathStr, ArrayList<MapRFileAce> aces) throws IOException {
+    public static void maprFSpathCreate(FileSystem fs, String pathStr, ArrayList<MapRFileAce> aces) throws IOException {
         Path path = new Path(pathStr);
         fs.mkdirs(path);
 
