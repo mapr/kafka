@@ -47,6 +47,9 @@ public class Utils {
                 ace = new MapRFileAce(MapRFileAce.AccessType.LOOKUPDIR);
                 ace.setBooleanExpression("u:" + currentUser);
                 aceList.add(ace);
+                ace = new MapRFileAce(MapRFileAce.AccessType.DELETECHILD);
+                ace.setBooleanExpression("u:" + currentUser);
+                aceList.add(ace);
 
                 maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(), aceList);
             }else {
@@ -91,6 +94,7 @@ public class Utils {
             boolean readDirAce = false;
             boolean addChild = false;
             boolean lookupDir = false;
+            boolean deleteChild = false;
             String userBoolExpr = AceHelper.toPostfix(String.format("u:%s", user));
             for(MapRFileAce ace : aces) {
                 boolean userHasPerms = validatePermsHelper(ace, userBoolExpr);
@@ -103,8 +107,11 @@ public class Utils {
                 if(ace.getAccessType().equals(MapRFileAce.AccessType.LOOKUPDIR)){
                     lookupDir = userHasPerms;
                 }
+                if(ace.getAccessType().equals(MapRFileAce.AccessType.DELETECHILD)){
+                    deleteChild = userHasPerms;
+                }
             }
-            boolean userHasAllNeededPerms = readDirAce && lookupDir && addChild;
+            boolean userHasAllNeededPerms = readDirAce && lookupDir && addChild && deleteChild;
             if(!userHasAllNeededPerms) {
                 throw new PermissionNotMatchException(errorMsg);
             }
