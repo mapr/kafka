@@ -30,14 +30,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.mapr.util.MapRTopicUtils;
 import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.annotation.InterfaceStability;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -54,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -103,7 +100,6 @@ public class StreamsResetter {
     private static OptionSpec<String> defaultStreamOption;
 
     private OptionSet options = null;
-    private final List<String> allTopics = new LinkedList<>();
 
 
     public int run(final String[] args) {
@@ -133,32 +129,6 @@ public class StreamsResetter {
             final String internalStream = String.format("%s/kafka-internal-stream", appDir);
             final String internalStreamCompacted = String.format("%s/kafka-internal-stream-compacted", appDir);
 
-            final Admin admin = Streams.newAdmin(new Configuration());
-
-            allTopics.clear();
-            List<String> allInternalNotCompactedTopics = new LinkedList<>();
-            if(admin.streamExists(internalStream)) {
-                allInternalNotCompactedTopics = MapRTopicUtils.addStreamNameToTopics(
-                        new ArrayList<String>(kafkaAdminClient
-                                .listTopics(internalStream)
-                                .names()
-                                .get(60, TimeUnit.SECONDS)),
-                        internalStream);
-                validateNoActiveConsumers(internalStream, groupId, allInternalNotCompactedTopics);
-            }
-            allTopics.addAll(allInternalNotCompactedTopics);
-            List<String> allInternalCompactedTopics = new LinkedList<>();
-            if(admin.streamExists(internalStreamCompacted)) {
-                allInternalCompactedTopics = MapRTopicUtils.addStreamNameToTopics(
-                        new ArrayList<String>(kafkaAdminClient
-                                .listTopics(internalStreamCompacted)
-                                .names()
-                                .get(60, TimeUnit.SECONDS)),
-                        internalStreamCompacted);
-                validateNoActiveConsumers(internalStreamCompacted, groupId, allInternalCompactedTopics);
-            }
-            allTopics.addAll(allInternalCompactedTopics);
-
             if (dryRun) {
                 System.out.println("----Dry run displays the actions which will be performed when running Streams Reset Tool----");
             }
@@ -166,7 +136,7 @@ public class StreamsResetter {
             final HashMap<Object, Object> consumerConfig = new HashMap<>(config);
             consumerConfig.putAll(properties);
             exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, kafkaAdminClient, dryRun);
-            maybeDeleteInternalTopicsStreamsDirs(kafkaAdminClient, dryRun, internalStream, internalStreamCompacted, appDir);
+            deleteAppDir(kafkaAdminClient, dryRun, internalStream, internalStreamCompacted, appDir);
 
         } catch (final Throwable e) {
             exitCode = EXIT_CODE_ERROR;
@@ -440,9 +410,7 @@ public class StreamsResetter {
         if (intermediateTopicPartitions.size() > 0) {
             System.out.println("Following intermediate topics offsets will be reset to end (for consumer group " + groupId + ")");
             for (final TopicPartition topicPartition : intermediateTopicPartitions) {
-                if (allTopics.contains(topicPartition.topic())) {
-                    System.out.println("Topic: " + topicPartition.topic());
-                }
+                System.out.println("Topic: " + topicPartition.topic());
             }
 
             client.seekToEnd(intermediateTopicPartitions);
@@ -655,19 +623,10 @@ public class StreamsResetter {
         return options.valuesOf(intermediateTopicsOption).contains(topic);
     }
 
-    private void maybeDeleteInternalTopicsStreamsDirs(final AdminClient adminClient, final boolean dryRun, String internalStream, String internalStreamCompacted, String appDir) {
+    private void deleteAppDir(final AdminClient adminClient, final boolean dryRun, String internalStream, String internalStreamCompacted, String appDir) {
 
-        System.out.println("Deleting all internal/auto-created topics for application " + options.valueOf(applicationIdOption));
-        List<String> topicsToDelete = new ArrayList<>();
-        for (final String listing : allTopics) {
-                if (!dryRun) {
-                    topicsToDelete.add(listing);
-                } else {
-                    System.out.println("Topic: " + listing);
-                }
-        }
+        System.out.println("Deleting KStreams Application dir and internal streams for application: " + options.valueOf(applicationIdOption));
         if (!dryRun) {
-            doDelete(topicsToDelete, adminClient);
             doDeleteForStreamsAndAppDir(internalStream, internalStreamCompacted, appDir);
         }else {
             System.out.println("MapR-ES Stream: " + internalStream);
@@ -677,26 +636,6 @@ public class StreamsResetter {
         System.out.println("Done.");
     }
 
-    // visible for testing
-    public void doDelete(final List<String> topicsToDelete,
-                          final AdminClient adminClient) {
-        boolean hasDeleteErrors = false;
-        final DeleteTopicsResult deleteTopicsResult = adminClient.deleteTopics(topicsToDelete);
-        final Map<String, KafkaFuture<Void>> results = deleteTopicsResult.values();
-
-        for (final Map.Entry<String, KafkaFuture<Void>> entry : results.entrySet()) {
-            try {
-                entry.getValue().get(30, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                System.err.println("ERROR: deleting topic " + entry.getKey());
-                e.printStackTrace(System.err);
-                hasDeleteErrors = true;
-            }
-        }
-        if (hasDeleteErrors) {
-            throw new RuntimeException("Encountered an error deleting one or more topics");
-        }
-    }
 
     public void doDeleteForStreamsAndAppDir(final String internalStream,
                                             final String internalStreamCompacted,
