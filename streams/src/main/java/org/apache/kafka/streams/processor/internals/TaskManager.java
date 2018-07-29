@@ -241,8 +241,10 @@ class TaskManager {
 
         firstException.compareAndSet(null, active.suspend());
         firstException.compareAndSet(null, standby.suspend());
-        // remove the changelog partitions from restore consumer
-        restoreConsumer.unsubscribe();
+        if (restoreConsumer.subscription().size() > 0) {
+            // remove the changelog partitions from restore consumer
+            restoreConsumer.unsubscribe();
+        }
 
         final Exception exception = firstException.get();
         if (exception != null) {
@@ -265,7 +267,9 @@ class TaskManager {
 
         // remove the changelog partitions from restore consumer
         try {
-            restoreConsumer.unsubscribe();
+            if(restoreConsumer.subscription().size() > 0) {
+                restoreConsumer.unsubscribe();
+            }
         } catch (final RuntimeException fatalException) {
             firstException.compareAndSet(null, fatalException);
         }
