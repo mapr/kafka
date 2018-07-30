@@ -75,9 +75,9 @@ public class StateDirectory {
         this.time = time;
         final String stateDirName = config.getString(StreamsConfig.STATE_DIR_CONFIG);
         final File baseDir = new File(stateDirName);
-        if (!baseDir.exists() && !baseDir.mkdirs()) {
+        if (!baseDir.exists()) {
             throw new ProcessorStateException(
-                String.format("base state directory [%s] doesn't exist and couldn't be created", stateDirName));
+                String.format("base state directory [%s] doesn't exist", stateDirName));
         }
         stateDir = new File(baseDir, config.getString(StreamsConfig.APPLICATION_ID_CONFIG));
         if (!stateDir.exists() && !stateDir.mkdir()) {
