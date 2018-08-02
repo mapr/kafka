@@ -1,12 +1,15 @@
 package org.apache.kafka.streams.mapr;
 
 import com.mapr.fs.AceHelper;
+import com.mapr.fs.MapRFileAce;
 import com.mapr.fs.MapRFileSystem;
 import com.mapr.fs.proto.Common;
 import com.mapr.streams.Admin;
 import com.mapr.streams.StreamDescriptor;
 import com.mapr.streams.Streams;
-import com.mapr.fs.MapRFileAce;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.PermissionNotMatchException;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.KafkaException;
@@ -16,10 +19,6 @@ import org.apache.kafka.streams.errors.mapr.InternalStreamNotExistException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 public class Utils {
 
@@ -60,15 +59,31 @@ public class Utils {
                 validateDirectoryPerms(fs, config.getStreamsInternalStreamFolder(), currentUser, errorMessage);
             }
             if (!streamExists(config.getStreamsInternalStreamNotcompacted())) {
-                createStream(config.getStreamsInternalStreamNotcompacted(), false);
+                createStream(config.getStreamsInternalStreamNotcompacted());
             }
             if (!streamExists(config.getStreamsInternalStreamCompacted())) {
-                createStream(config.getStreamsInternalStreamCompacted(), true);
+                createStream(config.getStreamsInternalStreamCompacted());
             }
+            enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
+
             if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
                 throw new InternalStreamNotExistException(config.getStreamsCliSideAssignmentInternalStream() + " doesn't exist");
             }
         }catch (IOException e) {
+            throw new KafkaException(e);
+        }
+    }
+
+    public static void enableLogCompactionForStreamIfNotEnabled(String streamName){
+        try {
+            Configuration conf = new Configuration();
+            Admin admin = Streams.newAdmin(conf);
+            StreamDescriptor desc = admin.getStreamDescriptor(streamName);
+            if(!desc.getCompact()) {
+                desc.setCompact(true);
+                admin.editStream(streamName, desc);
+            }
+        } catch (IOException e){
             throw new KafkaException(e);
         }
     }
@@ -130,16 +145,12 @@ public class Utils {
         }
     }
 
-    public static void createStream(String streamName, boolean logCompactionEnabled) {
+    public static void createStream(String streamName) {
         try {
             Configuration conf = new Configuration();
             Admin admin = Streams.newAdmin(conf);
             StreamDescriptor desc = Streams.newStreamDescriptor();
             admin.createStream(streamName, desc);
-            if(logCompactionEnabled) {
-                desc.setCompact(logCompactionEnabled);
-                admin.editStream(streamName, desc);
-            }
         } catch (IOException e){
             throw new KafkaException(e);
         }
