@@ -44,10 +44,8 @@ allprojects {
     maven {
       url "http://maven.corp.maprtech.com/nexus/content/repositories/mapr-public/"
     }
-    if (project.hasProperty('cvmirror') && project.getProperty('cvmirror') == 'true') {
-      maven {
-        url 'http://repositorycv.mapr.com/nexus/content/repositories/mapr-public/'
-      }
+    maven {
+      url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
     }
   }
 
