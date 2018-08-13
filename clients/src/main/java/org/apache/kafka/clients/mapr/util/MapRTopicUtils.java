@@ -82,15 +82,15 @@ public class MapRTopicUtils {
                                                                  AdminClient adminClient){
         Map<String, Set<String>> res = new HashMap<>();
 
-        for(String streamName : streamSet){
-            try {
+        try {
+            for (String streamName : streamSet) {
                 res.put(streamName,
                         adminClient.listTopics(streamName).names().get(60, TimeUnit.SECONDS));
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                new KafkaException(e);
-            } finally {
-                adminClient.close();
             }
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw new KafkaException(e);
+        } finally {
+            adminClient.close();
         }
 
         return res;

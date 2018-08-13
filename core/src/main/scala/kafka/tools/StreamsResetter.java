@@ -136,6 +136,7 @@ public class StreamsResetter {
             final HashMap<Object, Object> consumerConfig = new HashMap<>(config);
             consumerConfig.putAll(properties);
             exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, kafkaAdminClient, dryRun);
+
             deleteAppDir(kafkaAdminClient, dryRun, internalStream, internalStreamCompacted, appDir);
 
         } catch (final Throwable e) {
@@ -153,7 +154,7 @@ public class StreamsResetter {
 
     private void validateNoActiveConsumers(final String streamName,
                                            final String groupId,
-                                           final List<String> topics) {
+                                           final Iterable<String> topics) {
         MarlinAdminImpl adminClient = null;
         try {
             adminClient = new MarlinAdminImpl(new Configuration());
@@ -273,15 +274,18 @@ public class StreamsResetter {
     private SplitTopicListResult splitTopicListOnSubcribeAndNotFoundedLists(
             final Map<String, Set<String>> groupedTopicsByStreamName,
             final Map<String, Set<String>> allGroupedTopicsByStreamName){
+
         final ArrayList<String> topicsToSubscribe = new ArrayList<>();
         final ArrayList<String> notFoundInputTopics = new ArrayList<>();
+
         for (final Map.Entry<String, Set<String>> entry: groupedTopicsByStreamName.entrySet()){
             final String streamName = entry.getKey();
             final Set<String> inputTopicsForStream = entry.getValue();
-            final Set<String> allTopicsForStream = allGroupedTopicsByStreamName.get(streamName);
+            final Set<String> existingTopicsInStream = allGroupedTopicsByStreamName.get(streamName);
+
             for(final String inputTopic : inputTopicsForStream){
                 final String fullTopicName = MapRTopicUtils.buildFullTopicName(streamName, inputTopic);
-                if (!allTopicsForStream.contains(inputTopic)) {
+                if (existingTopicsInStream == null || !existingTopicsInStream.contains(inputTopic)) {
                     notFoundInputTopics.add(fullTopicName);
                 } else {
                     topicsToSubscribe.add(fullTopicName);
@@ -298,7 +302,7 @@ public class StreamsResetter {
         String defaultStream = options.has(defaultStreamOption) ? options.valueOf(defaultStreamOption) : "";
         final List<String> inputTopics = MapRTopicUtils
                 .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(inputTopicsOption), defaultStream);
-        final List<String> intermediateTopics =  MapRTopicUtils
+        final List<String> intermediateTopics = MapRTopicUtils
                 .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(intermediateTopicsOption), defaultStream);
         int topicNotFound = EXIT_CODE_SUCCESS;
 
@@ -324,8 +328,9 @@ public class StreamsResetter {
         if (inputTopics.size() != 0) {
             System.out.println("Reset-offsets for input topics " + inputTopics);
         }
+
         if (intermediateTopics.size() != 0) {
-            System.out.println("Seek-to-end for intermediate topics " + intermediateTopics);
+            System.out.println("Seeking for intermediate topics " + intermediateTopics);
         }
 
         final Set<String> topicsToSubscribe = new HashSet<>(inputTopics.size() + intermediateTopics.size());
@@ -334,6 +339,7 @@ public class StreamsResetter {
                 allTopicsGroupedByStreamName);
         topicsToSubscribe.addAll(inputTopicsSplitResult.topicsToSubscribe);
         notFoundInputTopics.addAll(inputTopicsSplitResult.notFoundedTopics);
+
         final SplitTopicListResult intermediateTopicsSplitResult = splitTopicListOnSubcribeAndNotFoundedLists(groupedIntermediateTopics,
                 allTopicsGroupedByStreamName);
         topicsToSubscribe.addAll(intermediateTopicsSplitResult.topicsToSubscribe);
@@ -361,6 +367,18 @@ public class StreamsResetter {
             return topicNotFound;
         }
 
+        int expectedPartitionsCount = 0;
+
+        try (Admin admin = Streams.newAdmin(new Configuration())) {
+            for (Map.Entry<String, Set<String>> streamWithTopics : MapRTopicUtils.groupTopicsByStreamName(inputTopics)
+                    .entrySet()) {
+                validateNoActiveConsumers(streamWithTopics.getKey(), groupId, streamWithTopics.getValue());
+                for (String shortTopic : streamWithTopics.getValue()) {
+                    expectedPartitionsCount += admin.getTopicDescriptor(streamWithTopics.getKey(), shortTopic).getPartitions();
+                }
+            }
+        }
+
         final Properties config = new Properties();
         config.putAll(consumerConfig);
         config.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -368,7 +386,8 @@ public class StreamsResetter {
 
         try (final KafkaConsumer<byte[], byte[]> client = new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             client.subscribe(topicsToSubscribe);
-            client.poll(1);
+
+            waitUntilClientObtainsAllPartitions(client, expectedPartitionsCount);
 
             final Set<TopicPartition> partitions = client.assignment();
             final Set<TopicPartition> inputTopicPartitions = new HashSet<>();
@@ -616,48 +635,84 @@ public class StreamsResetter {
     }
 
     private boolean isInputTopic(final String topic) {
-        return options.valuesOf(inputTopicsOption).contains(topic);
+        return MapRTopicUtils.decorateTopicsWithDefaultStreamIfNeeded(
+                options.valuesOf(inputTopicsOption),
+                options.valueOf(defaultStreamOption)
+        ).contains(topic);
     }
 
     private boolean isIntermediateTopic(final String topic) {
-        return options.valuesOf(intermediateTopicsOption).contains(topic);
+        return MapRTopicUtils.decorateTopicsWithDefaultStreamIfNeeded(
+                options.valuesOf(intermediateTopicsOption),
+                options.valueOf(defaultStreamOption)
+        ).contains(topic);
     }
 
     private void deleteAppDir(final AdminClient adminClient, final boolean dryRun, String internalStream, String internalStreamCompacted, String appDir) {
 
         System.out.println("Deleting KStreams Application dir and internal streams for application: " + options.valueOf(applicationIdOption));
+
         if (!dryRun) {
             doDeleteForStreamsAndAppDir(internalStream, internalStreamCompacted, appDir);
-        }else {
+        } else {
             System.out.println("MapR-ES Stream: " + internalStream);
             System.out.println("MapR-ES Stream: " + internalStreamCompacted);
             System.out.println("MapR-FS Directory: " + appDir);
         }
+
         System.out.println("Done.");
     }
 
 
     public void doDeleteForStreamsAndAppDir(final String internalStream,
                                             final String internalStreamCompacted,
-                                            final String appDir){
-        try {
-            final Configuration conf = new Configuration();
-            final FileSystem fs =  FileSystem.get(conf);
-            final Admin admin = Streams.newAdmin(conf);
+                                            final String appDir) {
+        final Configuration conf = new Configuration();
 
+        try (
+                final FileSystem fs = FileSystem.get(conf);
+                final Admin admin = Streams.newAdmin(conf)
+        ) {
             if(admin.streamExists(internalStream)){
                 admin.deleteStream(internalStream);
             }
+
             if(admin.streamExists(internalStreamCompacted)){
                 admin.deleteStream(internalStreamCompacted);
             }
+
             final Path p = new Path(appDir);
             if(fs.exists(p)){
                 fs.delete(p, true);
             }
+
         } catch (IOException e) {
             throw new KafkaException(e);
         }
+    }
+
+    private void waitUntilClientObtainsAllPartitions(final Consumer<byte[],byte[]> client, final int expectedPartitionsCount) {
+
+        Set<TopicPartition> partitions;
+
+        final int maxRetriesCount = 10;
+        final long delay = 1000;
+        int retriesCount = 0;
+        boolean allPartitionsObtained = false;
+
+        do {
+            client.poll(delay);
+            partitions = client.assignment();
+
+            allPartitionsObtained = partitions.size() == expectedPartitionsCount;
+
+            retriesCount++;
+        } while (!allPartitionsObtained && retriesCount < maxRetriesCount);
+
+        if (!allPartitionsObtained) {
+            throw new KafkaException("Couldn't obtain all partitions after " + maxRetriesCount + " attempts.");
+        }
+
     }
 
     private void printHelp(OptionParser parser) throws IOException {
