@@ -32,6 +32,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.RoundRobinAssignor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.mapr.util.MapRTopicUtils;
@@ -135,7 +136,7 @@ public class StreamsResetter {
 
             final HashMap<Object, Object> consumerConfig = new HashMap<>(config);
             consumerConfig.putAll(properties);
-            exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, kafkaAdminClient, dryRun);
+            exitCode = maybeResetInputAndSeekToEndIntermediateTopicOffsets(consumerConfig, kafkaAdminClient, dryRun, internalStreamCompacted);
 
             deleteAppDir(kafkaAdminClient, dryRun, internalStream, internalStreamCompacted, appDir);
 
@@ -298,7 +299,8 @@ public class StreamsResetter {
 
     private int maybeResetInputAndSeekToEndIntermediateTopicOffsets(final Map consumerConfig,
                                                                     final AdminClient adminClient,
-                                                                    final boolean dryRun) throws Exception {
+                                                                    final boolean dryRun,
+                                                                    final String streamForCliSideAssignment) throws Exception {
         String defaultStream = options.has(defaultStreamOption) ? options.valueOf(defaultStreamOption) : "";
         final List<String> inputTopics = MapRTopicUtils
                 .decorateTopicsWithDefaultStreamIfNeeded(options.valuesOf(inputTopicsOption), defaultStream);
@@ -383,6 +385,11 @@ public class StreamsResetter {
         config.putAll(consumerConfig);
         config.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        config.setProperty(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, "true");
+        config.setProperty(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM,
+                streamForCliSideAssignment);
+        config.setProperty(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
+
 
         try (final KafkaConsumer<byte[], byte[]> client = new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             client.subscribe(topicsToSubscribe);
