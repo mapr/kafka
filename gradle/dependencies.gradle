@@ -113,7 +113,7 @@ libs += [
   joptSimple: "net.sf.jopt-simple:jopt-simple:$versions.jopt",
   jpam: "net.sf.jpam:jpam:$versions.jpam",
   junit: "junit:junit:$versions.junit",
-  hadoopCommon: "org.apache.hadoop:hadoop-common:2.7.0-mapr-1607",
+  hadoopCommon: "org.apache.hadoop:hadoop-common:2.7.0-mapr-1808",
   kafkaStreams_0100: "org.apache.kafka:kafka-streams:$versions.kafka_0100",
   kafkaStreams_0101: "org.apache.kafka:kafka-streams:$versions.kafka_0101",
   kafkaStreams_0102: "org.apache.kafka:kafka-streams:$versions.kafka_0102",
