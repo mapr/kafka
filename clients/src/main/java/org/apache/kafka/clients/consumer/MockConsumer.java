@@ -42,7 +42,8 @@ import java.util.Arrays;
 
 
 /**
- * A mock of the {@link Consumer} interface you can use for testing code that uses Kafka. This class is <i> not
+ * <p><b>This class is not supported.
+ * <p>A mock of the {@link Consumer} interface you can use for testing code that uses Kafka. This class is <i> not
  * threadsafe </i>. However, you can use the {@link #schedulePollTask(Runnable)} method to write multithreaded tests
  * where a driver thread waits for {@link #poll(long)} to be called by a background thread and then can safely perform
  * operations during a callback.

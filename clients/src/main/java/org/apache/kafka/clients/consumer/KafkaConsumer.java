@@ -1927,6 +1927,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Get the metrics kept by the consumer
      */
     @Override

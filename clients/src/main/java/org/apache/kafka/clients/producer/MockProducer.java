@@ -44,9 +44,9 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.ensureExtended;
 
 /**
- * A mock of the producer interface you can use for testing code that uses Kafka.
- * <p>
- * By default this mock will synchronously complete each send call successfully. However it can be configured to allow
+ * <p><b>This class is not supported.
+ * <p>A mock of the producer interface you can use for testing code that uses Kafka.
+ * <p>By default this mock will synchronously complete each send call successfully. However it can be configured to allow
  * the user to control the completion of the call and supply an optional error for the producer to throw.
  */
 public class MockProducer<K, V> implements Producer<K, V> {

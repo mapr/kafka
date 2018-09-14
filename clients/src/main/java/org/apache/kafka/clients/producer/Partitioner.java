@@ -22,7 +22,7 @@ import org.apache.kafka.common.Cluster;
 import java.io.Closeable;
 
 /**
- * Partitioner Interface
+ * Partitioner Interface is not supported.
  */
 
 public interface Partitioner extends Configurable, Closeable {

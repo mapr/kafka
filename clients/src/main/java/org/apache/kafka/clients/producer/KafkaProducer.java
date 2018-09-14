@@ -670,6 +670,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Needs to be called before any other methods when the transactional.id is set in the configuration.
      *
      * This method does the following:
@@ -695,6 +696,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Should be called before the start of each new transaction. Note that prior to the first invocation
      * of this method, you must invoke {@link #initTransactions()} exactly one time.
      *
@@ -713,6 +715,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Sends a list of specified offsets to the consumer group coordinator, and also marks
      * those offsets as part of the current transaction. These offsets will be considered
      * committed only if the transaction is committed successfully. The committed offset should
@@ -745,6 +748,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Commits the ongoing transaction. This method will flush any unsent records before actually committing the transaction.
      *
      * Further, if any of the {@link #send(ProducerRecord)} calls which were part of the transaction hit irrecoverable
@@ -768,6 +772,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Aborts the ongoing transaction. Any unflushed produce messages will be aborted when this call is made.
      * This call will throw an exception immediately if any prior {@link #send(ProducerRecord)} calls failed with a
      * {@link ProducerFencedException} or an instance of {@link org.apache.kafka.common.errors.AuthorizationException}.
@@ -1172,6 +1177,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * This API is not supported.
      * Get the full set of internal metrics maintained by the producer.
      */
     @Override
