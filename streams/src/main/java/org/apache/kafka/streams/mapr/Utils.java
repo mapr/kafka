@@ -34,36 +34,29 @@ public class Utils {
                 throw new KafkaException(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER + " doesn't exist");
             }
             String currentUser = UserGroupInformation.getCurrentUser().getUserName();
-            if (!maprFSpathExists(fs, config.getStreamsInternalStreamFolder())) {
-                // Creation of application forler with appropriate aces
-                ArrayList<MapRFileAce> aceList = new ArrayList<MapRFileAce>();
-                MapRFileAce ace = new MapRFileAce(MapRFileAce.AccessType.READDIR);
-                ace.setBooleanExpression("u:" + currentUser);
-                aceList.add(ace);
-                ace = new MapRFileAce(MapRFileAce.AccessType.ADDCHILD);
-                ace.setBooleanExpression("u:" + currentUser);
-                aceList.add(ace);
-                ace = new MapRFileAce(MapRFileAce.AccessType.LOOKUPDIR);
-                ace.setBooleanExpression("u:" + currentUser);
-                aceList.add(ace);
-                ace = new MapRFileAce(MapRFileAce.AccessType.DELETECHILD);
-                ace.setBooleanExpression("u:" + currentUser);
-                aceList.add(ace);
+            String validateDirErrorMessage = "User: "
+                    + currentUser
+                    + " has no permissions to run KStreams application with ID: "
+                    + config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
+            // Creation of application forler with appropriate aces
+            ArrayList<MapRFileAce> aceList = new ArrayList<MapRFileAce>();
+            MapRFileAce ace = new MapRFileAce(MapRFileAce.AccessType.READDIR);
+            ace.setBooleanExpression("u:" + currentUser);
+            aceList.add(ace);
+            ace = new MapRFileAce(MapRFileAce.AccessType.ADDCHILD);
+            ace.setBooleanExpression("u:" + currentUser);
+            aceList.add(ace);
+            ace = new MapRFileAce(MapRFileAce.AccessType.LOOKUPDIR);
+            ace.setBooleanExpression("u:" + currentUser);
+            aceList.add(ace);
+            ace = new MapRFileAce(MapRFileAce.AccessType.DELETECHILD);
+            ace.setBooleanExpression("u:" + currentUser);
+            aceList.add(ace);
 
-                maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(), aceList);
-            }else {
-                String errorMessage = "User: "
-                        + currentUser
-                        + " has no permissions to run KStreams application with ID: "
-                        + config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
-                validateDirectoryPerms(fs, config.getStreamsInternalStreamFolder(), currentUser, errorMessage);
-            }
-            if (!streamExists(config.getStreamsInternalStreamNotcompacted())) {
-                createStream(config.getStreamsInternalStreamNotcompacted());
-            }
-            if (!streamExists(config.getStreamsInternalStreamCompacted())) {
-                createStream(config.getStreamsInternalStreamCompacted());
-            }
+            maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(),
+                    aceList, currentUser, validateDirErrorMessage);
+            createStream(config.getStreamsInternalStreamNotcompacted());
+            createStream(config.getStreamsInternalStreamCompacted());
             enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
 
             if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
@@ -151,8 +144,10 @@ public class Utils {
             Admin admin = Streams.newAdmin(conf);
             StreamDescriptor desc = Streams.newStreamDescriptor();
             admin.createStream(streamName, desc);
-        } catch (IOException e){
-            throw new KafkaException(e);
+        } catch (Exception e){
+            if(!streamExists(streamName)) {
+                throw new KafkaException(e);
+            }
         }
     }
 
@@ -160,17 +155,29 @@ public class Utils {
         return fs.exists(new Path(path));
     }
 
-    public static void maprFSpathCreate(FileSystem fs, String pathStr, ArrayList<MapRFileAce> aces) throws IOException {
-        Path path = new Path(pathStr);
-        fs.mkdirs(path);
+    public static void maprFSpathCreate(FileSystem fs,
+                                        String pathStr,
+                                        ArrayList<MapRFileAce> aces,
+                                        String currentUser,
+                                        String validateDirErrorMsg) throws IOException{
+        try {
+            Path path = new Path(pathStr);
+            fs.mkdirs(path);
 
-        // Set other aces
-        ((MapRFileSystem)fs).setAces(path, aces);
+            // Set other aces
+            ((MapRFileSystem) fs).setAces(path, aces);
 
-        // Setting inherits to false
-        int noinherit = 1;
-        ((MapRFileSystem)fs).setAces(path, new ArrayList<Common.FileACE>(), false,
-                noinherit, 0, false, null);
+            // Setting inherits to false
+            int noinherit = 1;
+            ((MapRFileSystem) fs).setAces(path, new ArrayList<Common.FileACE>(), false,
+                    noinherit, 0, false, null);
+        }catch(IOException e){
+            if(maprFSpathExists(fs, pathStr)){
+                validateDirectoryPerms(fs, pathStr, currentUser, validateDirErrorMsg);
+                return;
+            }
+            throw new KafkaException(e);
+        }
     }
 
     public static String getShortTopicNameFromFullTopicName(final String fullTopicName){
