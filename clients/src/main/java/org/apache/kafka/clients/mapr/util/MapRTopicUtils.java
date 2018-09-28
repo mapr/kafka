@@ -13,7 +13,7 @@ public class MapRTopicUtils {
 
     public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
     public static final String LEAGAL_FULLTOPICNAME_PATTERN =
-            String.format("\\/%s+\\:%s+", LEGAL_CHARS, LEGAL_CHARS);
+            String.format("(\\/%s+)+\\:%s+", LEGAL_CHARS, LEGAL_CHARS);
 
     public static void validateFullTopicName(String fullTopicName){
         if(!fullTopicName.matches(LEAGAL_FULLTOPICNAME_PATTERN)){
