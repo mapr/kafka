@@ -79,7 +79,7 @@ public class KafkaLog4jAppender extends AppenderSkeleton {
     private boolean ignoreExceptions = true;
     private boolean syncSend;
     private Producer<byte[], byte[]> producer;
-    
+
     public Producer<byte[], byte[]> getProducer() {
         return producer;
     }
@@ -324,7 +324,7 @@ public class KafkaLog4jAppender extends AppenderSkeleton {
         String message = subAppend(event);
         LogLog.debug("[" + new Date(event.getTimeStamp()) + "]" + message);
         Future<RecordMetadata> response = producer.send(
-            new ProducerRecord<>(topic, message.getBytes(StandardCharsets.UTF_8)));
+                new ProducerRecord<>(topic, message.getBytes(StandardCharsets.UTF_8)));
         if (syncSend) {
             try {
                 response.get();

@@ -193,6 +193,11 @@ public class Worker {
      */
     public void start() {
         log.info("Worker starting");
+        if (config.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG) &&
+              !config.getBoolean(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG)){
+            throw new RuntimeException(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG +
+                    " must be enabled in order to support MapR Streams impersonation");
+        }
 
         offsetBackingStore.start();
         sourceTaskOffsetCommitter = new SourceTaskOffsetCommitter(config);
@@ -518,6 +523,10 @@ public class Worker {
                 ClassLoader connectorLoader = plugins.delegatingLoader().connectorLoader(connType);
                 savedLoader = Plugins.compareAndSwapLoaders(connectorLoader);
                 final ConnectorConfig connConfig = new ConnectorConfig(plugins, connProps);
+                String taskUser = connProps.get(TaskConfig.TASK_USER_CONFIG);
+                if (taskUser != null) {
+                    taskProps.put(TaskConfig.TASK_USER_CONFIG, taskUser);
+                }
                 final TaskConfig taskConfig = new TaskConfig(taskProps);
                 final Class<? extends Task> taskClass = taskConfig.getClass(TaskConfig.TASK_CLASS_CONFIG).asSubclass(Task.class);
                 final Task task = plugins.newTask(taskClass);

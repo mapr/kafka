@@ -29,6 +29,7 @@ import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -77,7 +78,7 @@ public class RebalanceSourceConnectorsIntegrationTest {
     public TestRule watcher = ConnectIntegrationTestUtils.newTestWatcher(log);
 
     @Before
-    public void setup() {
+    public void setup() throws ClassNotFoundException {
         // setup Connect worker properties
         Map<String, String> workerProps = new HashMap<>();
         workerProps.put(CONNECT_PROTOCOL_CONFIG, COMPATIBLE.toString());

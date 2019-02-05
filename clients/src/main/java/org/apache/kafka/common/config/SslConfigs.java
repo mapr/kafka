@@ -67,6 +67,10 @@ public class SslConfigs {
     public static final String SSL_CIPHER_SUITES_DOC = "A list of cipher suites. This is a named combination of authentication, encryption, MAC and key exchange algorithm used to negotiate the security settings for a network connection using TLS or SSL network protocol. "
             + "By default all the available cipher suites are supported.";
 
+    public static final String SSL_DISABLED_CIPHER_SUITES_CONFIG = "ssl.cipher.suites.exclude";
+    protected static final String SSL_DISABLED_CIPHER_SUITES_DOC = "A list of excluded SSL cipher suites. Leave blank to use Jetty's defaults.";
+    protected static final String SSL_DISABLED_CIPHER_SUITES_DEFAULT = "TLS_DHE.*, TLS_EDH.*, .*RC4.*, .*MD5.*, .*DES.*";
+
     public static final String SSL_ENABLED_PROTOCOLS_CONFIG = "ssl.enabled.protocols";
     public static final String SSL_ENABLED_PROTOCOLS_DOC = "The list of protocols enabled for SSL connections. "
         + "The default is 'TLSv1.2,TLSv1.3' when running with Java 11 or newer, 'TLSv1.2' otherwise. With the "
@@ -84,6 +88,12 @@ public class SslConfigs {
             DEFAULT_SSL_ENABLED_PROTOCOLS = "TLSv1.2";
         }
     }
+
+    public static final String SSL_DISABLED_PROTOCOLS_CONFIG = "ssl.disabled.protocols";
+    protected static final String SSL_DISABLED_PROTOCOLS_DOC = "The list of protocols disabled for SSL connections. Comma-separated list. "
+          + "Leave blank to use Jetty's defaults.";
+    protected static final String SSL_DISABLED_PROTOCOLS_DEFAULT = "SSLv3, TLSv1.0";
+
 
     public static final String SSL_KEYSTORE_TYPE_CONFIG = "ssl.keystore.type";
     public static final String SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. "

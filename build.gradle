@@ -17,6 +17,9 @@ import org.ajoberstar.grgit.Grgit
 
 import java.nio.charset.StandardCharsets
 
+def maprMavenRepo = System.getenv("MAPR_MAVEN_REPO") ?:
+        "http://maven.corp.maprtech.com/nexus/content/groups/public/"
+
 buildscript {
   repositories {
     mavenCentral()
@@ -54,6 +57,15 @@ allprojects {
 
   repositories {
     mavenCentral()
+    maven {
+      url "http://packages.confluent.io/maven/"
+    }
+    maven {
+      url "$maprMavenRepo"
+    }
+    maven {
+      url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
+    }
   }
 
   apply plugin: 'idea'
@@ -187,6 +199,7 @@ subprojects {
   apply plugin: 'checkstyle'
   apply plugin: "com.github.spotbugs"
   apply plugin: 'org.gradle.test-retry'
+  apply plugin: 'maven-publish'
 
   sourceCompatibility = minJavaVersion
   targetCompatibility = minJavaVersion
@@ -610,6 +623,18 @@ subprojects {
     }
   }
 
+  publishing {
+    repositories {
+      maven {
+        name "targetrepo"
+        url mavenUrl
+        credentials {
+          username mavenUsername
+          password mavenPassword
+        }
+      }
+    }
+  }
 }
 
 gradle.taskGraph.whenReady { taskGraph ->
@@ -696,6 +721,16 @@ tasks.create(name: "jarConnect", dependsOn: connectPkgs.collect { it + ":jar" })
 
 tasks.create(name: "testConnect", dependsOn: connectPkgs.collect { it + ":test" }) {}
 
+for ( sv in availableScalaVersions ) {
+  String taskSuffix = sv.replaceAll("\\.", "_")
+
+  tasks.create(name: "uploadCoreArchives_${taskSuffix}", type: GradleBuild) {
+    startParameter = project.getGradle().getStartParameter().newInstance()
+    startParameter.projectProperties += [scalaVersion: "${sv}"]
+    tasks = ['core:uploadArchives']
+  }
+}
+
 project(':core') {
   println "Building project 'core' with Scala version ${versions.scala}"
 
@@ -705,6 +740,14 @@ project(':core') {
 
   dependencies {
     compile project(':clients')
+
+    compileOnly (libs.maprStreams) {
+      exclude module: 'connect-runtime'
+    }
+    compileOnly (libs.hadoopCommon)
+    compileOnly (libs.xerces)
+    compileOnly (libs.maprFs)
+
     compile libs.jacksonDatabind
     compile libs.jacksonModuleScala
     compile libs.jacksonDataformatCsv
@@ -911,6 +954,8 @@ project(':core') {
     from(project(':streams:test-utils').configurations.runtime) { into("libs/") }
     from(project(':streams:examples').jar) { into("libs/") }
     from(project(':streams:examples').configurations.runtime) { into("libs/") }
+    from(project(':mapr-eco-tools').jar) { into("libs/") }
+    from(project(':mapr-eco-tools').configurations.runtime) { into("libs/") }
     duplicatesStrategy 'exclude'
   }
 
@@ -1092,6 +1137,26 @@ project(':clients') {
     include "**/org/apache/kafka/server/policy/*"
     include "**/org/apache/kafka/server/quota/*"
   }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      kafkaClients(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-clients"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':tools') {
@@ -1113,6 +1178,7 @@ project(':tools') {
     compile libs.jettyServer
     compile libs.jettyServlet
     compile libs.jettyServlets
+    compile libs.zookeeper
 
     testCompile project(':clients')
     testCompile libs.junit
@@ -1143,6 +1209,26 @@ project(':tools') {
   jar {
     dependsOn 'copyDependantLibs'
   }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      kafkaTools(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-tools"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':streams') {
@@ -1158,8 +1244,18 @@ project(':streams') {
       exclude module: 'javax.ws.rs-api'
     }
 
+    compile project(':mapr-eco-tools')
+
     compile libs.slf4jApi
     compile libs.rocksDBJni
+    compile (libs.maprStreams){
+      exclude group: 'xerces', module: 'xercesImpl'
+      exclude group: 'com.mapr.db', module: 'maprdb'
+      transitive = false
+    }
+    compileOnly (libs.hadoopCommon)
+    compileOnly (libs.xerces)
+    compileOnly(libs.maprFs)
 
     // testCompileOnly prevents streams from exporting a dependency on test-utils, which would cause a dependency cycle
     testCompileOnly project(':streams:test-utils')
@@ -1205,7 +1301,6 @@ project(':streams') {
 
   javadoc {
     include "**/org/apache/kafka/streams/**"
-    exclude "**/internals/**"
   }
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
@@ -1276,6 +1371,22 @@ project(':streams') {
             ':streams:examples:test'
     ]
   )
+
+  publishing {
+    publications {
+      kafkaStreams(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-streams"
+        from components.java
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':streams:streams-scala') {
@@ -1339,7 +1450,6 @@ project(':streams:test-utils') {
 
   javadoc {
     include "**/org/apache/kafka/streams/test/**"
-    exclude "**/internals/**"
   }
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
@@ -1597,6 +1707,25 @@ project(':log4j-appender') {
     enabled = false
   }
 
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      kafkaAppender(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-log4j-appender"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':connect:api') {
@@ -1638,6 +1767,26 @@ project(':connect:api') {
   jar {
     dependsOn copyDependantLibs
   }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      connectApi(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-api"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':connect:transforms') {
@@ -1675,6 +1824,24 @@ project(':connect:transforms') {
 
   jar {
     dependsOn copyDependantLibs
+  }
+
+  publishing {
+    publications {
+      connectTransforms(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-transforms"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
   }
 }
 
@@ -1716,6 +1883,38 @@ project(':connect:json') {
   jar {
     dependsOn copyDependantLibs
   }
+
+  artifacts {
+    archives testJar
+  }
+
+  configurations {
+    archives.extendsFrom(testCompile)
+  }
+
+  checkstyle {
+    configFile = new File(rootDir, "checkstyle/checkstyle.xml")
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      connectJson(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-json"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':connect:runtime') {
@@ -1730,6 +1929,12 @@ project(':connect:runtime') {
     compile project(':connect:transforms')
 
     compile libs.slf4jApi
+    compile libs.commonsIo
+    compile libs.restutils
+    compileOnly (libs.hadoopCommon)
+    compileOnly (libs.hadoopAuth) {
+      transitive = false
+    }
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet
     compile libs.jerseyHk2
@@ -1739,6 +1944,11 @@ project(':connect:runtime') {
     compile libs.jettyServlet
     compile libs.jettyServlets
     compile libs.jettyClient
+    compile libs.jpam
+    compile (libs.maprSecurityWeb) {
+        transitive = false
+    }
+
     compile(libs.reflections)
     compile(libs.mavenArtifact)
 
@@ -1820,6 +2030,23 @@ project(':connect:runtime') {
     standardOutput = new File(generatedDocsDir, "connect_metrics.html").newOutputStream()
   }
 
+  publishing {
+    publications {
+      connectRuntime(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-runtime"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':connect:file') {
@@ -1979,6 +2206,73 @@ project(':connect:mirror-client') {
   }
 }
 
+project(':mapr-eco-tools') {
+  archivesBaseName = "mapr-eco-tools"
+
+  dependencies {
+    compile project(':clients')
+
+    compile (libs.maprStreams){
+      exclude group: 'xerces', module: 'xercesImpl'
+      exclude group: 'com.mapr.db', module: 'maprdb'
+      transitive = false
+    }
+    compileOnly libs.hadoopCommon
+    compileOnly libs.xerces
+    compileOnly libs.maprFs
+
+    testCompile libs.maprStreams
+    testCompile libs.xerces
+    testCompile libs.maprFs
+    testCompile project(':clients')
+    testCompile libs.junit
+    testCompile project(':clients').sourceSets.test.output
+    testCompile libs.easymock
+    testCompile libs.powermockJunit4
+    testCompile libs.powermockEasymock
+  }
+
+  javadoc {
+    enabled = false
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+    }
+    into "$buildDir/dependant-libs-${versions.scala}"
+    duplicatesStrategy 'exclude'
+  }
+
+  jar {
+    dependsOn 'copyDependantLibs'
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      maprEcoTools(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "mapr-eco-tools"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
+}
+
 task aggregatedJavadoc(type: Javadoc) {
   def projectsWithJavadoc = subprojects.findAll { it.javadoc.enabled }
   source = projectsWithJavadoc.collect { it.sourceSets.main.allJava }
@@ -1990,4 +2284,28 @@ task aggregatedJavadoc(type: Javadoc) {
     options.links "https://docs.oracle.com/en/java/javase/${JavaVersion.current().majorVersion}/docs/api/"
   else
     options.links "https://docs.oracle.com/javase/8/docs/api/"
+}
+
+task maprLocalPublish() {
+  dependsOn "jar",
+    ":clients:publishKafkaClientsPublicationToMavenLocal",
+    ":connect:api:publishConnectApiPublicationToMavenLocal",
+    ":connect:json:publishConnectJsonPublicationToMavenLocal",
+    ":connect:runtime:publishConnectRuntimePublicationToMavenLocal"
+}
+
+task maprPublicPublish() {
+  dependsOn "jar",
+    ":clients:publishKafkaClientsPublicationToTargetrepoRepository",
+    ":connect:api:publishConnectApiPublicationToTargetrepoRepository",
+    ":connect:json:publishConnectJsonPublicationToTargetrepoRepository",
+    ":connect:runtime:publishConnectRuntimePublicationToTargetrepoRepository",
+    ":connect:transforms:uploadArchives",
+    ":log4j-appender:uploadArchives",
+    ":streams:publishKafkaStreamsPublicationToTargetrepoRepository",
+    ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
+    ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
+    "uploadCoreArchives_2_12",
+    // The default Scala version is 2.13. So :core:uploadArchives will publish kafka_2.13
+    ":core:uploadArchives"
 }

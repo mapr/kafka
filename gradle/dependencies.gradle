@@ -71,6 +71,7 @@ versions += [
   jetty: "9.4.33.v20201020",
   jersey: "2.31",
   jmh: "1.23",
+  hadoop: "2.7.4.0-mapr-1908-SNAPSHOT",
   hamcrest: "2.2",
   log4j: "1.2.17",
   scalaLogging: "3.9.2",
@@ -78,6 +79,7 @@ versions += [
   jaxrs: "2.1.1",
   jfreechart: "1.0.0",
   jopt: "5.0.4",
+  jpam : "1.1" ,
   junit: "4.13",
   kafka_0100: "0.10.0.1",
   kafka_0101: "0.10.1.1",
@@ -115,8 +117,11 @@ versions += [
   spotlessPlugin: "3.28.1",
   testRetryPlugin: "1.1.5",
   zinc: "1.3.5",
-  zookeeper: "3.5.8",
-  zstd: "1.4.4-7"
+  zookeeper: "3.5.6-mapr-SNAPSHOT",
+  zstd: "1.4.4-7",
+  restutils: "5.1.2.0-mapr-SNAPSHOT",
+  commonsIo: "2.6",
+  xerces: "2.12.0"
 ]
 libs += [
   activation: "javax.activation:activation:$versions.activation",
@@ -151,8 +156,11 @@ libs += [
   jmhCoreBenchmarks: "org.openjdk.jmh:jmh-core-benchmarks:$versions.jmh",
   jmhGeneratorAnnProcess: "org.openjdk.jmh:jmh-generator-annprocess:$versions.jmh",
   joptSimple: "net.sf.jopt-simple:jopt-simple:$versions.jopt",
+  jpam: "net.sf.jpam:jpam:$versions.jpam",
   junit: "junit:junit:$versions.junit",
   hamcrest: "org.hamcrest:hamcrest:$versions.hamcrest",
+  hadoopAuth: "org.apache.hadoop:hadoop-auth:$versions.hadoop",
+  hadoopCommon: "org.apache.hadoop:hadoop-common:$versions.hadoop",
   kafkaStreams_0100: "org.apache.kafka:kafka-streams:$versions.kafka_0100",
   kafkaStreams_0101: "org.apache.kafka:kafka-streams:$versions.kafka_0101",
   kafkaStreams_0102: "org.apache.kafka:kafka-streams:$versions.kafka_0102",
@@ -167,6 +175,7 @@ libs += [
   kafkaStreams_25: "org.apache.kafka:kafka-streams:$versions.kafka_25",
   log4j: "log4j:log4j:$versions.log4j",
   lz4: "org.lz4:lz4-java:$versions.lz4",
+  maprSecurityWeb: "com.mapr.security:mapr-security-web:$maprVersion",
   metrics: "com.yammer.metrics:metrics-core:$versions.metrics",
   mockitoCore: "org.mockito:mockito-core:$versions.mockito",
   nettyHandler: "io.netty:netty-handler:$versions.netty",
@@ -188,5 +197,10 @@ libs += [
   jfreechart: "jfreechart:jfreechart:$versions.jfreechart",
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   zstd: "com.github.luben:zstd-jni:$versions.zstd",
-  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient"
+  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient",
+  maprStreams: "com.mapr.streams:mapr-streams:$maprVersion",
+  maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
+  restutils: "io.confluent:rest-utils:$versions.restutils",
+  commonsIo: "commons-io:commons-io:$versions.commonsIo",
+  xerces: "xerces:xercesImpl:$versions.xerces"
 ]

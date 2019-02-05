@@ -31,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
@@ -106,7 +107,7 @@ public class ConnectorTopicsIntegrationTest {
     }
 
     @Test
-    public void testGetActiveTopics() throws InterruptedException {
+    public void testGetActiveTopics() throws ClassNotFoundException, InterruptedException {
         connect = connectBuilder.build();
         // start the clusters
         connect.start();
@@ -169,7 +170,7 @@ public class ConnectorTopicsIntegrationTest {
     }
 
     @Test
-    public void testTopicTrackingResetIsDisabled() throws InterruptedException {
+    public void testTopicTrackingResetIsDisabled() throws ClassNotFoundException, InterruptedException {
         workerProps.put(TOPIC_TRACKING_ALLOW_RESET_CONFIG, "false");
         connect = connectBuilder.build();
         // start the clusters
@@ -225,7 +226,7 @@ public class ConnectorTopicsIntegrationTest {
     }
 
     @Test
-    public void testTopicTrackingIsDisabled() throws InterruptedException {
+    public void testTopicTrackingIsDisabled() throws ClassNotFoundException, InterruptedException {
         workerProps.put(TOPIC_TRACKING_ENABLE_CONFIG, "false");
         connect = connectBuilder.build();
         // start the clusters

@@ -82,7 +82,7 @@ public class MirrorConnectorsIntegrationTest {
     private Exit.Procedure haltProcedure;
 
     @Before
-    public void setup() throws InterruptedException {
+    public void setup() throws ClassNotFoundException, InterruptedException {
         shuttingDown = false;
         exitProcedure = (code, message) -> {
             if (shuttingDown) {
@@ -110,7 +110,6 @@ public class MirrorConnectorsIntegrationTest {
         // we don't want to exit the JVM and instead simply want to fail the test
         Exit.setExitProcedure(exitProcedure);
         Exit.setHaltProcedure(haltProcedure);
-
         Properties brokerProps = new Properties();
         brokerProps.put("auto.create.topics.enable", "false");
 

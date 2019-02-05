@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -60,7 +61,14 @@ public interface Admin extends AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     static Admin create(Properties props) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(props, true), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        AdminClientConfig adminConf = new AdminClientConfig(props);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
+                "createInternal",
+                new Object [] {adminConf},
+                new Class [] {AdminClientConfig.class});
     }
 
     /**
@@ -70,7 +78,14 @@ public interface Admin extends AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     static Admin create(Map<String, Object> conf) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(conf, true), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        AdminClientConfig adminConf = new AdminClientConfig(conf);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
+                "createInternal",
+                new Object [] {adminConf},
+                new Class [] {AdminClientConfig.class});
     }
 
     /**
@@ -182,7 +197,7 @@ public interface Admin extends AutoCloseable {
     DeleteTopicsResult deleteTopics(Collection<String> topics, DeleteTopicsOptions options);
 
     /**
-     * List the topics available in the cluster with the default options.
+     * List the topics available in the default stream with the default options.
      * <p>
      * This is a convenience method for {@link #listTopics(ListTopicsOptions)} with default options.
      * See the overload for more details.
@@ -194,12 +209,35 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
-     * List the topics available in the cluster.
+     * List the topics available in the default stream.
      *
      * @param options The options to use when listing the topics.
      * @return The ListTopicsResult.
      */
     ListTopicsResult listTopics(ListTopicsOptions options);
+
+    /**
+     * List the topics available in the specified stream with the default options.
+     *
+     * This is a convenience method for #{@link AdminClient#listTopics(ListTopicsOptions)} with default options.
+     * See the overload for more details.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @return                  The ListTopicsResult.
+     */
+    default ListTopicsResult listTopics(String streamPath) {
+        return listTopics(streamPath, new ListTopicsOptions());
+    }
+
+    /**
+     * List the topics available in the specified stream.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @param options           The options to use when listing the topics.
+     * @return                  The ListTopicsResult.
+     */
+    ListTopicsResult listTopics(String streamPath, ListTopicsOptions options);
+
 
     /**
      * Describe some topics in the cluster, with the default options.
@@ -244,6 +282,7 @@ public interface Admin extends AutoCloseable {
     DescribeClusterResult describeCluster(DescribeClusterOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for {@link #describeAcls(AclBindingFilter, DescribeAclsOptions)} with
      * default options. See the overload for more details.
      * <p>
@@ -257,6 +296,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Lists access control lists (ACLs) according to the supplied filter.
      * <p>
      * Note: it may take some time for changes made by {@code createAcls} or {@code deleteAcls} to be reflected
@@ -271,6 +311,7 @@ public interface Admin extends AutoCloseable {
     DescribeAclsResult describeAcls(AclBindingFilter filter, DescribeAclsOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for {@link #createAcls(Collection, CreateAclsOptions)} with
      * default options. See the overload for more details.
      * <p>
@@ -284,6 +325,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Creates access control lists (ACLs) which are bound to specific resources.
      * <p>
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -300,6 +342,7 @@ public interface Admin extends AutoCloseable {
     CreateAclsResult createAcls(Collection<AclBinding> acls, CreateAclsOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for {@link #deleteAcls(Collection, DeleteAclsOptions)} with default options.
      * See the overload for more details.
      * <p>
@@ -313,6 +356,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Deletes access control lists (ACLs) according to the supplied filters.
      * <p>
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -327,6 +371,7 @@ public interface Admin extends AutoCloseable {
 
 
     /**
+     * This API is not supported.
      * Get the configuration for the specified resources with the default options.
      * <p>
      * This is a convenience method for {@link #describeConfigs(Collection, DescribeConfigsOptions)} with default options.
@@ -342,6 +387,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Get the configuration for the specified resources.
      * <p>
      * The returned configuration includes default values and the isDefault() method can be used to distinguish them
@@ -361,6 +407,7 @@ public interface Admin extends AutoCloseable {
     DescribeConfigsResult describeConfigs(Collection<ConfigResource> resources, DescribeConfigsOptions options);
 
     /**
+     * This API is not supported.
      * Update the configuration for the specified resources with the default options.
      * <p>
      * This is a convenience method for {@link #alterConfigs(Map, AlterConfigsOptions)} with default options.
@@ -379,6 +426,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Update the configuration for the specified resources with the default options.
      * <p>
      * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
@@ -396,6 +444,7 @@ public interface Admin extends AutoCloseable {
     AlterConfigsResult alterConfigs(Map<ConfigResource, Config> configs, AlterConfigsOptions options);
 
     /**
+     * This API is not supported.
      * Incrementally updates the configuration for the specified resources with default options.
      * <p>
      * This is a convenience method for {@link #incrementalAlterConfigs(Map, AlterConfigsOptions)} with default options.
@@ -411,6 +460,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Incrementally update the configuration for the specified resources.
      * <p>
      * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
@@ -437,6 +487,7 @@ public interface Admin extends AutoCloseable {
         Collection<AlterConfigOp>> configs, AlterConfigsOptions options);
 
     /**
+     * This API is not supported.
      * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
      * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on the
      * broker when it is created later. If the replica already exists on the broker, the replica will be moved to the given
@@ -458,6 +509,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
      * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on the
      * broker when it is created later. If the replica already exists on the broker, the replica will be moved to the given
@@ -476,6 +528,7 @@ public interface Admin extends AutoCloseable {
                                                   AlterReplicaLogDirsOptions options);
 
     /**
+     * This API is not supported.
      * Query the information of all log directories on the given set of brokers
      * <p>
      * This is a convenience method for {@link #describeLogDirs(Collection, DescribeLogDirsOptions)} with default options.
@@ -491,6 +544,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Query the information of all log directories on the given set of brokers
      * <p>
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -502,6 +556,7 @@ public interface Admin extends AutoCloseable {
     DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, DescribeLogDirsOptions options);
 
     /**
+     * This API is not supported.
      * Query the replica log directory information for the specified replicas.
      * <p>
      * This is a convenience method for {@link #describeReplicaLogDirs(Collection, DescribeReplicaLogDirsOptions)}
@@ -517,6 +572,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Query the replica log directory information for the specified replicas.
      * <p>
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -584,6 +640,7 @@ public interface Admin extends AutoCloseable {
                                             CreatePartitionsOptions options);
 
     /**
+     * This API is not supported.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      * <p>
      * This is a convenience method for {@link #deleteRecords(Map, DeleteRecordsOptions)} with default options.
@@ -599,6 +656,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      * <p>
      * This operation is supported by brokers with version 0.11.0.0 or higher.

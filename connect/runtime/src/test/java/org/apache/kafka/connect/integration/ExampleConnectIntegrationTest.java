@@ -75,7 +75,7 @@ public class ExampleConnectIntegrationTest {
     public TestRule watcher = ConnectIntegrationTestUtils.newTestWatcher(log);
 
     @Before
-    public void setup() {
+    public void setup() throws ClassNotFoundException {
         // setup Connect worker properties
         Map<String, String> exampleWorkerProps = new HashMap<>();
         exampleWorkerProps.put(OFFSET_COMMIT_INTERVAL_MS_CONFIG, String.valueOf(5_000));

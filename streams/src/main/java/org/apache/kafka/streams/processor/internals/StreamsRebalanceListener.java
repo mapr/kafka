@@ -48,54 +48,60 @@ public class StreamsRebalanceListener implements ConsumerRebalanceListener {
 
     @Override
     public void onPartitionsAssigned(final Collection<TopicPartition> partitions) {
-        // NB: all task management is already handled by:
-        // org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor.onAssignment
-        if (assignmentErrorCode.get() == AssignorError.INCOMPLETE_SOURCE_TOPIC_METADATA.code()) {
-            log.error("Received error code {} - shutdown", assignmentErrorCode.get());
-            streamThread.shutdown();
-        } else {
-            streamThread.setState(State.PARTITIONS_ASSIGNED);
-        }
+        synchronized (taskManager) {
+            // NB: all task management is already handled by:
+            // org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor.onAssignment
+            if (assignmentErrorCode.get() == AssignorError.INCOMPLETE_SOURCE_TOPIC_METADATA.code()) {
+                log.error("Received error code {} - shutdown", assignmentErrorCode.get());
+                streamThread.shutdown();
+            } else {
+                streamThread.setState(State.PARTITIONS_ASSIGNED);
+            }
 
-        taskManager.handleRebalanceComplete();
+            taskManager.handleRebalanceComplete();
+        }
     }
 
     @Override
     public void onPartitionsRevoked(final Collection<TopicPartition> partitions) {
-        log.debug("Current state {}: revoked partitions {} because of consumer rebalance.\n" +
-                      "\tcurrently assigned active tasks: {}\n" +
-                      "\tcurrently assigned standby tasks: {}\n",
-                  streamThread.state(),
-                  partitions,
-                  taskManager.activeTaskIds(),
-                  taskManager.standbyTaskIds());
+        synchronized (taskManager) {
+            log.debug("Current state {}: revoked partitions {} because of consumer rebalance.\n" +
+                            "\tcurrently assigned active tasks: {}\n" +
+                            "\tcurrently assigned standby tasks: {}\n",
+                    streamThread.state(),
+                    partitions,
+                    taskManager.activeTaskIds(),
+                    taskManager.standbyTaskIds());
 
-        if (streamThread.setState(State.PARTITIONS_REVOKED) != null && !partitions.isEmpty()) {
-            final long start = time.milliseconds();
-            try {
-                taskManager.handleRevocation(partitions);
-            } finally {
-                log.info("partition revocation took {} ms.", time.milliseconds() - start);
+            if (streamThread.setState(State.PARTITIONS_REVOKED) != null && !partitions.isEmpty()) {
+                final long start = time.milliseconds();
+                try {
+                    taskManager.handleRevocation(partitions);
+                } finally {
+                    log.info("partition revocation took {} ms.", time.milliseconds() - start);
+                }
             }
         }
     }
 
     @Override
     public void onPartitionsLost(final Collection<TopicPartition> partitions) {
-        log.info("at state {}: partitions {} lost due to missed rebalance.\n" +
-                     "\tlost active tasks: {}\n" +
-                     "\tlost assigned standby tasks: {}\n",
-                 streamThread.state(),
-                 partitions,
-                 taskManager.activeTaskIds(),
-                 taskManager.standbyTaskIds());
+        synchronized (taskManager) {
+            log.info("at state {}: partitions {} lost due to missed rebalance.\n" +
+                            "\tlost active tasks: {}\n" +
+                            "\tlost assigned standby tasks: {}\n",
+                    streamThread.state(),
+                    partitions,
+                    taskManager.activeTaskIds(),
+                    taskManager.standbyTaskIds());
 
-        final long start = time.milliseconds();
-        try {
-            // close all active tasks as lost but don't try to commit offsets as we no longer own them
-            taskManager.handleLostAll();
-        } finally {
-            log.info("partitions lost took {} ms.", time.milliseconds() - start);
+            final long start = time.milliseconds();
+            try {
+                // close all active tasks as lost but don't try to commit offsets as we no longer own them
+                taskManager.handleLostAll();
+            } finally {
+                log.info("partitions lost took {} ms.", time.milliseconds() - start);
+            }
         }
     }
 }

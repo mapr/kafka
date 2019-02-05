@@ -94,9 +94,9 @@ public class StateDirectory {
         this.appId = config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
         final String stateDirName = config.getString(StreamsConfig.STATE_DIR_CONFIG);
         final File baseDir = new File(stateDirName);
-        if (this.hasPersistentStores && !baseDir.exists() && !baseDir.mkdirs()) {
+        if (this.hasPersistentStores && !baseDir.exists()) {
             throw new ProcessorStateException(
-                String.format("base state directory [%s] doesn't exist and couldn't be created", stateDirName));
+                String.format("base state directory [%s] doesn't exist", stateDirName));
         }
         stateDir = new File(baseDir, appId);
         if (this.hasPersistentStores && !stateDir.exists() && !stateDir.mkdir()) {

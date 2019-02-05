@@ -18,6 +18,7 @@ package org.apache.kafka.streams.examples.wordcount;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -55,9 +56,8 @@ import java.util.concurrent.CountDownLatch;
  * Additionally, the {@link TransformerSupplier} specifies the {@link StoreBuilder} that the {@link Transformer} needs
  * by implementing {@link ConnectedStoreProvider#stores()}.
  * <p>
- * Before running this example you must create the input topic and the output topic (e.g. via
- * {@code bin/kafka-topics.sh --create ...}), and write some data to the input topic (e.g. via
- * {@code bin/kafka-console-producer.sh}). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  */
 public final class WordCountTransformerDemo {
 
@@ -123,7 +123,6 @@ public final class WordCountTransformerDemo {
     public static void main(final String[] args) {
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-wordcount-transformer");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
@@ -131,11 +130,14 @@ public final class WordCountTransformerDemo {
         // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+        // MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
+
         final StreamsBuilder builder = new StreamsBuilder();
 
         builder.<String, String>stream("streams-plaintext-input")
             .transform(new MyTransformerSupplier())
-            .to("streams-wordcount-processor-output");
+            .to(MaprConfig.STREAM_NAME + "streams-wordcount-processor-output");
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         final CountDownLatch latch = new CountDownLatch(1);

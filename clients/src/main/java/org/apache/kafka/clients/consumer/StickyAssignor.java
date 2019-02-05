@@ -33,6 +33,7 @@ import org.apache.kafka.common.protocol.types.Type;
 import org.apache.kafka.common.utils.CollectionUtils;
 
 /**
+ * <p><b>This class is not supported.
  * <p>The sticky assignor serves two purposes. First, it guarantees an assignment that is as balanced as possible, meaning either:
  * <ul>
  * <li>the numbers of topic partitions assigned to consumers differ by at most one; or</li>

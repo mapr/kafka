@@ -83,7 +83,7 @@ public class ErrorHandlingIntegrationTest {
     private ConnectorHandle connectorHandle;
 
     @Before
-    public void setup() throws InterruptedException {
+    public void setup() throws ClassNotFoundException, InterruptedException {
         // setup Connect cluster with defaults
         connect = new EmbeddedConnectCluster.Builder().build();
 

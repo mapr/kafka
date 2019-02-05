@@ -21,6 +21,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.examples.MaprConfig;
 
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -32,25 +33,26 @@ import java.util.concurrent.CountDownLatch;
  * In this example, we implement a simple "pipe" program that reads from a source topic "streams-plaintext-input"
  * and writes the data as-is (i.e. unmodified) into a sink topic "streams-pipe-output".
  *
- * Before running this example you must create the input topic and the output topic (e.g. via
- * bin/kafka-topics.sh --create ...), and write some data to the input topic (e.g. via
- * bin/kafka-console-producer.sh). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  */
 public class PipeDemo {
 
     public static void main(final String[] args) {
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-pipe");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
 
         // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+        // MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
+
         final StreamsBuilder builder = new StreamsBuilder();
 
-        builder.stream("streams-plaintext-input").to("streams-pipe-output");
+        builder.stream("streams-plaintext-input").to(MaprConfig.STREAM_NAME + ":streams-pipe-output");
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         final CountDownLatch latch = new CountDownLatch(1);

@@ -46,7 +46,7 @@ public class WorkerHandle {
      * @param workerProperties the worker properties
      * @return the worker's handle
      */
-    public static WorkerHandle start(String name, Map<String, String> workerProperties) {
+    public static WorkerHandle start(String name, Map<String, String> workerProperties) throws ClassNotFoundException {
         return new WorkerHandle(name, new ConnectDistributed().startConnect(workerProperties));
     }
 

@@ -88,11 +88,11 @@ public class ProcessorStateManagerTest {
     private final String persistentStoreTwoName = "persistentStore2";
     private final String nonPersistentStoreName = "nonPersistentStore";
     private final String persistentStoreTopicName =
-        ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreName);
+        ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreName, "/persistent-stream1");
     private final String persistentStoreTwoTopicName =
-        ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreTwoName);
+        ProcessorStateManager.storeChangelogTopic(applicationId, persistentStoreTwoName, "/persistent-stream2");
     private final String nonPersistentStoreTopicName =
-        ProcessorStateManager.storeChangelogTopic(applicationId, nonPersistentStoreName);
+        ProcessorStateManager.storeChangelogTopic(applicationId, nonPersistentStoreName, "/nonpersistent-stream");
     private final MockKeyValueStore persistentStore = new MockKeyValueStore(persistentStoreName, true);
     private final MockKeyValueStore persistentStoreTwo = new MockKeyValueStore(persistentStoreTwoName, true);
     private final MockKeyValueStore nonPersistentStore = new MockKeyValueStore(nonPersistentStoreName, false);

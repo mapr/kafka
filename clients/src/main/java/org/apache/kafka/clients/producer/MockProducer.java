@@ -43,9 +43,9 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 
 /**
- * A mock of the producer interface you can use for testing code that uses Kafka.
- * <p>
- * By default this mock will synchronously complete each send call successfully. However it can be configured to allow
+ * <p><b>This class is not supported.
+ * <p>A mock of the producer interface you can use for testing code that uses Kafka.
+ * <p>By default this mock will synchronously complete each send call successfully. However it can be configured to allow
  * the user to control the completion of the call and supply an optional error for the producer to throw.
  */
 public class MockProducer<K, V> implements Producer<K, V> {
@@ -308,7 +308,7 @@ public class MockProducer<K, V> implements Producer<K, V> {
                 0L, 0, 0, Time.SYSTEM);
         long offset = nextOffset(topicPartition);
         Completion completion = new Completion(offset, new RecordMetadata(topicPartition, 0, offset,
-                RecordBatch.NO_TIMESTAMP, 0L, 0, 0), result, callback);
+                RecordBatch.NO_TIMESTAMP, Long.valueOf(0L), 0, 0), result, callback);
 
         if (!this.transactionInFlight)
             this.sent.add(record);

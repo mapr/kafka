@@ -332,6 +332,14 @@ public class MockAdminClient extends AdminClient {
     }
 
     @Override
+    synchronized public ListTopicsResult listTopics(String streamPath, ListTopicsOptions options) {
+      Map<String, TopicListing> topicListings = new HashMap<>();
+      KafkaFutureImpl<Map<String, TopicListing>> future = new KafkaFutureImpl<>();
+      future.complete(topicListings);
+      return new ListTopicsResult(future);
+    }
+
+    @Override
     synchronized public DescribeTopicsResult describeTopics(Collection<String> topicNames, DescribeTopicsOptions options) {
         Map<String, KafkaFuture<TopicDescription>> topicDescriptions = new HashMap<>();
 

@@ -216,7 +216,7 @@ public final class InMemoryTimeOrderedKeyValueBuffer<K, V> implements TimeOrdere
         );
 
         context.register(root, (RecordBatchingStateRestoreCallback) this::restoreBatch);
-        changelogTopic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName);
+        changelogTopic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName, context.applicationInternalStream());
         updateBufferMetrics();
         open = true;
         partition = context.taskId().partition;

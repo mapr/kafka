@@ -93,7 +93,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     private final SubscriptionState subscriptions;
     private final OffsetCommitCallback defaultOffsetCommitCallback;
     private final boolean autoCommitEnabled;
-    private final int autoCommitIntervalMs;
+    private final long autoCommitIntervalMs;
     private final ConsumerInterceptors<?, ?> interceptors;
     private final AtomicInteger pendingAsyncCommits;
 
@@ -146,7 +146,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                                String metricGrpPrefix,
                                Time time,
                                boolean autoCommitEnabled,
-                               int autoCommitIntervalMs,
+                               long autoCommitIntervalMs,
                                ConsumerInterceptors<?, ?> interceptors,
                                boolean throwOnFetchStableOffsetsUnsupported) {
         super(rebalanceConfig,

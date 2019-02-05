@@ -45,6 +45,18 @@ should_include_file() {
   fi
 }
 
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
+# Set up Java classpath, start with $MAPR_CONF
+CLASSPATH=$MAPR_CONF
+# Add MapR jars
+CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
+# Add logger jars
+CLASSPATH=$CLASSPATH:$CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
+# Add 3rd party jars
+CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
+
 base_dir=$(dirname $0)/..
 
 if [ -z "$SCALA_VERSION" ]; then
@@ -176,20 +188,148 @@ do
 done
 shopt -u nullglob
 
+
+# Add kafka Connect plugins to classpath
+if [ ! -z $CONNECTORS_CLASSPATH ]; then
+    CLASSPATH="$CLASSPATH$CONNECTORS_CLASSPATH"
+fi
+
+# Remove old guava from classpath
+CLASSPATH=$(echo $CLASSPATH |sed 's/\/opt\/mapr\/lib\/guava-14.0.1.jar//')
+
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
+
 if [ -z "$CLASSPATH" ] ; then
   echo "Classpath is empty. Please build the project first e.g. by running './gradlew jar -PscalaVersion=$SCALA_VERSION'"
   exit 1
 fi
 
-# JMX settings
-if [ -z "$KAFKA_JMX_OPTS" ]; then
-  KAFKA_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false "
-fi
+JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
 
-# JMX port to use
-if [  $JMX_PORT ]; then
-  KAFKA_JMX_OPTS="$KAFKA_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
+# JMX settings
+if [[ ( -n $2 ) && ( $2 = "connectDistributed" || $2 = "connectStandalone" ) ]]; then
+
+  MAPR_JMX_PORT=${MAPR_JMX_KAFKA_CONNECT_PORT:-12010}
+
+  isSecure="false"
+  if [ -f "${MAPR_HOME}/conf/mapr-clusters.conf" ]; then
+      isSecure=$(head -1 ${MAPR_HOME}/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
+  fi
+
+  if [ -z "$MAPR_JMXLOCALBINDING" ]; then
+      MAPR_JMXLOCALBINDING="false"
+  fi
+
+  if [ -z "$MAPR_JMXAUTH" ]; then
+      MAPR_JMXAUTH="false"
+  fi
+
+  if [ -z "$MAPR_JMXSSL" ]; then
+      MAPR_JMXSSL="false"
+  fi
+
+  if [ -z "$MAPR_AUTH_LOGIN_CONFIG_FILE" ]; then
+      MAPR_AUTH_LOGIN_CONFIG_FILE="${MAPR_HOME:-/opt/mapr}/conf/mapr.login.conf"
+  fi
+
+  if [ -z "$MAPR_LOGIN_CONFIG" ]; then
+      MAPR_LOGIN_CONFIG="JMX_AGENT_LOGIN"
+  fi
+
+  if [ -z "$MAPR_JMXDISABLE" ] && [ -z "$MAPR_JMXLOCALHOST" ] && [ -z "$MAPR_JMXREMOTEHOST" ]; then
+      echo "No MapR JMX options given - defaulting to local binding"
+  fi
+
+  if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && \
+        ( -z "$MAPR_JMX_KAFKA_CONNECT_ENABLE" || "$MAPR_JMX_KAFKA_CONNECT_ENABLE" = "true" ) ]]; then
+
+      # default setting for localBinding
+      MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+
+      if [ "$MAPR_JMXLOCALHOST" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+          echo "WARNING: Both MAPR_JMXLOCALHOST and MAPR_JMXREMOTEHOST options are enabled - defaulting to MAPR_JMXLOCAHOST config"
+          MAPR_JMXREMOTEHOST=false
+      fi
+
+      if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+         if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
+              MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
+              -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG \
+              -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
+              MAPR_JMXAUTH="true"
+          else
+              echo "jmxagent jar file missed"
+              exit 1
+          fi
+      fi
+
+      if [ "$MAPR_JMXAUTH" = "true" ]; then
+          if [ "$isSecure" = "true" ]; then
+              if [ -f "$MAPR_AUTH_LOGIN_CONFIG_FILE" ] && \
+                 [ -f "${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true \
+                    -Djava.security.auth.login.config=$MAPR_AUTH_LOGIN_CONFIG_FILE \
+                    -Dcom.sun.management.jmxremote.access.file=${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access"
+              else
+                  echo "JMX login config or access file missing - not starting since we are in secure mode"
+                  exit 1
+              fi
+
+              if [ "$MAPR_JMXREMOTEHOST" = "false" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.login.config=$MAPR_LOGIN_CONFIG"
+              fi
+          else
+              echo "JMX Authentication configured - not starting since we are not in secure mode"
+              exit 1
+          fi
+      else
+          MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false"
+      fi
+
+      if [ "$MAPR_JMXLOCALHOST" = "true" ] || [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+          if [ "$MAPR_JMXSSL" = "true" ] && [ "$MAPR_JMXLOCALHOST" = "true" ] ; then
+              echo "WARNING: ssl is not supported in localhost. Setting default to false"
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+          else
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+          fi
+
+          if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Djava.rmi.server.hostname=localhost \
+                  -Dcom.sun.management.jmxremote.host=localhost \
+                  -Dcom.sun.management.jmxremote.local.only=true"
+          fi
+
+          if [ -z "$MAPR_JMX_PORT" ]; then
+              echo "WARNING: No JMX port given for Kafka connect - disabling TCP base JMX service"
+              MAPR_JMX_OPTS=""
+          else
+              if [ "$MAPR_JMXREMOTEHOST" = "true" ] && [ "$isSecure" = "true" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
+                  echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
+              else
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.port=$MAPR_JMX_PORT"
+                  if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+                      echo "Enabling TCP JMX for Kafka connect only on localhost port $MAPR_JMX_PORT"
+                  else
+                      echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
+                  fi
+              fi
+          fi
+      fi
+
+      if [ "$MAPR_JMXLOCALBINDING" = "true" ] && [ -z "$MAPR_JMX_OPTS" ]; then
+          echo "Enabling JMX local binding only"
+          MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+      fi
+  else
+      echo "JMX disabled by user request"
+      MAPR_JMX_OPTS=""
+  fi
 fi
+KAFKA_JMX_OPTS=$MAPR_JMX_OPTS
+
 
 # Log directory to use
 if [ "x$LOG_DIR" = "x" ]; then
@@ -237,6 +377,13 @@ if [ "x$KAFKA_DEBUG" != "x" ]; then
 
     echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
     KAFKA_OPTS="$JAVA_DEBUG_OPTS $KAFKA_OPTS"
+fi
+
+env=$MAPR_CONF/env.sh
+[ -f $env ] && . $env
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  KAFKA_OPTS="$KAFKA_OPTS -Dhadoop.login=hybrid"
 fi
 
 # Which java to use
@@ -306,10 +453,14 @@ fi
 # Remove a possible colon prefix from the classpath (happens at lines like `CLASSPATH="$CLASSPATH:$file"` when CLASSPATH is blank)
 # Syntax used on the right side is native Bash string manipulation; for more details see
 # http://tldp.org/LDP/abs/html/string-manipulation.html, specifically the section titled "Substring Removal"
-CLASSPATH=${CLASSPATH#:}
-
+if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
+  CLASSPATH=${CLASSPATH#:}:$JMX_JAR
+else
+  CLASSPATH=${CLASSPATH#:}
+fi
 # If Cygwin is detected, classpath is converted to Windows format.
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
+export MAPR_IMPERSONATION_ENABLED=true
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then

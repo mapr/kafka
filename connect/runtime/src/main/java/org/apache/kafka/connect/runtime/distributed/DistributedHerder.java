@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.runtime.distributed;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.errors.WakeupException;
@@ -47,6 +48,7 @@ import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.apache.kafka.connect.runtime.SourceConnectorConfig;
 import org.apache.kafka.connect.runtime.TargetState;
 import org.apache.kafka.connect.runtime.TaskStatus;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.rest.InternalRequestSignature;
 import org.apache.kafka.connect.runtime.rest.RestClient;
@@ -66,6 +68,7 @@ import org.slf4j.Logger;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -567,8 +570,8 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                 taskConfigUpdates = new HashSet<>();
             }
         } else {
-            log.trace("Skipping config updates with incremental cooperative rebalancing " 
-                + "since no config rebalance is required " 
+            log.trace("Skipping config updates with incremental cooperative rebalancing "
+                + "since no config rebalance is required "
                 + "and there are no connector config, task config, or target state changes pending");
         }
         return retValue;
@@ -920,9 +923,9 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                 requestValidationError = new BadRequestException("Internal request missing required signature");
             } else if (!keySignatureVerificationAlgorithms.contains(requestSignature.keyAlgorithm())) {
                 requestValidationError = new BadRequestException(String.format(
-                    "This worker does not support the '%s' key signing algorithm used by other workers. " 
-                        + "This worker is currently configured to use: %s. " 
-                        + "Check that all workers' configuration files permit the same set of signature algorithms, " 
+                    "This worker does not support the '%s' key signing algorithm used by other workers. "
+                        + "This worker is currently configured to use: %s. "
+                        + "Check that all workers' configuration files permit the same set of signature algorithms, "
                         + "and correct any misconfigured worker and restart it.",
                     requestSignature.keyAlgorithm(),
                     keySignatureVerificationAlgorithms
@@ -1299,6 +1302,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         final Map<String, String> configProps = configState.connectorConfig(connectorName);
         final CloseableConnectorContext ctx = new HerderConnectorContext(this, connectorName);
         final TargetState initialState = configState.targetState(connectorName);
+        setTaskUserIfNull(configProps);
         final Callback<TargetState> onInitialStateChange = (error, newState) -> {
             if (error != null) {
                 callback.onCompletion(new ConnectException("Failed to start connector: " + connectorName), null);
@@ -1326,6 +1330,18 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
             }
         };
         worker.startConnector(connectorName, configProps, ctx, this, initialState, onInitialStateChange);
+    }
+
+    private void setTaskUserIfNull(Map<String, String> configProps) {
+        // If no task.user in config then authentication.method=NONE and task.user should be set to the current user
+        if (configProps.containsKey(TaskConfig.TASK_USER_CONFIG) && configProps.get(TaskConfig.TASK_USER_CONFIG) == null) {
+            try {
+                configProps.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+
+            } catch (IOException e) {
+                log.error("Can not get the current user: " +  e);
+            }
+        }
     }
 
     private Callable<Void> getConnectorStartingCallable(final String connectorName) {
@@ -1657,7 +1673,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         ClusterConfigState snapshot = configBackingStore.snapshot();
         for (String connector : statusBackingStore.connectors()) {
             Set<ConnectorTaskId> remainingTasks = new HashSet<>(snapshot.tasks(connector));
-            
+
             statusBackingStore.getAll(connector).stream()
                 .map(TaskStatus::id)
                 .filter(task -> !remainingTasks.contains(task))

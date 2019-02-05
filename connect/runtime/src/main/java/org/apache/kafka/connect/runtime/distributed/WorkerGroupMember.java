@@ -53,6 +53,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.mapr.GenericHFactory;
+
 /**
  * This class manages the coordination process with brokers for the Connect cluster group membership. It ties together
  * the Coordinator, which implements the group member protocol, with all the other pieces needed to drive the connection
@@ -69,7 +71,7 @@ public class WorkerGroupMember {
     private final Metrics metrics;
     private final Metadata metadata;
     private final long retryBackoffMs;
-    private final WorkerCoordinator coordinator;
+    private final GenericWorkerCoordinator coordinator;
 
     private boolean stopped = false;
 
@@ -82,75 +84,101 @@ public class WorkerGroupMember {
                              LogContext logContext) {
         try {
             this.time = time;
+            //String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
             this.clientId = clientId;
             this.log = logContext.logger(WorkerGroupMember.class);
 
-            Map<String, String> metricsTags = new LinkedHashMap<>();
-            metricsTags.put("client-id", clientId);
-            MetricConfig metricConfig = new MetricConfig().samples(config.getInt(CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG))
-                    .timeWindow(config.getLong(CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS)
-                    .tags(metricsTags);
-            List<MetricsReporter> reporters = config.getConfiguredInstances(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG,
-                    MetricsReporter.class,
-                    Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, clientId));
-            JmxReporter jmxReporter = new JmxReporter();
-            jmxReporter.configure(config.originals());
-            reporters.add(jmxReporter);
+            String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
 
-            Map<String, Object> contextLabels = new HashMap<>();
-            contextLabels.putAll(config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX));
-            contextLabels.put(WorkerConfig.CONNECT_KAFKA_CLUSTER_ID, ConnectUtils.lookupKafkaClusterId(config));
-            contextLabels.put(WorkerConfig.CONNECT_GROUP_ID, config.getString(DistributedConfig.GROUP_ID_CONFIG));
-            MetricsContext metricsContext = new KafkaMetricsContext(JMX_PREFIX, contextLabels);
+            if (configTopic.startsWith("/") || configTopic.contains(":")) {
+                GenericHFactory<GenericWorkerCoordinator> coordFactory =
+                        new GenericHFactory<GenericWorkerCoordinator>();
+                this.coordinator = coordFactory.getImplementorInstance(
+                        "com.mapr.streams.impl.MarlinWorkerCoordinatorV10",
+                        new Object [] {config,
+                                config.getString(DistributedConfig.GROUP_ID_CONFIG),
+                                restUrl,
+                                configStorage,
+                                listener},
+                        new Class [] {DistributedConfig.class,
+                                String.class,
+                                String.class,
+                                ConfigBackingStore.class,
+                                WorkerRebalanceListener.class});
 
-            this.metrics = new Metrics(metricConfig, reporters, time, metricsContext);
-            this.retryBackoffMs = config.getLong(CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG);
-            this.metadata = new Metadata(retryBackoffMs, config.getLong(CommonClientConfigs.METADATA_MAX_AGE_CONFIG),
-                    logContext, new ClusterResourceListeners());
-            List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(
-                    config.getList(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
-                    config.getString(CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG));
-            this.metadata.bootstrap(addresses);
-            String metricGrpPrefix = "connect";
-            ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time, logContext);
-            NetworkClient netClient = new NetworkClient(
-                    new Selector(config.getLong(CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_CONFIG), metrics, time, metricGrpPrefix, channelBuilder, logContext),
-                    this.metadata,
-                    clientId,
-                    100, // a fixed large enough value will suffice
-                    config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG),
-                    config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_CONFIG),
-                    config.getInt(CommonClientConfigs.SEND_BUFFER_CONFIG),
-                    config.getInt(CommonClientConfigs.RECEIVE_BUFFER_CONFIG),
-                    config.getInt(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG),
-                    ClientDnsLookup.forConfig(config.getString(CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG)),
-                    time,
-                    true,
-                    new ApiVersions(),
-                    logContext);
-            this.client = new ConsumerNetworkClient(
-                    logContext,
-                    netClient,
-                    metadata,
-                    time,
-                    retryBackoffMs,
-                    config.getInt(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG),
-                    Integer.MAX_VALUE);
-            this.coordinator = new WorkerCoordinator(
-                    new GroupRebalanceConfig(config, GroupRebalanceConfig.ProtocolType.CONNECT),
-                    logContext,
-                    this.client,
-                    metrics,
-                    metricGrpPrefix,
-                    this.time,
-                    restUrl,
-                    configStorage,
-                    listener,
-                    ConnectProtocolCompatibility.compatibility(config.getString(DistributedConfig.CONNECT_PROTOCOL_CONFIG)),
-                    config.getInt(DistributedConfig.SCHEDULED_REBALANCE_MAX_DELAY_MS_CONFIG));
+                // Not relevant / not supported by MAPR-STREAMS
+                this.client = null;
+                this.metrics = null;
+                this.metadata = null;
+                this.retryBackoffMs = 0;
+            } else {
+                Map<String, String> metricsTags = new LinkedHashMap<>();
+                metricsTags.put("client-id", clientId);
+                MetricConfig metricConfig = new MetricConfig().samples(config.getInt(CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG))
+                        .timeWindow(config.getLong(CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS)
+                        .tags(metricsTags);
+                List<MetricsReporter> reporters = config.getConfiguredInstances(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG,
+                        MetricsReporter.class,
+                        Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, clientId));
+                JmxReporter jmxReporter = new JmxReporter();
+                jmxReporter.configure(config.originals());
+                reporters.add(jmxReporter);
 
-            AppInfoParser.registerAppInfo(JMX_PREFIX, clientId, metrics, time.milliseconds());
-            log.debug("Connect group member created");
+                Map<String, Object> contextLabels = new HashMap<>();
+                contextLabels.putAll(config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX));
+                contextLabels.put(WorkerConfig.CONNECT_KAFKA_CLUSTER_ID, ConnectUtils.lookupKafkaClusterId(config));
+                contextLabels.put(WorkerConfig.CONNECT_GROUP_ID, config.getString(DistributedConfig.GROUP_ID_CONFIG));
+                MetricsContext metricsContext = new KafkaMetricsContext(JMX_PREFIX, contextLabels);
+
+                this.metrics = new Metrics(metricConfig, reporters, time, metricsContext);
+                this.retryBackoffMs = config.getLong(CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG);
+                this.metadata = new Metadata(retryBackoffMs, config.getLong(CommonClientConfigs.METADATA_MAX_AGE_CONFIG),
+                        logContext, new ClusterResourceListeners());
+                List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(
+                        config.getList(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+                        config.getString(CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG));
+                this.metadata.bootstrap(addresses);
+                String metricGrpPrefix = "connect";
+                ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config, time, logContext);
+                NetworkClient netClient = new NetworkClient(
+                        new Selector(config.getLong(CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_CONFIG), metrics, time, metricGrpPrefix, channelBuilder, logContext),
+                        this.metadata,
+                        clientId,
+                        100, // a fixed large enough value will suffice
+                        config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG),
+                        config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_CONFIG),
+                        config.getInt(CommonClientConfigs.SEND_BUFFER_CONFIG),
+                        config.getInt(CommonClientConfigs.RECEIVE_BUFFER_CONFIG),
+                        config.getInt(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG),
+                        ClientDnsLookup.forConfig(config.getString(CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG)),
+                        time,
+                        true,
+                        new ApiVersions(),
+                        logContext);
+                this.client = new ConsumerNetworkClient(
+                        logContext,
+                        netClient,
+                        metadata,
+                        time,
+                        retryBackoffMs,
+                        config.getInt(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG),
+                        Integer.MAX_VALUE);
+                this.coordinator = new WorkerCoordinator(
+                        new GroupRebalanceConfig(config, GroupRebalanceConfig.ProtocolType.CONNECT),
+                        logContext,
+                        this.client,
+                        metrics,
+                        metricGrpPrefix,
+                        this.time,
+                        restUrl,
+                        configStorage,
+                        listener,
+                        ConnectProtocolCompatibility.compatibility(config.getString(DistributedConfig.CONNECT_PROTOCOL_CONFIG)),
+                        config.getInt(DistributedConfig.SCHEDULED_REBALANCE_MAX_DELAY_MS_CONFIG));
+
+                AppInfoParser.registerAppInfo(JMX_PREFIX, clientId, metrics, time.milliseconds());
+                log.debug("Connect group member created");
+            }
         } catch (Throwable t) {
             // call close methods if internal objects are already constructed
             // this is to prevent resource leak. see KAFKA-2121
@@ -183,7 +211,7 @@ public class WorkerGroupMember {
      * Interrupt any running poll() calls, causing a WakeupException to be thrown in the thread invoking that method.
      */
     public void wakeup() {
-        this.client.wakeup();
+        coordinator.wakeup();
     }
 
     /**

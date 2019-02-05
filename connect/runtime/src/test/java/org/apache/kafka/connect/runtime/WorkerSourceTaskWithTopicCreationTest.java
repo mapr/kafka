@@ -1206,6 +1206,7 @@ public class WorkerSourceTaskWithTopicCreationTest extends ThreadedTest {
         return expectSendRecord(TOPIC, anyTimes, isRetry, succeed, true, true, emptyHeaders());
     }
 
+    @SuppressWarnings("deprecation")
     private Capture<ProducerRecord<byte[], byte[]>> expectSendRecord(
             String topic,
             boolean anyTimes,

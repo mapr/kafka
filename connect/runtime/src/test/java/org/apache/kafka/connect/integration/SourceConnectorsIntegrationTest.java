@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -96,7 +97,7 @@ public class SourceConnectorsIntegrationTest {
     }
 
     @Test
-    public void testTopicsAreCreatedWhenAutoCreateTopicsIsEnabledAtTheBroker() throws InterruptedException {
+    public void testTopicsAreCreatedWhenAutoCreateTopicsIsEnabledAtTheBroker() throws ClassNotFoundException, InterruptedException {
         brokerProps.put("auto.create.topics.enable", String.valueOf(true));
         workerProps.put(TOPIC_CREATION_ENABLE_CONFIG, String.valueOf(false));
         connect = connectBuilder.brokerProps(brokerProps).workerProps(workerProps).build();
@@ -123,7 +124,7 @@ public class SourceConnectorsIntegrationTest {
     }
 
     @Test
-    public void testTopicsAreCreatedWhenTopicCreationIsEnabled() throws InterruptedException {
+    public void testTopicsAreCreatedWhenTopicCreationIsEnabled() throws ClassNotFoundException, InterruptedException {
         connect = connectBuilder.build();
         // start the clusters
         connect.start();
@@ -148,7 +149,7 @@ public class SourceConnectorsIntegrationTest {
     }
 
     @Test
-    public void testSwitchingToTopicCreationEnabled() throws InterruptedException {
+    public void testSwitchingToTopicCreationEnabled() throws ClassNotFoundException, InterruptedException {
         workerProps.put(TOPIC_CREATION_ENABLE_CONFIG, String.valueOf(false));
         connect = connectBuilder.build();
         // start the clusters
@@ -194,7 +195,13 @@ public class SourceConnectorsIntegrationTest {
 
         workerProps.put(TOPIC_CREATION_ENABLE_CONFIG, String.valueOf(true));
 
-        IntStream.range(0, 3).forEach(i -> connect.addWorker());
+        IntStream.range(0, 3).forEach(i -> {
+            try {
+                connect.addWorker();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        });
         connect.assertions().assertAtLeastNumWorkersAreUp(NUM_WORKERS, "Initial group of workers did not start in time.");
 
         connect.assertions().assertConnectorAndAtLeastNumTasksAreRunning(FOO_CONNECTOR, NUM_TASKS,

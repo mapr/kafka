@@ -156,6 +156,16 @@ public class CommonClientConfigs {
     public static final String DEFAULT_API_TIMEOUT_MS_DOC = "Specifies the timeout (in milliseconds) for client APIs. " +
             "This configuration is used as the default timeout for all client operations that do not specify a <code>timeout</code> parameter.";
 
+    /** STREAMS SPECIFIC SETTINGS **/
+
+    /** <code>fs.mapr.hardmount</code> **/
+    public static final String STREAMS_HARDMOUNT_CONFIG = "fs.mapr.hardmount";
+    public static final String STREAMS_HARDMOUNT_DOC = "If server is down/unreachable, keep retrying the RPC.";
+
+    /** <code>streams.rpc.timeout.ms</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
+    public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). ";
+
     /**
      * Postprocess the configuration so that exponential backoff is disabled when reconnect backoff
      * is explicitly configured but the maximum reconnect backoff is not explicitly configured.

@@ -191,6 +191,7 @@ public class StoreChangelogReader implements ChangelogReader {
     private final Time time;
     private final Logger log;
     private final Duration pollTime;
+    private final String internalStreamCompacted;
     private final long updateOffsetIntervalMs;
 
     // 1) we keep adding partitions to restore consumer whenever new tasks are registered with the state manager;
@@ -222,13 +223,15 @@ public class StoreChangelogReader implements ChangelogReader {
                                 final LogContext logContext,
                                 final Admin adminClient,
                                 final Consumer<byte[], byte[]> restoreConsumer,
-                                final StateRestoreListener stateRestoreListener) {
+                                final StateRestoreListener stateRestoreListener,
+                                final String internalStreamCompacted) {
         this.time = time;
         this.log = logContext.logger(StoreChangelogReader.class);
         this.state = ChangelogReaderState.ACTIVE_RESTORING;
         this.adminClient = adminClient;
         this.restoreConsumer = restoreConsumer;
         this.stateRestoreListener = stateRestoreListener;
+        this.internalStreamCompacted = internalStreamCompacted;
 
         this.pollTime = Duration.ofMillis(config.getLong(StreamsConfig.POLL_MS_CONFIG));
         this.updateOffsetIntervalMs = config.getLong(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG) == Long.MAX_VALUE ?
@@ -510,7 +513,7 @@ public class StoreChangelogReader implements ChangelogReader {
             updateOffsetIntervalMs < time.milliseconds() - lastUpdateOffsetTime) {
 
             // when the interval has elapsed we should try to update the limit offset for standbys reading from
-            // a source changelog with the new committed offset, unless there are no buffered records since 
+            // a source changelog with the new committed offset, unless there are no buffered records since
             // we only need the limit when processing new records
             // for other changelog partitions we do not need to update limit offset at all since we never need to
             // check when it completes based on limit offset anyways: the end offset would keep increasing and the
@@ -881,7 +884,9 @@ public class StoreChangelogReader implements ChangelogReader {
         changelogs.clear();
 
         try {
-            restoreConsumer.unsubscribe();
+            if (restoreConsumer.subscription().size() > 0) {
+                restoreConsumer.unsubscribe();
+            }
         } catch (final KafkaException e) {
             throw new StreamsException("Restore consumer get unexpected error unsubscribing", e);
         }

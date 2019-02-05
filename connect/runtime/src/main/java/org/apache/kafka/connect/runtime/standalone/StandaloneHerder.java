@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.runtime.standalone;
 
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.connect.errors.AlreadyExistsException;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.NotFoundException;
@@ -29,6 +30,7 @@ import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.apache.kafka.connect.runtime.SourceConnectorConfig;
 import org.apache.kafka.connect.runtime.TargetState;
 import org.apache.kafka.connect.runtime.Worker;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.distributed.ClusterConfigState;
 import org.apache.kafka.connect.runtime.rest.InternalRequestSignature;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
@@ -43,6 +45,7 @@ import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -129,7 +132,7 @@ public class StandaloneHerder extends AbstractHerder {
     public synchronized void connectors(Callback<Collection<String>> callback) {
         callback.onCompletion(null, connectors());
     }
-    
+
     @Override
     public synchronized void connectorInfo(String connName, Callback<ConnectorInfo> callback) {
         ConnectorInfo connectorInfo = connectorInfo(connName);
@@ -330,6 +333,11 @@ public class StandaloneHerder extends AbstractHerder {
 
         for (ConnectorTaskId taskId : configState.tasks(connName)) {
             Map<String, String> taskConfigMap = configState.taskConfig(taskId);
+            try {
+                connConfigs.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+            } catch (IOException e) {
+                log.error("Can not get current user: " +  e);
+            }
             worker.startTask(taskId, configState, connConfigs, taskConfigMap, this, initialState);
         }
     }

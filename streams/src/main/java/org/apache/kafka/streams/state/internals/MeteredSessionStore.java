@@ -70,7 +70,7 @@ public class MeteredSessionStore<K, V>
     public void init(final ProcessorContext context,
                      final StateStore root) {
         serdes = new StateSerdes<>(
-            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name()),
+            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name(),  context.applicationInternalStream()),
             WrappingNullableUtils.prepareKeySerde(keySerde, context.keySerde(), context.valueSerde()),
             WrappingNullableUtils.prepareValueSerde(valueSerde, context.keySerde(), context.valueSerde()));
         taskId = context.taskId().toString();

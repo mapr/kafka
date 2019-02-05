@@ -188,7 +188,6 @@ public class MockProcessorContext implements ProcessorContext, RecordCollector.S
             new Properties() {
                 {
                     put(StreamsConfig.APPLICATION_ID_CONFIG, "");
-                    put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "");
                 }
             },
             new TaskId(0, 0),
@@ -235,6 +234,11 @@ public class MockProcessorContext implements ProcessorContext, RecordCollector.S
     @Override
     public String applicationId() {
         return config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
+    }
+
+    @Override
+    public String applicationInternalStream() {
+        return null;
     }
 
     @Override

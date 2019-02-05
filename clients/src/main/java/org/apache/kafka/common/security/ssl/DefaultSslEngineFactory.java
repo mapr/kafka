@@ -40,8 +40,10 @@ import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,7 +62,9 @@ public final class DefaultSslEngineFactory implements SslEngineFactory {
     private SecurityStore keystore;
     private SecurityStore truststore;
     private String[] cipherSuites;
+    private String[] disabledcipherSuites;
     private String[] enabledProtocols;
+    private String[] disabledProtocols;
     private SecureRandom secureRandomImplementation;
     private SSLContext sslContext;
     private SslClientAuth sslClientAuth;
@@ -120,11 +124,25 @@ public final class DefaultSslEngineFactory implements SslEngineFactory {
             this.cipherSuites = null;
         }
 
+        List<String> disabledCipherSuitesList = (List<String>) configs.get(SslConfigs.SSL_DISABLED_CIPHER_SUITES_CONFIG);
+        if (disabledCipherSuitesList != null && !disabledCipherSuitesList.isEmpty()) {
+            this.disabledcipherSuites = disabledCipherSuitesList.toArray(new String[disabledCipherSuitesList.size()]);
+        } else {
+            this.disabledcipherSuites = null;
+        }
+
         List<String> enabledProtocolsList = (List<String>) configs.get(SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG);
         if (enabledProtocolsList != null && !enabledProtocolsList.isEmpty()) {
             this.enabledProtocols = enabledProtocolsList.toArray(new String[enabledProtocolsList.size()]);
         } else {
             this.enabledProtocols = null;
+        }
+
+        List<String> disabledProtocolsList = (List<String>) configs.get(SslConfigs.SSL_DISABLED_PROTOCOLS_CONFIG);
+        if (disabledProtocolsList != null && !disabledProtocolsList.isEmpty()) {
+            this.disabledProtocols = disabledProtocolsList.toArray(new String[disabledProtocolsList.size()]);
+        } else {
+            this.disabledProtocols = null;
         }
 
         this.secureRandomImplementation = createSecureRandom((String)
@@ -160,8 +178,14 @@ public final class DefaultSslEngineFactory implements SslEngineFactory {
 
     private SSLEngine createSslEngine(Mode mode, String peerHost, int peerPort, String endpointIdentification) {
         SSLEngine sslEngine = sslContext.createSSLEngine(peerHost, peerPort);
-        if (cipherSuites != null) sslEngine.setEnabledCipherSuites(cipherSuites);
-        if (enabledProtocols != null) sslEngine.setEnabledProtocols(enabledProtocols);
+
+        Set<String> suites = new HashSet<>(Arrays.asList(cipherSuites));
+        suites.removeAll(Arrays.asList(disabledcipherSuites));
+        if (cipherSuites != null) sslEngine.setEnabledCipherSuites(suites.toArray(new String[suites.size()]));
+
+        Set<String> protocols = new HashSet<>(Arrays.asList(enabledProtocols));
+        protocols.removeAll(Arrays.asList(disabledProtocols));
+        if (enabledProtocols != null) sslEngine.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
 
         if (mode == Mode.SERVER) {
             sslEngine.setUseClientMode(false);

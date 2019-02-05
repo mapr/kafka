@@ -18,6 +18,8 @@ package org.apache.kafka.connect.runtime;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -54,6 +56,8 @@ import org.apache.kafka.connect.util.TopicCreationGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -362,27 +366,21 @@ class WorkerSourceTask extends WorkerTask {
             }
             try {
                 maybeCreateTopic(record.topic());
-                final String topic = producerRecord.topic();
-                producer.send(
-                    producerRecord,
-                    (recordMetadata, e) -> {
-                        if (e != null) {
-                            log.error("{} failed to send record to {}: ", WorkerSourceTask.this, topic, e);
-                            log.debug("{} Failed record: {}", WorkerSourceTask.this, preTransformRecord);
-                            producerSendException.compareAndSet(null, e);
-                        } else {
-                            recordSent(producerRecord);
-                            counter.completeRecord();
-                            log.trace("{} Wrote record successfully: topic {} partition {} offset {}",
-                                    WorkerSourceTask.this,
-                                    recordMetadata.topic(), recordMetadata.partition(),
-                                    recordMetadata.offset());
-                            commitTaskRecord(preTransformRecord, recordMetadata);
-                            if (isTopicTrackingEnabled) {
-                                recordActiveTopic(producerRecord.topic());
-                            }
-                        }
-                    });
+                if (workerConfig.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)){
+                    try {
+                        UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                                taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                                UserGroupInformation.getCurrentUser());
+                        ugi.doAs((PrivilegedExceptionAction<Object>) () -> {
+                            produceRecord(producerRecord, preTransformRecord, counter);
+                            return null;
+                        });
+                    } catch (IOException | InterruptedException e) {
+                         log.error("Failed to impersonate user", e);
+                    }
+                } else {
+                    produceRecord(producerRecord, preTransformRecord, counter);
+                }
                 lastSendFailed = false;
             } catch (RetriableException | org.apache.kafka.common.errors.RetriableException e) {
                 log.warn("{} Failed to send record to topic '{}' and partition '{}'. Backing off before retrying: ",
@@ -603,6 +601,31 @@ class WorkerSourceTask extends WorkerTask {
         outstandingMessages = outstandingMessagesBacklog;
         outstandingMessagesBacklog = temp;
         flushing = false;
+    }
+
+    private void produceRecord(final ProducerRecord<byte[], byte[]> producerRecord, final SourceRecord preTransformRecord,
+                            final SourceRecordWriteCounter counter) {
+        final String topic = producerRecord.topic();
+        producer.send(
+                producerRecord,
+                (recordMetadata, e) -> {
+                    if (e != null) {
+                        log.error("{} failed to send record to {}: ", WorkerSourceTask.this, topic, e);
+                        log.debug("{} Failed record: {}", WorkerSourceTask.this, preTransformRecord);
+                        producerSendException.compareAndSet(null, e);
+                    } else {
+                        recordSent(producerRecord);
+                        counter.completeRecord();
+                        log.trace("{} Wrote record successfully: topic {} partition {} offset {}",
+                                WorkerSourceTask.this,
+                                recordMetadata.topic(), recordMetadata.partition(),
+                                recordMetadata.offset());
+                        commitTaskRecord(preTransformRecord, recordMetadata);
+                        if (isTopicTrackingEnabled) {
+                            recordActiveTopic(producerRecord.topic());
+                        }
+                    }
+                });
     }
 
     @Override

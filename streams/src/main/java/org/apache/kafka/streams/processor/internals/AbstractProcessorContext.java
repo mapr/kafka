@@ -79,6 +79,11 @@ public abstract class AbstractProcessorContext implements InternalProcessorConte
     }
 
     @Override
+    public String applicationInternalStream() {
+        return config.getStreamsInternalStreamCompacted();
+    }
+
+    @Override
     public TaskId taskId() {
         return taskId;
     }

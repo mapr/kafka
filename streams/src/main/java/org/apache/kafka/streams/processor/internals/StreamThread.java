@@ -309,7 +309,8 @@ public class StreamThread extends Thread {
             logContext,
             adminClient,
             restoreConsumer,
-            userStateRestoreListener
+            userStateRestoreListener,
+            config.getStreamsInternalStreamCompacted()
         );
 
         final ThreadCache cache = new ThreadCache(logContext, cacheSizeBytes, streamsMetrics);
@@ -548,7 +549,10 @@ public class StreamThread extends Thread {
         // until the rebalance is completed before we close and commit the tasks
         while (isRunning() || taskManager.isRebalanceInProgress()) {
             try {
-                runOnce();
+                synchronized (taskManager) {
+                    runOnce();
+                }
+
                 if (nextProbingRebalanceMs.get() < time.milliseconds()) {
                     log.info("Triggering the followup rebalance scheduled for {} ms.", nextProbingRebalanceMs.get());
                     mainConsumer.enforceRebalance();
@@ -580,7 +584,9 @@ public class StreamThread extends Thread {
 
     private void subscribeConsumer() {
         if (builder.usesPatternSubscription()) {
-            mainConsumer.subscribe(builder.sourceTopicPattern(), rebalanceListener);
+            String pattern = builder.sourceTopicPattern().toString();
+            List<String> topics = Arrays.asList(pattern.split("\\|"));
+            mainConsumer.subscribe(topics, rebalanceListener);
         } else {
             mainConsumer.subscribe(builder.sourceTopicCollection(), rebalanceListener);
         }
@@ -856,10 +862,10 @@ public class StreamThread extends Thread {
                     .collect(Collectors.toSet())
             );
 
-            if (committed > 0) {
-                // try to purge the committed records for repartition topics if possible
-                taskManager.maybePurgeCommittedRecords();
-            }
+            // if (committed > 0) {
+            //     // try to purge the committed records for repartition topics if possible
+            //     taskManager.maybePurgeCommittedRecords();
+            // }
 
             if (committed == -1) {
                 log.trace("Unable to commit as we are in the middle of a rebalance, will try again when it completes.");

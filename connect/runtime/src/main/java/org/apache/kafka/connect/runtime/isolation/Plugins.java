@@ -291,6 +291,10 @@ public class Plugins {
             }
         }
 
+        if (config.getBoolean(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
+            converterConfig.put("maprsasl.auth", "true");
+        }
+
         Converter plugin;
         ClassLoader savedLoader = compareAndSwapLoaders(klass.getClassLoader());
         try {

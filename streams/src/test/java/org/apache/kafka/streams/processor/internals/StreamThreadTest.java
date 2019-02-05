@@ -154,7 +154,8 @@ public class StreamThreadTest {
     public void setUp() {
         Thread.currentThread().setName(CLIENT_ID + "-StreamThread-" + threadIdx);
         internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(internalStreamsBuilder);
-        internalTopologyBuilder.setApplicationId(APPLICATION_ID);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(APPLICATION_ID,
+                "/sample-stream", "/sample-stream");
         streamsMetadataState = new StreamsMetadataState(internalTopologyBuilder, StreamsMetadataState.UNKNOWN_HOST);
     }
 
@@ -491,7 +492,7 @@ public class StreamThreadTest {
             APPLICATION_ID,
             config.getString(StreamsConfig.BUILT_IN_METRICS_VERSION_CONFIG)
         );
-        
+
         final Consumer<byte[], byte[]> mockConsumer = EasyMock.createNiceMock(Consumer.class);
         final EasyMockConsumerClientSupplier mockClientSupplier = new EasyMockConsumerClientSupplier(mockConsumer);
 

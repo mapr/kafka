@@ -33,7 +33,7 @@ public class AlterConfigsResult {
 
     private final Map<ConfigResource, KafkaFuture<Void>> futures;
 
-    AlterConfigsResult(Map<ConfigResource, KafkaFuture<Void>> futures) {
+    public AlterConfigsResult(Map<ConfigResource, KafkaFuture<Void>> futures) {
         this.futures = futures;
     }
 

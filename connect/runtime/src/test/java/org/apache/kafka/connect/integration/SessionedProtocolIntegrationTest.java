@@ -60,7 +60,7 @@ public class SessionedProtocolIntegrationTest {
     private ConnectorHandle connectorHandle;
 
     @Before
-    public void setup() {
+    public void setup() throws ClassNotFoundException {
         // setup Connect worker properties
         Map<String, String> workerProps = new HashMap<>();
         workerProps.put(CONNECT_PROTOCOL_CONFIG, ConnectProtocolCompatibility.SESSIONED.protocol());

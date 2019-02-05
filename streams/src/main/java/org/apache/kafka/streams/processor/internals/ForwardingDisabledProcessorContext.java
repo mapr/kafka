@@ -55,6 +55,11 @@ public final class ForwardingDisabledProcessorContext implements ProcessorContex
     }
 
     @Override
+    public String applicationInternalStream() {
+        return delegate.applicationInternalStream();
+    }
+
+    @Override
     public TaskId taskId() {
         return delegate.taskId();
     }

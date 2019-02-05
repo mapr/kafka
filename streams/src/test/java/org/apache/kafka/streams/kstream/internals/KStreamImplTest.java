@@ -1466,7 +1466,8 @@ public class KStreamImplTest {
         stream1.to("topic-5");
         stream2.through("topic-6");
 
-        final ProcessorTopology processorTopology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").buildTopology();
+        final ProcessorTopology processorTopology = TopologyWrapper.getInternalTopologyBuilder(builder.build())
+                .setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").buildTopology();
         assertThat(processorTopology.source("topic-6").getTimestampExtractor(), instanceOf(FailOnInvalidTimestamp.class));
         assertNull(processorTopology.source("topic-4").getTimestampExtractor());
         assertNull(processorTopology.source("topic-3").getTimestampExtractor());
@@ -1483,7 +1484,8 @@ public class KStreamImplTest {
         stream1.to("topic-5");
         stream2.repartition(Repartitioned.as("topic-6"));
 
-        final ProcessorTopology processorTopology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").buildTopology();
+        final ProcessorTopology processorTopology = TopologyWrapper.getInternalTopologyBuilder(builder.build())
+                .setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").buildTopology();
         assertThat(processorTopology.source("X-topic-6-repartition").getTimestampExtractor(), instanceOf(FailOnInvalidTimestamp.class));
         assertNull(processorTopology.source("topic-4").getTimestampExtractor());
         assertNull(processorTopology.source("topic-3").getTimestampExtractor());
@@ -1578,9 +1580,10 @@ public class KStreamImplTest {
                 Serdes.String()))
             .to("output-topic", Produced.with(Serdes.String(), Serdes.String()));
 
-        final ProcessorTopology topology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").buildTopology();
+        final ProcessorTopology topology = TopologyWrapper.getInternalTopologyBuilder(builder.build())
+                .setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").buildTopology();
 
-        final SourceNode<?, ?> originalSourceNode = topology.source("topic-1");
+        SourceNode<?, ?> originalSourceNode = topology.source("topic-1");
 
         for (final SourceNode<?, ?> sourceNode : topology.sources()) {
             if (sourceNode.name().equals(originalSourceNode.name())) {
@@ -1607,7 +1610,8 @@ public class KStreamImplTest {
         )
             .to("output-topic", Produced.with(Serdes.String(), Serdes.String()));
 
-        final ProcessorTopology topology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").buildTopology();
+        final ProcessorTopology topology = TopologyWrapper.getInternalTopologyBuilder(builder.build())
+                    .setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").buildTopology();
 
         final SourceNode<?, ?> originalSourceNode = topology.source("topic-1");
 

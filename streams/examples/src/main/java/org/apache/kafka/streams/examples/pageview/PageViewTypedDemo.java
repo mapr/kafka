@@ -29,6 +29,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
@@ -50,9 +51,8 @@ import java.util.concurrent.CountDownLatch;
  * with a user profile table that reads from a topic named "streams-userprofile-input", where the data format
  * is JSON string representing a record in the stream or table, to compute the number of pageviews per user region.
  *
- * Before running this example you must create the input topics and the output topic (e.g. via
- * bin/kafka-topics --create ...), and write some data to the input topics (e.g. via
- * bin/kafka-console-producer). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  *
  * The inputs for this example are:
  * - Topic: streams-pageview-input
@@ -174,7 +174,6 @@ public class PageViewTypedDemo {
     public static void main(final String[] args) {
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-pageview-typed");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, JsonTimestampExtractor.class);
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, JSONSerde.class);
         props.put(StreamsConfig.DEFAULT_WINDOWED_KEY_SERDE_INNER_CLASS, JSONSerde.class);
@@ -185,6 +184,9 @@ public class PageViewTypedDemo {
 
         // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        //MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
 
         final StreamsBuilder builder = new StreamsBuilder();
 

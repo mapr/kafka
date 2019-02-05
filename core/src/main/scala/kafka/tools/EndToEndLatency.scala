@@ -26,8 +26,8 @@ import org.apache.kafka.clients.admin.{Admin, NewTopic}
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer._
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.common.TopicPartition
 
 import scala.jdk.CollectionConverters._
 import scala.util.Random

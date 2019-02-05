@@ -92,7 +92,7 @@ public class MeteredWindowStore<K, V>
 
     void initStoreSerde(final ProcessorContext context) {
         serdes = new StateSerdes<>(
-            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name()),
+            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name(),  context.applicationInternalStream()),
             prepareKeySerde(keySerde, context.keySerde(), context.valueSerde()),
             prepareValueSerde(valueSerde, context.keySerde(), context.valueSerde()));
     }

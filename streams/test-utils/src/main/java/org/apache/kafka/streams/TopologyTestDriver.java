@@ -41,6 +41,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
+import org.apache.kafka.streams.mapr.KafkaStreamsInternalStorageInitializer;
 import org.apache.kafka.streams.errors.TopologyException;
 import org.apache.kafka.streams.internals.KeyValueStoreFacade;
 import org.apache.kafka.streams.internals.QuietStreamsConfig;
@@ -391,7 +392,11 @@ public class TopologyTestDriver implements Closeable {
     private void setupTopology(final InternalTopologyBuilder builder,
                                final StreamsConfig streamsConfig) {
         internalTopologyBuilder = builder;
-        internalTopologyBuilder.rewriteTopology(streamsConfig);
+        KafkaStreamsInternalStorageInitializer.createAppDirAndInternalStreams(streamsConfig);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG),
+                streamsConfig.getStreamsInternalStreamNotcompacted(),
+                streamsConfig.getStreamsInternalStreamCompacted());
+        internalTopologyBuilder.setDefaultStream(streamsConfig.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
 
         processorTopology = internalTopologyBuilder.buildTopology();
         globalTopology = internalTopologyBuilder.buildGlobalStateTopology();

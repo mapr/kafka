@@ -53,8 +53,10 @@ import org.apache.kafka.connect.util.ConnectUtils;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.hadoop.security.UserGroupInformation;
 
 import java.time.Duration;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -193,6 +195,24 @@ class WorkerSinkTask extends WorkerTask {
 
     @Override
     public void execute() {
+        if (workerConfig.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)){
+            try {
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                        taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                        UserGroupInformation.getCurrentUser());
+                ugi.doAs((PrivilegedExceptionAction<Object>) () -> {
+                  startTaskLoop();
+                  return null;
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+      } else {
+          startTaskLoop();
+      }
+    }
+
+    private void startTaskLoop() {
         initializeAndStart();
         // Make sure any uncommitted data has been committed and the task has
         // a chance to clean up its state

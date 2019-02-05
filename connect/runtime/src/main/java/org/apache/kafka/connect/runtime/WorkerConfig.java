@@ -32,6 +32,7 @@ import org.apache.kafka.connect.storage.SimpleHeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -162,6 +163,11 @@ public class WorkerConfig extends AbstractConfig {
             = "Port for the REST API to listen on.";
     public static final int REST_PORT_DEFAULT = 8083;
 
+    public static final String ENABLE_IMPERSONATION_CONFIG = "impersonation.enable";
+    private static final String ENABLE_IMPERSONATION_DOC
+            = "Enable impersonation.";
+    public static final boolean ENABLE_IMPERSONATION_DEFAULT = false;
+
     public static final String LISTENERS_CONFIG = "listeners";
     private static final String LISTENERS_DOC
             = "List of comma-separated URIs the REST API will listen on. The supported protocols are HTTP and HTTPS.\n" +
@@ -213,7 +219,7 @@ public class WorkerConfig extends AbstractConfig {
             + "plugins and their dependencies\n"
             + "Note: symlinks will be followed to discover dependencies or plugins.\n"
             + "Examples: plugin.path=/usr/local/share/java,/usr/local/share/kafka/plugins,"
-            + "/opt/connectors\n" 
+            + "/opt/connectors\n"
             + "Do not use config provider variables in this property, since the raw path is used "
             + "by the worker's scanner before config providers are initialized and used to "
             + "replace variables.";
@@ -269,6 +275,29 @@ public class WorkerConfig extends AbstractConfig {
     public static final String RESPONSE_HTTP_HEADERS_CONFIG = "response.http.headers.config";
     protected static final String RESPONSE_HTTP_HEADERS_DOC = "Rules for REST API HTTP response headers";
     protected static final String RESPONSE_HTTP_HEADERS_DEFAULT = "";
+
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_CONFIG =
+            "authentication.cookie.expiration";
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_DOC =
+            "The option is used to specify expiration time (in seconds) for authentication" +
+                    " cookie. ";
+    public static final String AUTHENTICATION_ENABLE_CONFIG = "authentication.enable";
+    public static final boolean AUTHENTICATION_ENABLE_DEFAULT = false;
+    public static final String AUTHENTICATION_ENABLE_DOC =
+            "Enable authentication. MapR supports multiple authentication methods at same time: Basic and MapR SASL";
+
+    //SecurityHeaders and custom headers file
+    public static final String HEADERS_FILE_CONFIG = "headers.file";
+    public static final String HEADERS_FILE_DEFAULT = "";
+    public static final String HEADERS_FILE_CONFIG_DOC =
+            "The option is used to specify XML file that contains security and custom headers. "
+                    + "The headers will be added to a response by Jetty server.";
+
+    public static final String HADOOP_AUTHENTICATION_TYPES_CONFIG = "hadoop.http.authentication.types";
+    public static final List<String> HADOOP_AUTHENTICATION_TYPES_DEFAULT =
+            Collections.unmodifiableList(Arrays.asList("maprauth", "basic"));
+    public static final String HADOOP_AUTHENTICATION_TYPES_DOC =
+            "A list of hadoop authentication types for MultiMechsAuthenticationHandler";
 
     /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
@@ -338,6 +367,32 @@ public class WorkerConfig extends AbstractConfig {
                 .define(HEADER_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         HEADER_CONVERTER_CLASS_DEFAULT,
                         Importance.LOW, HEADER_CONVERTER_CLASS_DOC)
+                .define(AUTHENTICATION_COOKIE_EXPIRATION_CONFIG,
+                        Type.LONG,
+                        2 * 3600, // 2 hours
+                        Importance.LOW,
+                        AUTHENTICATION_COOKIE_EXPIRATION_DOC)
+                .define(AUTHENTICATION_ENABLE_CONFIG,
+                        Type.BOOLEAN,
+                        AUTHENTICATION_ENABLE_DEFAULT,
+                        Importance.LOW,
+                        AUTHENTICATION_ENABLE_DOC)
+                .define(
+                        HEADERS_FILE_CONFIG,
+                        Type.STRING,
+                        HEADERS_FILE_DEFAULT,
+                        Importance.LOW,
+                        HEADERS_FILE_CONFIG_DOC)
+                .define(ENABLE_IMPERSONATION_CONFIG,
+                        Type.BOOLEAN,
+                        ENABLE_IMPERSONATION_DEFAULT,
+                        Importance.MEDIUM,
+                        ENABLE_IMPERSONATION_DOC)
+                .define(HADOOP_AUTHENTICATION_TYPES_CONFIG,
+                        Type.LIST,
+                        HADOOP_AUTHENTICATION_TYPES_DEFAULT,
+                        Importance.LOW,
+                        HADOOP_AUTHENTICATION_TYPES_DOC)
                 .define(CONFIG_PROVIDERS_CONFIG, Type.LIST,
                         Collections.emptyList(),
                         Importance.LOW, CONFIG_PROVIDERS_DOC)
@@ -419,8 +474,8 @@ public class WorkerConfig extends AbstractConfig {
         if (!Objects.equals(rawPluginPath, transformedPluginPath)) {
             log.warn(
                 "Variables cannot be used in the 'plugin.path' property, since the property is "
-                + "used by plugin scanning before the config providers that replace the " 
-                + "variables are initialized. The raw value '{}' was used for plugin scanning, as " 
+                + "used by plugin scanning before the config providers that replace the "
+                + "variables are initialized. The raw value '{}' was used for plugin scanning, as "
                 + "opposed to the transformed value '{}', and this may cause unexpected results.",
                 rawPluginPath,
                 transformedPluginPath

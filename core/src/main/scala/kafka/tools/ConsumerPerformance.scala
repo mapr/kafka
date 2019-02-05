@@ -21,7 +21,7 @@ import java.text.SimpleDateFormat
 import java.time.Duration
 import java.util
 import java.util.concurrent.atomic.AtomicLong
-import java.util.{Properties, Random}
+import java.util.{Collections, Properties, Random}
 
 import com.typesafe.scalalogging.LazyLogging
 import kafka.utils.{CommandLineUtils, ToolsUtils}
@@ -30,6 +30,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
 
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 
@@ -92,6 +93,7 @@ object ConsumerPerformance extends LazyLogging {
       println("time, threadId, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
   }
 
+  @nowarn("cat=deprecation")
   def consume(consumer: KafkaConsumer[Array[Byte], Array[Byte]],
               topics: List[String],
               count: Long,
@@ -116,6 +118,8 @@ object ConsumerPerformance extends LazyLogging {
       def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit = {
         joinStart = System.currentTimeMillis
       }})
+    consumer.poll(0)
+    consumer.seekToBeginning(Collections.emptyList[TopicPartition])
 
     // Now start the benchmark
     var currentTimeMillis = System.currentTimeMillis

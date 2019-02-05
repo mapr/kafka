@@ -45,7 +45,9 @@ import org.apache.kafka.streams.internals.ApiUtils;
 import org.apache.kafka.streams.internals.metrics.ClientMetrics;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Repartitioned;
+import org.apache.kafka.streams.mapr.KafkaStreamsInternalStorageInitializer;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.StateStore;
@@ -702,6 +704,11 @@ public class KafkaStreams implements AutoCloseable {
         log.info("Kafka Streams version: {}", ClientMetrics.version());
         log.info("Kafka Streams commit ID: {}", ClientMetrics.commitId());
 
+        KafkaStreamsInternalStorageInitializer.createAppDirAndInternalStreams(config);
+        internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId,
+                config.getStreamsInternalStreamNotcompacted(),
+                config.getStreamsInternalStreamCompacted());
+        internalTopologyBuilder.setDefaultStream(config.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG));
         // re-write the physical topology according to the config
         internalTopologyBuilder.rewriteTopology(config);
 

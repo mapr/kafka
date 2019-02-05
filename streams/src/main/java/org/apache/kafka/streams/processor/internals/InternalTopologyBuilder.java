@@ -126,6 +126,14 @@ public class InternalTopologyBuilder {
 
     private Map<Integer, Set<String>> nodeGroups = null;
 
+    /** Mapr Streams Specific **/
+    private String internalStream = null;
+    private String internalStreamCompacted = null;
+
+    private String defaultStream = null;
+
+    /**************************/
+
     public static class StateStoreFactory<S extends StateStore> {
         private final StoreBuilder<S> builder;
         private final Set<String> users = new HashSet<>();
@@ -323,10 +331,14 @@ public class InternalTopologyBuilder {
         }
     }
 
-    // public for testing only
-    public synchronized final InternalTopologyBuilder setApplicationId(final String applicationId) {
+    public synchronized final InternalTopologyBuilder setApplicationIdAndInternalStream(final String applicationId,
+                                                                                        final String internalStream,
+                                                                                        final String internalStreamCompacted) {
         Objects.requireNonNull(applicationId, "applicationId can't be null");
+        Objects.requireNonNull(internalStream, "internalStream can't be null");
         this.applicationId = applicationId;
+        this.internalStream = internalStream;
+        this.internalStreamCompacted = internalStreamCompacted;
 
         return this;
     }
@@ -335,7 +347,9 @@ public class InternalTopologyBuilder {
         Objects.requireNonNull(config, "config can't be null");
 
         // set application id
-        setApplicationId(config.getString(StreamsConfig.APPLICATION_ID_CONFIG));
+        setApplicationIdAndInternalStream(config.getString(StreamsConfig.APPLICATION_ID_CONFIG),
+                config.getStreamsInternalStreamNotcompacted(),
+                config.getStreamsInternalStreamCompacted());
 
         // maybe strip out caching layers
         if (config.getLong(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG) == 0L) {
@@ -354,6 +368,18 @@ public class InternalTopologyBuilder {
         }
 
         return this;
+    }
+
+    public synchronized final void setDefaultStream(final String defaultStream) {
+        Objects.requireNonNull(defaultStream, "defaultStream can't be null");
+        this.defaultStream = defaultStream;
+    }
+
+    private String getNewTopicNameWithDefaultStream(String topic) {
+        if (defaultStream != null && !defaultStream.isEmpty() &&(!topic.startsWith("/"))) {
+            return (defaultStream + ":" + topic);
+        }
+        return topic;
     }
 
     public final void addSource(final Topology.AutoOffsetReset offsetReset,
@@ -979,7 +1005,7 @@ public class InternalTopologyBuilder {
                 topicSourceMap.put(decoratedTopic, node);
                 repartitionTopics.add(decoratedTopic);
             } else {
-                topicSourceMap.put(topic, node);
+                topicSourceMap.put(getNewTopicNameWithDefaultStream(topic), node);
             }
         }
     }
@@ -1000,7 +1026,7 @@ public class InternalTopologyBuilder {
 
                     // remember the changelog topic if this state store is change-logging enabled
                     if (stateStoreFactory.loggingEnabled() && !storeToChangelogTopic.containsKey(stateStoreName)) {
-                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName);
+                        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(applicationId, stateStoreName, internalStreamCompacted);
                         storeToChangelogTopic.put(stateStoreName, changelogTopic);
                         changelogTopicToStore.put(changelogTopic, stateStoreName);
                     }
@@ -1071,7 +1097,7 @@ public class InternalTopologyBuilder {
                             repartitionTopics.put(repartitionTopicConfig.name(), repartitionTopicConfig);
                             sourceTopics.add(repartitionTopicConfig.name());
                         } else {
-                            sourceTopics.add(topic);
+                            sourceTopics.add(getNewTopicNameWithDefaultStream(topic));
                         }
                     }
                 }
@@ -1266,7 +1292,7 @@ public class InternalTopologyBuilder {
             if (internalTopicNamesWithProperties.containsKey(topic)) {
                 decoratedTopics.add(decorateTopic(topic));
             } else {
-                decoratedTopics.add(topic);
+                decoratedTopics.add(getNewTopicNameWithDefaultStream(topic));
             }
         }
         return decoratedTopics;
@@ -1277,13 +1303,16 @@ public class InternalTopologyBuilder {
     }
 
     private String decorateTopic(final String topic) {
-        if (applicationId == null) {
+        if (applicationId == null || internalStream == null) {
             throw new TopologyException("there are internal topics and "
-                    + "applicationId hasn't been set. Call "
-                    + "setApplicationId first");
+                    + "applicationId or internalStream haven't been set. Call "
+                    + "setApplicationIdAndInternalStream first");
         }
-
-        return applicationId + "-" + topic;
+        String topicName = applicationId + "-" + topic;
+        return internalStream.isEmpty() ?
+                topicName
+                :
+                internalStream + ":" + topicName;
     }
 
     void initializeSubscription() {

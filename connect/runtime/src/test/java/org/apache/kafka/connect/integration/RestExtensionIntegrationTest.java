@@ -61,7 +61,7 @@ public class RestExtensionIntegrationTest {
     private EmbeddedConnectCluster connect;
 
     @Test
-    public void testRestExtensionApi() throws InterruptedException {
+    public void testRestExtensionApi() throws ClassNotFoundException, InterruptedException {
         // setup Connect worker properties
         Map<String, String> workerProps = new HashMap<>();
         workerProps.put(REST_EXTENSION_CLASSES_CONFIG, IntegrationTestRestExtension.class.getName());

@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.integration;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,7 +61,7 @@ public class InternalTopicsIntegrationTest {
     }
 
     @Test
-    public void testCreateInternalTopicsWithDefaultSettings() throws InterruptedException {
+    public void testCreateInternalTopicsWithDefaultSettings() throws ClassNotFoundException, IOException, InterruptedException {
         int numWorkers = 1;
         int numBrokers = 3;
         connect = new EmbeddedConnectCluster.Builder().name("connect-cluster-1")
@@ -96,7 +97,7 @@ public class InternalTopicsIntegrationTest {
     }
 
     @Test
-    public void testCreateInternalTopicsWithFewerReplicasThanBrokers() throws InterruptedException {
+    public void testCreateInternalTopicsWithFewerReplicasThanBrokers() throws ClassNotFoundException, InterruptedException {
         workerProps.put(DistributedConfig.CONFIG_STORAGE_REPLICATION_FACTOR_CONFIG, "1");
         workerProps.put(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG, "2");
         workerProps.put(DistributedConfig.STATUS_STORAGE_REPLICATION_FACTOR_CONFIG, "1");
@@ -122,7 +123,7 @@ public class InternalTopicsIntegrationTest {
     }
 
     @Test
-    public void testFailToCreateInternalTopicsWithMoreReplicasThanBrokers() throws InterruptedException {
+    public void testFailToCreateInternalTopicsWithMoreReplicasThanBrokers() throws ClassNotFoundException, InterruptedException {
         workerProps.put(DistributedConfig.CONFIG_STORAGE_REPLICATION_FACTOR_CONFIG, "3");
         workerProps.put(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG, "2");
         workerProps.put(DistributedConfig.STATUS_STORAGE_REPLICATION_FACTOR_CONFIG, "1");
@@ -147,7 +148,7 @@ public class InternalTopicsIntegrationTest {
     }
 
     @Test
-    public void testFailToStartWhenInternalTopicsAreNotCompacted() throws InterruptedException {
+    public void testFailToStartWhenInternalTopicsAreNotCompacted() throws ClassNotFoundException, IOException, InterruptedException {
         // Change the broker default cleanup policy to something Connect doesn't like
         brokerProps.put("log." + TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE);
         // Start out using the improperly configured topics
@@ -221,7 +222,7 @@ public class InternalTopicsIntegrationTest {
     }
 
     @Test
-    public void testStartWhenInternalTopicsCreatedManuallyWithCompactForBrokersDefaultCleanupPolicy() throws InterruptedException {
+    public void testStartWhenInternalTopicsCreatedManuallyWithCompactForBrokersDefaultCleanupPolicy() throws ClassNotFoundException, IOException, InterruptedException {
         // Change the broker default cleanup policy to compact, which is good for Connect
         brokerProps.put("log." + TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT);
         // Start out using the properly configured topics

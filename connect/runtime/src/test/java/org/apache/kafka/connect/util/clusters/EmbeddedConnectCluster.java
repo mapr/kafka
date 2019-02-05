@@ -128,11 +128,7 @@ public class EmbeddedConnectCluster {
     /**
      * Start the connect cluster and the embedded Kafka and Zookeeper cluster.
      */
-    public void start() {
-        if (maskExitProcedures) {
-            Exit.setExitProcedure(exitProcedure);
-            Exit.setHaltProcedure(haltProcedure);
-        }
+    public void start() throws ClassNotFoundException {
         kafkaCluster.before();
         startConnect();
     }
@@ -165,7 +161,7 @@ public class EmbeddedConnectCluster {
      *
      * @return the worker handle of the worker that was provisioned
      */
-    public WorkerHandle addWorker() {
+    public WorkerHandle addWorker() throws ClassNotFoundException {
         WorkerHandle worker = WorkerHandle.start(workerNamePrefix + nextWorkerId.getAndIncrement(), workerProps);
         connectCluster.add(worker);
         log.info("Started worker {}", worker);
@@ -233,7 +229,7 @@ public class EmbeddedConnectCluster {
     }
 
     @SuppressWarnings("deprecation")
-    public void startConnect() {
+    public void startConnect() throws ClassNotFoundException {
         log.info("Starting Connect cluster '{}' with {} workers", connectClusterName, numInitialWorkers);
 
         workerProps.put(BOOTSTRAP_SERVERS_CONFIG, kafka().bootstrapServers());

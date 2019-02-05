@@ -76,7 +76,7 @@ class CachingWindowStore
     @SuppressWarnings("unchecked")
     private void initInternal(final InternalProcessorContext context) {
         this.context = context;
-        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), name());
+        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), name(), context.applicationInternalStream());
 
         bytesSerdes = new StateSerdes<>(
             topic,

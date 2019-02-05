@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.runtime.rest;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.health.ConnectClusterDetails;
@@ -31,10 +32,18 @@ import org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorsResource;
 import org.apache.kafka.connect.runtime.rest.resources.LoggingResource;
 import org.apache.kafka.connect.runtime.rest.resources.RootResource;
+import org.apache.kafka.connect.runtime.rest.util.HeadersFilter;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
+import org.eclipse.jetty.jaas.JAASLoginService;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.DefaultIdentityService;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Slf4jRequestLogWriter;
@@ -47,6 +56,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.eclipse.jetty.servlets.HeaderFilter;
+import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
@@ -62,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -79,6 +90,7 @@ public class RestServer {
 
     private static final Pattern LISTENER_PATTERN = Pattern.compile("^(.*)://\\[?([0-9a-zA-Z\\-%._:]*)\\]?:(-?[0-9]+)");
     private static final long GRACEFUL_SHUTDOWN_TIMEOUT_MS = 60 * 1000;
+    private static final String AUTHENTICATION_METHOD_BASIC = "BASIC";
 
     private static final String PROTOCOL_HTTP = "http";
     private static final String PROTOCOL_HTTPS = "https";
@@ -192,6 +204,12 @@ public class RestServer {
             connector.setName(ADMIN_SERVER_CONNECTOR_NAME);
         }
 
+        for (ConnectionFactory cf : connector.getConnectionFactories()) {
+            if (cf instanceof HttpConnectionFactory) {
+                ((HttpConnectionFactory) cf).getHttpConfiguration().setSendServerVersion(false);
+            }
+        }
+
         if (!hostname.isEmpty())
             connector.setHost(hostname);
 
@@ -274,6 +292,23 @@ public class RestServer {
             contextHandlers.add(adminContext);
         }
 
+        if (config.getBoolean(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
+            FilterHolder holder = new FilterHolder(new AuthenticationFilter());
+            holder.setInitParameter(
+                    AuthenticationFilter.AUTH_TYPE,
+                    "org.apache.hadoop.security.authentication.server.MultiMechsAuthenticationHandler");
+            Long cookiesExpirationTime = config.getLong(WorkerConfig.AUTHENTICATION_COOKIE_EXPIRATION_CONFIG);
+            holder.setInitParameter(AuthenticationFilter.AUTH_TOKEN_VALIDITY, cookiesExpirationTime.toString());
+            List<String> authenticationTypes = config.getList(WorkerConfig.HADOOP_AUTHENTICATION_TYPES_CONFIG);
+            ListIterator<String> authenticationTypesIterator = authenticationTypes.listIterator();
+            while (authenticationTypesIterator.hasNext()) {
+                holder.setInitParameter("type" + authenticationTypesIterator.nextIndex(),
+                    authenticationTypesIterator.next());
+            }
+            context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
+            log.debug("Basic and MapR SASL authentications enabled");
+        }
+
         String allowedOrigins = config.getString(WorkerConfig.ACCESS_CONTROL_ALLOW_ORIGIN_CONFIG);
         if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
             FilterHolder filterHolder = new FilterHolder(new CrossOriginFilter());
@@ -285,6 +320,7 @@ public class RestServer {
             }
             context.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
         }
+        configureCustomAndSecurityHeaders(context);
 
         String headerConfig = config.getString(WorkerConfig.RESPONSE_HTTP_HEADERS_CONFIG);
         if (headerConfig != null && !headerConfig.trim().isEmpty()) {
@@ -319,8 +355,43 @@ public class RestServer {
         log.info("REST resources initialized; server is started and ready to handle requests");
     }
 
+    private void configureCustomAndSecurityHeaders(ServletContextHandler context) {
+        String headersFile = config.getString(WorkerConfig.HEADERS_FILE_CONFIG);
+        if (headersFile != null && !headersFile.isEmpty()) {
+            addScurityAndCustomHeadersFilter(context);
+        }
+    }
+
+    private void addScurityAndCustomHeadersFilter(ServletContextHandler context) {
+        FilterHolder holder = new FilterHolder(new HeadersFilter());
+        holder.setInitParameter(WorkerConfig.HEADERS_FILE_CONFIG,
+                config.getString(WorkerConfig.HEADERS_FILE_CONFIG));
+        context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
+    }
+
     public URI serverUrl() {
         return jettyServer.getURI();
+    }
+
+    static ConstraintSecurityHandler createSecurityHandler(String realm, List<String> roles) {
+        final ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
+        Constraint constraint = new Constraint();
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[]{"**"});
+        ConstraintMapping constraintMapping = new ConstraintMapping();
+        constraintMapping.setConstraint(constraint);
+        constraintMapping.setMethod("*");
+        constraintMapping.setPathSpec("/*");
+
+        securityHandler.addConstraintMapping(constraintMapping);
+        securityHandler.setAuthenticator(new BasicAuthenticator());
+        securityHandler.setLoginService(new JAASLoginService(realm));
+        securityHandler.setIdentityService(new DefaultIdentityService());
+        securityHandler.setRealmName(realm);
+        securityHandler.setDenyUncoveredHttpMethods(false);
+        securityHandler.addRole("*");
+
+        return securityHandler;
     }
 
     public void stop() {

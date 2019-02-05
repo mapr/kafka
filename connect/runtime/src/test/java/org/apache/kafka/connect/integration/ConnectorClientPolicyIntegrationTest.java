@@ -83,7 +83,7 @@ public class ConnectorClientPolicyIntegrationTest {
         assertPassCreateConnector("All", props);
     }
 
-    private EmbeddedConnectCluster connectClusterWithPolicy(String policy) throws InterruptedException {
+    private EmbeddedConnectCluster connectClusterWithPolicy(String policy) throws InterruptedException, ClassNotFoundException {
         // setup Connect worker properties
         Map<String, String> workerProps = new HashMap<>();
         workerProps.put(OFFSET_COMMIT_INTERVAL_MS_CONFIG, String.valueOf(5_000));
@@ -110,7 +110,7 @@ public class ConnectorClientPolicyIntegrationTest {
         return connect;
     }
 
-    private void assertFailCreateConnector(String policy, Map<String, String> props) throws InterruptedException {
+    private void assertFailCreateConnector(String policy, Map<String, String> props) throws ClassNotFoundException, InterruptedException {
         EmbeddedConnectCluster connect = connectClusterWithPolicy(policy);
         try {
             connect.configureConnector(CONNECTOR_NAME, props);
@@ -122,7 +122,7 @@ public class ConnectorClientPolicyIntegrationTest {
         }
     }
 
-    private void assertPassCreateConnector(String policy, Map<String, String> props) throws InterruptedException {
+    private void assertPassCreateConnector(String policy, Map<String, String> props) throws ClassNotFoundException, InterruptedException {
         EmbeddedConnectCluster connect = connectClusterWithPolicy(policy);
         try {
             connect.configureConnector(CONNECTOR_NAME, props);

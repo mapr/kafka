@@ -929,6 +929,7 @@ public class WorkerSourceTaskTest extends ThreadedTest {
         return expectSendRecord(anyTimes, isRetry, succeed, true, true, emptyHeaders());
     }
 
+    @SuppressWarnings("deprecation")
     private Capture<ProducerRecord<byte[], byte[]>> expectSendRecord(
         boolean anyTimes,
         boolean isRetry,

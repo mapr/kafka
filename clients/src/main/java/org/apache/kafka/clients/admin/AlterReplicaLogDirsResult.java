@@ -39,7 +39,7 @@ import org.apache.kafka.common.errors.UnknownServerException;
 public class AlterReplicaLogDirsResult {
     private final Map<TopicPartitionReplica, KafkaFuture<Void>> futures;
 
-    AlterReplicaLogDirsResult(Map<TopicPartitionReplica, KafkaFuture<Void>> futures) {
+    public AlterReplicaLogDirsResult(Map<TopicPartitionReplica, KafkaFuture<Void>> futures) {
         this.futures = futures;
     }
 

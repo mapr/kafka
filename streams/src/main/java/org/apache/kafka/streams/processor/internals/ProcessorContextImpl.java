@@ -103,7 +103,7 @@ public class ProcessorContextImpl extends AbstractProcessorContext implements Re
     @Override
     public void register(final StateStore store,
                          final StateRestoreCallback stateRestoreCallback) {
-        storeToChangelogTopic.put(store.name(), ProcessorStateManager.storeChangelogTopic(applicationId(), store.name()));
+        storeToChangelogTopic.put(store.name(), ProcessorStateManager.storeChangelogTopic(applicationId(), store.name(), applicationInternalStream()));
         super.register(store, stateRestoreCallback);
     }
 
