@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer._
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.util.Random

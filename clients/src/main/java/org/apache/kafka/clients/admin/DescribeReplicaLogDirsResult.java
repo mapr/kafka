@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutionException;
 public class DescribeReplicaLogDirsResult {
     private final Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> futures;
 
-    DescribeReplicaLogDirsResult(Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> futures) {
+    public DescribeReplicaLogDirsResult(Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> futures) {
         this.futures = futures;
     }
 

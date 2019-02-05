@@ -31,7 +31,7 @@ import java.util.Map;
 public class CreateTopicsResult {
     private final Map<String, KafkaFuture<Void>> futures;
 
-    CreateTopicsResult(Map<String, KafkaFuture<Void>> futures) {
+    public CreateTopicsResult(Map<String, KafkaFuture<Void>> futures) {
         this.futures = futures;
     }
 

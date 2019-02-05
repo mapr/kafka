@@ -1,0 +1,11 @@
+#!/bin/sh
+
+SERVICE_NAME='Kafka Connect'
+TARGET=`jps | grep ConnectDistributed | awk '{print $1}'`
+if [ "x$TARGET" = "x" ]; then
+  echo "${SERVICE_NAME} not running."
+  exit 1
+else
+  echo "${SERVICE_NAME} running as process ${TARGET}"
+  exit 0
+fi

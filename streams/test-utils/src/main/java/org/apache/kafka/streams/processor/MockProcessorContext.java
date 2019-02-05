@@ -16,17 +16,16 @@
  */
 package org.apache.kafka.streams.processor;
 
-import java.time.Duration;
 import org.apache.kafka.common.annotation.InterfaceStability;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.streams.internals.ApiUtils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.StreamsMetrics;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.internals.ApiUtils;
 import org.apache.kafka.streams.internals.QuietStreamsConfig;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.kstream.ValueTransformer;
@@ -35,6 +34,7 @@ import org.apache.kafka.streams.processor.internals.metrics.StreamsMetricsImpl;
 import org.apache.kafka.streams.state.internals.InMemoryKeyValueStore;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -175,7 +175,6 @@ public class MockProcessorContext implements ProcessorContext, RecordCollector.S
             new Properties() {
                 {
                     put(StreamsConfig.APPLICATION_ID_CONFIG, "");
-                    put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "");
                 }
             },
             new TaskId(0, 0),
@@ -214,6 +213,11 @@ public class MockProcessorContext implements ProcessorContext, RecordCollector.S
     @Override
     public String applicationId() {
         return config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
+    }
+
+    @Override
+    public String applicationInternalStream() {
+        return null;
     }
 
     @Override

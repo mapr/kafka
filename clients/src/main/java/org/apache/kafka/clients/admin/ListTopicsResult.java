@@ -33,7 +33,7 @@ import java.util.Set;
 public class ListTopicsResult {
     final KafkaFuture<Map<String, TopicListing>> future;
 
-    ListTopicsResult(KafkaFuture<Map<String, TopicListing>> future) {
+    public ListTopicsResult(KafkaFuture<Map<String, TopicListing>> future) {
         this.future = future;
     }
 

@@ -96,8 +96,8 @@ public class StandbyTaskTest {
     private final String applicationId = "test-application";
     private final String storeName1 = "store1";
     private final String storeName2 = "store2";
-    private final String storeChangelogTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1);
-    private final String storeChangelogTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2);
+    private final String storeChangelogTopicName1 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName1, "/stream1");
+    private final String storeChangelogTopicName2 = ProcessorStateManager.storeChangelogTopic(applicationId, storeName2, "/stream1");
     private final String globalStoreName = "ktable1";
 
     private final TopicPartition partition1 = new TopicPartition(storeChangelogTopicName1, 1);
@@ -494,7 +494,7 @@ public class StandbyTaskTest {
         final StreamsConfig config = createConfig(baseDir);
         builder.buildAndOptimizeTopology();
         final InternalTopologyBuilder internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(builder);
-        final ProcessorTopology topology = internalTopologyBuilder.setApplicationId(applicationId).build(0);
+        final ProcessorTopology topology = internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId, "/sample-stream", "/sample-stream").build(0);
 
         final StandbyTask standbyTask = new StandbyTask(
             taskId,

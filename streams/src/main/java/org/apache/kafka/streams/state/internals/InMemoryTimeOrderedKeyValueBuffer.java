@@ -177,7 +177,7 @@ public class InMemoryTimeOrderedKeyValueBuffer implements TimeOrderedKeyValueBuf
         context.register(root, (RecordBatchingStateRestoreCallback) this::restoreBatch);
         if (loggingEnabled) {
             collector = ((RecordCollector.Supplier) context).recordCollector();
-            changelogTopic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName);
+            changelogTopic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), storeName, context.applicationInternalStream());
         }
         open = true;
     }

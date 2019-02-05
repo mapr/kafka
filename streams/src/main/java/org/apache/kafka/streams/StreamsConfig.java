@@ -109,7 +109,6 @@ import static org.apache.kafka.common.requests.IsolationLevel.READ_COMMITTED;
  * Kafka Streams requires at least the following properties to be set:
  * <ul>
  *  <li>{@link #APPLICATION_ID_CONFIG "application.id"}</li>
- *  <li>{@link #BOOTSTRAP_SERVERS_CONFIG "bootstrap.servers"}</li>
  * </ul>
  *
  * By default, Kafka Streams does not allow users to overwrite the following properties (Streams setting shown in parentheses):
@@ -138,6 +137,19 @@ public class StreamsConfig extends AbstractConfig {
     private final boolean eosEnabled;
     private final static long DEFAULT_COMMIT_INTERVAL_MS = 30000L;
     private final static long EOS_DEFAULT_COMMIT_INTERVAL_MS = 100L;
+
+    /**
+     * MapR specific constants.
+     */
+     public static final String STREAMS_INTERNAL_STREAM_COMMON_FOLDER = "/apps/kafka-streams/";
+
+     private final String streamsInternalStreamFolder =
+             STREAMS_INTERNAL_STREAM_COMMON_FOLDER + getString(APPLICATION_ID_CONFIG) + "/";
+     private final String streamsInternalStreamNotcompacted = streamsInternalStreamFolder +
+            "kafka-internal-stream";
+     private final String streamsInternalStreamCompacted = streamsInternalStreamNotcompacted +
+            "-compacted";
+     private final String streamsCliSideAssignmentInternalStream = streamsInternalStreamCompacted;
 
     /**
      * Prefix used to provide default topic configs to be applied when creating internal topics.
@@ -270,10 +282,6 @@ public class StreamsConfig extends AbstractConfig {
     @SuppressWarnings("WeakerAccess")
     public static final String APPLICATION_SERVER_CONFIG = "application.server";
     private static final String APPLICATION_SERVER_DOC = "A host:port pair pointing to an embedded user defined endpoint that can be used for discovering the locations of state stores within a single KafkaStreams application";
-
-    /** {@code bootstrap.servers} */
-    @SuppressWarnings("WeakerAccess")
-    public static final String BOOTSTRAP_SERVERS_CONFIG = CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
 
     /** {@code buffered.records.per.partition} */
     @SuppressWarnings("WeakerAccess")
@@ -472,6 +480,15 @@ public class StreamsConfig extends AbstractConfig {
     private static final String[] NON_CONFIGURABLE_PRODUCER_EOS_CONFIGS = new String[] {ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,
                                                                                         ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION};
 
+    /*** Mapr Streams specific configurations ***/
+
+    /** {@code}streams.default.stream} */
+    public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+    private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream to consume from and send the messages to, "
+            + "if the topic name does not specify the stream.  For example, if a message is sent to exampleTopic and this parameter "
+            + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
+            + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -481,10 +498,6 @@ public class StreamsConfig extends AbstractConfig {
                     Type.STRING,
                     Importance.HIGH,
                     APPLICATION_ID_DOC)
-            .define(BOOTSTRAP_SERVERS_CONFIG, // required with no default value
-                    Type.LIST,
-                    Importance.HIGH,
-                    CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
             .define(REPLICATION_FACTOR_CONFIG,
                     Type.INT,
                     1,
@@ -560,6 +573,11 @@ public class StreamsConfig extends AbstractConfig {
                     CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
                     Importance.MEDIUM,
                     CommonClientConfigs.SECURITY_PROTOCOL_DOC)
+            .define(STREAMS_DEFAULT_STREAM_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    STREAMS_DEFAULT_STREAM_DOC)
             .define(TOPOLOGY_OPTIMIZATION,
                     Type.STRING,
                     NO_OPTIMIZATION,
@@ -874,8 +892,8 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.putAll(getClientCustomProps());
         consumerProps.putAll(clientProvidedProps);
 
-        // bootstrap.servers should be from StreamsConfig
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        // bootstrap.servers is not needed for MapR-ES
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "thisisnotused");
 
         return consumerProps;
     }
@@ -994,6 +1012,9 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.put(APPLICATION_SERVER_CONFIG, getString(APPLICATION_SERVER_CONFIG));
         consumerProps.put(NUM_STANDBY_REPLICAS_CONFIG, getInt(NUM_STANDBY_REPLICAS_CONFIG));
         consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, StreamsPartitionAssignor.class.getName());
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, streamsCliSideAssignmentInternalStream);
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
         consumerProps.put(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG, getLong(WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_CONFIG));
 
         // add admin retries configs for creating topics
@@ -1055,6 +1076,9 @@ public class StreamsConfig extends AbstractConfig {
         // add client id with stream client id prefix
         baseConsumerProps.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-restore-consumer");
         baseConsumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM, streamsCliSideAssignmentInternalStream);
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
 
         return baseConsumerProps;
     }
@@ -1111,9 +1135,11 @@ public class StreamsConfig extends AbstractConfig {
         props.putAll(getClientCustomProps());
         props.putAll(clientProvidedProps);
 
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "thisisnotused");
         // add client id with stream client id prefix
         props.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-producer");
+
+        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
 
         return props;
     }
@@ -1236,6 +1262,22 @@ public class StreamsConfig extends AbstractConfig {
         }
 
         return parsed;
+    }
+
+    public String getStreamsInternalStreamFolder() {
+        return streamsInternalStreamFolder;
+    }
+
+    public String getStreamsInternalStreamNotcompacted() {
+        return streamsInternalStreamNotcompacted;
+    }
+
+    public String getStreamsInternalStreamCompacted() {
+        return streamsInternalStreamCompacted;
+    }
+
+    public String getStreamsCliSideAssignmentInternalStream() {
+        return streamsCliSideAssignmentInternalStream;
     }
 
     public static void main(final String[] args) {

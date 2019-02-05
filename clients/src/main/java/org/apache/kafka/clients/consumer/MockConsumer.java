@@ -39,10 +39,12 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
+import java.util.Arrays;
 
 
 /**
- * A mock of the {@link Consumer} interface you can use for testing code that uses Kafka. This class is <i> not
+ * <p><b>This class is not supported.
+ * <p>A mock of the {@link Consumer} interface you can use for testing code that uses Kafka. This class is <i> not
  * threadsafe </i>. However, you can use the {@link #schedulePollTask(Runnable)} method to write multithreaded tests
  * where a driver thread waits for {@link #poll(Duration)} to be called by a background thread and then can safely perform
  * operations during a callback.
@@ -99,6 +101,11 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public void subscribe(List<String> topics) {
+      subscribe((Collection<String>)topics);
+    }
+
+    @Override
     public synchronized void subscribe(Pattern pattern, final ConsumerRebalanceListener listener) {
         ensureNotClosed();
         committed.clear();
@@ -134,10 +141,20 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public void subscribe(List<String> topics, final ConsumerRebalanceListener listener) {
+      subscribe((Collection<String>)topics, listener);
+    }
+
+    @Override
     public synchronized void assign(Collection<TopicPartition> partitions) {
         ensureNotClosed();
         committed.clear();
         this.subscriptions.assignFromUser(new HashSet<>(partitions));
+    }
+
+    @Override
+    public void assign(List<TopicPartition> partitions) {
+      assign((Collection<TopicPartition>)partitions);
     }
 
     @Override
@@ -303,6 +320,12 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
             subscriptions.requestOffsetReset(tp, OffsetResetStrategy.EARLIEST);
     }
 
+    @Override
+    @Deprecated
+    public void seekToBeginning(TopicPartition... partitions) {
+      seekToBeginning(Arrays.asList(partitions));
+    }
+
     public synchronized void updateBeginningOffsets(Map<TopicPartition, Long> newOffsets) {
         beginningOffsets.putAll(newOffsets);
     }
@@ -313,6 +336,13 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
         for (TopicPartition tp : partitions)
             subscriptions.requestOffsetReset(tp, OffsetResetStrategy.LATEST);
     }
+
+    @Override
+    @Deprecated
+    public void seekToEnd(TopicPartition... partitions) {
+      seekToEnd(Arrays.asList(partitions));
+    }
+
 
     // needed for cases where you make a second call to endOffsets
     public synchronized void addEndOffsets(final Map<TopicPartition, Long> newOffsets) {
@@ -354,6 +384,16 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
         return partitions;
     }
 
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+      throw new KafkaException("listTopics(String) is not supported");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+      throw new KafkaException("listTopics(Pattern) is not supported");
+    }
+
     public synchronized void updatePartitions(String topic, List<PartitionInfo> partitions) {
         ensureNotClosed();
         this.partitions.put(topic, partitions);
@@ -368,11 +408,23 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    @Deprecated
+    public void pause(TopicPartition... partitions) {
+      pause(Arrays.asList(partitions));
+    }
+
+    @Override
     public synchronized void resume(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             subscriptions.resume(partition);
             paused.remove(partition);
         }
+    }
+
+    @Override
+    @Deprecated
+    public void resume(TopicPartition... partitions) {
+      resume(Arrays.asList(partitions));
     }
 
     @Override

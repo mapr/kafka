@@ -90,7 +90,7 @@ public class MeteredKeyValueStore<K, V> extends WrappedStateStore.AbstractStateS
         final Map<String, String> storeTags = metrics.tagMap("task-id", taskName, metricScope + "-id", name());
 
         this.serdes = new StateSerdes<>(
-            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name()),
+            ProcessorStateManager.storeChangelogTopic(context.applicationId(), name(), context.applicationInternalStream()),
             keySerde == null ? (Serde<K>) context.keySerde() : keySerde,
             valueSerde == null ? (Serde<V>) context.valueSerde() : valueSerde);
 

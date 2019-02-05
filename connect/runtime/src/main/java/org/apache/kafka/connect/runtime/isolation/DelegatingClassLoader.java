@@ -176,23 +176,10 @@ public class DelegatingClassLoader extends URLClassLoader {
     }
 
     protected void initLoaders() {
-        for (String configPath : pluginPaths) {
-            initPluginLoader(configPath);
-        }
-        // Finally add parent/system loader.
-        initPluginLoader(CLASSPATH_NAME);
-        addAllAliases();
-    }
-
-    private void initPluginLoader(String path) {
+        String path = null;
         try {
-            if (CLASSPATH_NAME.equals(path)) {
-                scanUrlsAndAddPlugins(
-                        getParent(),
-                        ClasspathHelper.forJavaClassPath().toArray(new URL[0]),
-                        null
-                );
-            } else {
+            for (String configPath : pluginPaths) {
+                path = configPath;
                 Path pluginPath = Paths.get(path).toAbsolutePath();
                 // Update for exception handling
                 path = pluginPath.toString();
@@ -206,6 +193,13 @@ public class DelegatingClassLoader extends URLClassLoader {
                     registerPlugin(pluginPath);
                 }
             }
+            path = "classpath";
+            // Finally add parent/system loader.
+            scanUrlsAndAddPlugins(
+                    getParent(),
+                    ClasspathHelper.forJavaClassPath().toArray(new URL[0]),
+                    null
+            );
         } catch (InvalidPathException | MalformedURLException e) {
             log.error("Invalid path in plugin path: {}. Ignoring.", path, e);
         } catch (IOException e) {
@@ -213,6 +207,7 @@ public class DelegatingClassLoader extends URLClassLoader {
         } catch (InstantiationException | IllegalAccessException e) {
             log.error("Could not instantiate plugins in: {}. Ignoring: {}", path, e);
         }
+        addAllAliases();
     }
 
     private void registerPlugin(Path pluginLocation)

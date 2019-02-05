@@ -86,7 +86,7 @@ class ChangeLoggingWindowBytesStore extends WrappedStateStore.AbstractStateStore
     public void init(final ProcessorContext context, final StateStore root) {
         this.context = context;
         bytesStore.init(context, root);
-        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), bytesStore.name());
+        final String topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), bytesStore.name(), context.applicationInternalStream());
         changeLogger = new StoreChangeLogger<>(
             name(),
             context,

@@ -36,11 +36,17 @@ public class TaskConfig extends AbstractConfig {
     private static final String TASK_CLASS_DOC =
             "Name of the class for this task. Must be a subclass of org.apache.kafka.connect.connector.Task";
 
+    public static final String TASK_USER_CONFIG = "task.user";
+    private static final String TASK_USER_DOC =
+          "Name of the class for this task. Must be a subclass of org.apache.kafka.connect.connector.Task";
+
+
     private static ConfigDef config;
 
     static {
         config = new ConfigDef()
-                .define(TASK_CLASS_CONFIG, Type.CLASS, Importance.HIGH, TASK_CLASS_DOC);
+                .define(TASK_CLASS_CONFIG, Type.CLASS, Importance.HIGH, TASK_CLASS_DOC)
+                .define(TASK_USER_CONFIG, Type.STRING, Importance.MEDIUM, TASK_USER_DOC);
     }
 
     public TaskConfig() {

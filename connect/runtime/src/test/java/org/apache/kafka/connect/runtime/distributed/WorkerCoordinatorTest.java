@@ -509,6 +509,11 @@ public class WorkerCoordinatorTest {
             assignedCount++;
         }
 
+        // Present to ensure compatibility with MEP 4.1
+        @Override
+        public void onAssigned(ConnectProtocol.Assignment assignment) {
+        }
+
         @Override
         public void onRevoked(String leader, Collection<String> connectors, Collection<ConnectorTaskId> tasks) {
             this.revokedLeader = leader;

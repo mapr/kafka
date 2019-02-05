@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * <p><b>This class is not supported.
  * <p>The range assignor works on a per-topic basis. For each topic, we lay out the available partitions in numeric order
  * and the consumers in lexicographic order. We then divide the number of partitions by the total number of
  * consumers to determine the number of partitions to assign to each consumer. If it does not evenly

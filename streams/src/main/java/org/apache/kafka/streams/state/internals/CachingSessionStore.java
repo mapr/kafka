@@ -18,6 +18,7 @@ package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Window;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.kstream.internals.CacheFlushListener;
@@ -62,9 +63,9 @@ class CachingSessionStore<K, AGG> extends WrappedStateStore.AbstractStateStore i
     }
 
     public void init(final ProcessorContext context, final StateStore root) {
-        topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), root.name());
-        initInternal((InternalProcessorContext) context);
+        topic = ProcessorStateManager.storeChangelogTopic(context.applicationId(), root.name(), context.applicationInternalStream());
         bytesStore.init(context, root);
+        initInternal((InternalProcessorContext) context);
     }
 
     @SuppressWarnings("unchecked")

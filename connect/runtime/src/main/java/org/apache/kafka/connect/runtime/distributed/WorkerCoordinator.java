@@ -44,7 +44,7 @@ import java.util.Map;
  * This class manages the coordination process with the Kafka group coordinator on the broker for managing assignments
  * to workers.
  */
-public final class WorkerCoordinator extends AbstractCoordinator implements Closeable {
+public final class WorkerCoordinator extends AbstractCoordinator implements Closeable, GenericWorkerCoordinator {
     // Currently doesn't support multiple task assignment strategies, so we just fill in a default value
     public static final String DEFAULT_SUBPROTOCOL = "default";
 
@@ -106,7 +106,7 @@ public final class WorkerCoordinator extends AbstractCoordinator implements Clos
 
     // expose for tests
     @Override
-    protected synchronized boolean ensureCoordinatorReady(final Timer timer) {
+    public synchronized boolean ensureCoordinatorReady(final Timer timer) {
         return super.ensureCoordinatorReady(timer);
     }
 
@@ -315,6 +315,11 @@ public final class WorkerCoordinator extends AbstractCoordinator implements Clos
         if (rejoinNeededOrPending() || !isLeader())
             return null;
         return leaderState.ownerUrl(task);
+    }
+
+    @Override
+    public void wakeup() {
+      this.client.wakeup();
     }
 
     private class WorkerCoordinatorMetrics {

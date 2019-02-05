@@ -80,7 +80,7 @@ public class EmbeddedConnectCluster {
     /**
      * Start the connect cluster and the embedded Kafka and Zookeeper cluster.
      */
-    public void start() throws IOException {
+    public void start() throws Exception {
         kafkaCluster.before();
         startConnect();
     }
@@ -108,7 +108,7 @@ public class EmbeddedConnectCluster {
     }
 
     @SuppressWarnings("deprecation")
-    public void startConnect() {
+    public void startConnect() throws Exception{
         log.info("Starting Connect cluster with {} workers. clusterName {}", connectCluster.length, connectClusterName);
 
         workerProps.put(BOOTSTRAP_SERVERS_CONFIG, kafka().bootstrapServers());

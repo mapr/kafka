@@ -34,9 +34,9 @@ public class DescribeClusterResult {
     private final KafkaFuture<Node> controller;
     private final KafkaFuture<String> clusterId;
 
-    DescribeClusterResult(KafkaFuture<Collection<Node>> nodes,
-                          KafkaFuture<Node> controller,
-                          KafkaFuture<String> clusterId) {
+    public DescribeClusterResult(KafkaFuture<Collection<Node>> nodes,
+                                 KafkaFuture<Node> controller,
+                                 KafkaFuture<String> clusterId) {
         this.nodes = nodes;
         this.controller = controller;
         this.clusterId = clusterId;

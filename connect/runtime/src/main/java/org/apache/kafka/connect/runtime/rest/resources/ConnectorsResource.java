@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -93,7 +94,8 @@ public class ConnectorsResource {
 
     @POST
     @Path("/")
-    public Response createConnector(final @QueryParam("forward") Boolean forward,
+    public Response createConnector(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                                    final @QueryParam("forward") Boolean forward,
                                     final CreateConnectorRequest createRequest) throws Throwable {
         // Trim leading and trailing whitespaces from the connector name, replace null with empty string
         // if no name element present to keep validation within validator (NonEmptyStringWithoutControlChars
@@ -104,6 +106,7 @@ public class ConnectorsResource {
         checkAndPutConnectorConfigName(name, configs);
 
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
+        configs.put("task.user", httpRequest.getRemoteUser());
         herder().putConnectorConfig(name, configs, false, cb);
         Herder.Created<ConnectorInfo> info = completeOrForwardRequest(cb, "/connectors", "POST", createRequest,
                 new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
@@ -138,7 +141,8 @@ public class ConnectorsResource {
 
     @PUT
     @Path("/{connector}/config")
-    public Response putConnectorConfig(final @PathParam("connector") String connector,
+    public Response putConnectorConfig(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                                       final @PathParam("connector") String connector,
                                        final @QueryParam("forward") Boolean forward,
                                        final Map<String, String> connectorConfig) throws Throwable {
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
@@ -148,6 +152,8 @@ public class ConnectorsResource {
         Herder.Created<ConnectorInfo> createdInfo = completeOrForwardRequest(cb, "/connectors/" + connector + "/config",
                 "PUT", connectorConfig, new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
         Response.ResponseBuilder response;
+        connectorConfig.put("task.user", httpRequest.getRemoteUser());
+
         if (createdInfo.created()) {
             URI location = UriBuilder.fromUri("/connectors").path(connector).build();
             response = Response.created(location);

@@ -19,6 +19,7 @@ package org.apache.kafka.clients.admin;
 
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionReplica;
 import org.apache.kafka.common.acl.AclBinding;
@@ -51,7 +52,14 @@ public abstract class AdminClient implements AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     public static AdminClient create(Properties props) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(props, true), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        AdminClientConfig adminConf = new AdminClientConfig(props);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
+                                      "createInternal",
+                                      new Object [] {adminConf},
+                                      new Class [] {AdminClientConfig.class});
     }
 
     /**
@@ -61,7 +69,14 @@ public abstract class AdminClient implements AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     public static AdminClient create(Map<String, Object> conf) {
-        return KafkaAdminClient.createInternal(new AdminClientConfig(conf, true), null);
+        GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
+        AdminClientConfig adminConf = new AdminClientConfig(conf);
+        String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
+        return adminFactory.runMethod(adminClientClass,
+                                      "createInternal",
+                                      new Object [] {adminConf},
+                                      new Class [] {AdminClientConfig.class});
     }
 
     /**
@@ -158,7 +173,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract DeleteTopicsResult deleteTopics(Collection<String> topics, DeleteTopicsOptions options);
 
     /**
-     * List the topics available in the cluster with the default options.
+     * List the topics available in the default stream with the default options.
      *
      * This is a convenience method for #{@link AdminClient#listTopics(ListTopicsOptions)} with default options.
      * See the overload for more details.
@@ -170,12 +185,34 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
-     * List the topics available in the cluster.
+     * List the topics available in the default stream.
      *
      * @param options           The options to use when listing the topics.
      * @return                  The ListTopicsResult.
      */
     public abstract ListTopicsResult listTopics(ListTopicsOptions options);
+
+    /**
+     * List the topics available in the specified stream with the default options.
+     *
+     * This is a convenience method for #{@link AdminClient#listTopics(ListTopicsOptions)} with default options.
+     * See the overload for more details.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @return                  The ListTopicsResult.
+     */
+    public ListTopicsResult listTopics(String streamPath) {
+        return listTopics(streamPath, new ListTopicsOptions());
+    }
+
+    /**
+     * List the topics available in the specified stream.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @param options           The options to use when listing the topics.
+     * @return                  The ListTopicsResult.
+     */
+    public abstract ListTopicsResult listTopics(String streamPath, ListTopicsOptions options);
 
     /**
      * Describe some topics in the cluster, with the default options.
@@ -223,6 +260,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract DescribeClusterResult describeCluster(DescribeClusterOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for #{@link AdminClient#describeAcls(AclBindingFilter, DescribeAclsOptions)} with
      * default options. See the overload for more details.
      *
@@ -236,6 +274,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Lists access control lists (ACLs) according to the supplied filter.
      *
      * Note: it may take some time for changes made by createAcls or deleteAcls to be reflected
@@ -250,6 +289,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract DescribeAclsResult describeAcls(AclBindingFilter filter, DescribeAclsOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for #{@link AdminClient#createAcls(Collection, CreateAclsOptions)} with
      * default options. See the overload for more details.
      *
@@ -263,6 +303,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Creates access control lists (ACLs) which are bound to specific resources.
      *
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -279,6 +320,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract CreateAclsResult createAcls(Collection<AclBinding> acls, CreateAclsOptions options);
 
     /**
+     * This API is not supported.
      * This is a convenience method for #{@link AdminClient#deleteAcls(Collection, DeleteAclsOptions)} with default options.
      * See the overload for more details.
      *
@@ -292,6 +334,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Deletes access control lists (ACLs) according to the supplied filters.
      *
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -306,6 +349,7 @@ public abstract class AdminClient implements AutoCloseable {
 
 
     /**
+     * This API is not supported.
      * Get the configuration for the specified resources with the default options.
      *
      * This is a convenience method for #{@link AdminClient#describeConfigs(Collection, DescribeConfigsOptions)} with default options.
@@ -321,6 +365,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Get the configuration for the specified resources.
      *
      * The returned configuration includes default values and the isDefault() method can be used to distinguish them
@@ -341,6 +386,8 @@ public abstract class AdminClient implements AutoCloseable {
                                                            DescribeConfigsOptions options);
 
     /**
+     *
+     * This API is not supported.
      * Update the configuration for the specified resources with the default options.
      *
      * This is a convenience method for #{@link AdminClient#alterConfigs(Map, AlterConfigsOptions)} with default options.
@@ -357,6 +404,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Update the configuration for the specified resources with the default options.
      *
      * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
@@ -372,6 +420,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract AlterConfigsResult alterConfigs(Map<ConfigResource, Config> configs, AlterConfigsOptions options);
 
     /**
+     * This API is not supported.
      * Change the log directory for the specified replicas. This API is currently only useful if it is used
      * before the replica has been created on the broker. It will support moving replicas that have already been created after
      * KIP-113 is fully implemented.
@@ -389,6 +438,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Change the log directory for the specified replicas. This API is currently only useful if it is used
      * before the replica has been created on the broker. It will support moving replicas that have already been created after
      * KIP-113 is fully implemented.
@@ -404,6 +454,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract AlterReplicaLogDirsResult alterReplicaLogDirs(Map<TopicPartitionReplica, String> replicaAssignment, AlterReplicaLogDirsOptions options);
 
     /**
+     * This API is not supported.
      * Query the information of all log directories on the given set of brokers
      *
      * This is a convenience method for #{@link AdminClient#describeLogDirs(Collection, DescribeLogDirsOptions)} with default options.
@@ -419,6 +470,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Query the information of all log directories on the given set of brokers
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -430,6 +482,7 @@ public abstract class AdminClient implements AutoCloseable {
     public abstract DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, DescribeLogDirsOptions options);
 
     /**
+     * This API is not supported.
      * Query the replica log directory information for the specified replicas.
      *
      * This is a convenience method for #{@link AdminClient#describeReplicaLogDirs(Collection, DescribeReplicaLogDirsOptions)}
@@ -445,6 +498,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Query the replica log directory information for the specified replicas.
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -512,6 +566,7 @@ public abstract class AdminClient implements AutoCloseable {
                                                             CreatePartitionsOptions options);
 
     /**
+     * This API is not supported.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      *
      * This is a convenience method for {@link #deleteRecords(Map, DeleteRecordsOptions)} with default options.
@@ -527,6 +582,7 @@ public abstract class AdminClient implements AutoCloseable {
     }
 
     /**
+     * This API is not supported.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.

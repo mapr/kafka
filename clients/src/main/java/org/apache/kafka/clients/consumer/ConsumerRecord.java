@@ -44,6 +44,7 @@ public class ConsumerRecord<K, V> {
     private final Headers headers;
     private final K key;
     private final V value;
+    private final String producer;
     private final Optional<Integer> leaderEpoch;
 
     private volatile Long checksum;
@@ -124,7 +125,7 @@ public class ConsumerRecord<K, V> {
                           V value,
                           Headers headers) {
         this(topic, partition, offset, timestamp, timestampType, checksum, serializedKeySize, serializedValueSize,
-                key, value, headers, Optional.empty());
+                key, value, headers, Optional.<Integer>empty(), null);
     }
 
     /**
@@ -140,9 +141,71 @@ public class ConsumerRecord<K, V> {
      * @param serializedValueSize The length of the serialized value
      * @param key The key of the record, if one exists (null is allowed)
      * @param value The record contents
-     * @param headers The headers of the record
-     * @param leaderEpoch Optional leader epoch of the record (may be empty for legacy record formats)
+     * @param headers The headers of the record.
+     * @param producer The producer for this record
      */
+    public ConsumerRecord(String topic,
+                          int partition,
+                          long offset,
+                          long timestamp,
+                          TimestampType timestampType,
+                          Long checksum,
+                          int serializedKeySize,
+                          int serializedValueSize,
+                          K key,
+                          V value,
+                          Headers headers,
+                          Optional<Integer> leaderEpoch,
+                          String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.timestamp = timestamp;
+        this.timestampType = timestampType;
+        this.checksum = checksum;
+        this.serializedKeySize = serializedKeySize;
+        this.serializedValueSize = serializedValueSize;
+        this.key = key;
+        this.value = value;
+        this.headers = headers;
+        this.leaderEpoch = leaderEpoch;
+        this.producer = producer;
+    }
+
+    /** The constructor is added for backward compatibility **/
+    public ConsumerRecord(String topic,
+                          int partition,
+                          long offset,
+                          long timestamp,
+                          TimestampType timestampType,
+                          Long checksum,
+                          int serializedKeySize,
+                          int serializedValueSize,
+                          K key,
+                          V value,
+                          Headers headers,
+                          String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.timestamp = timestamp;
+        this.timestampType = timestampType;
+        this.checksum = checksum;
+        this.serializedKeySize = serializedKeySize;
+        this.serializedValueSize = serializedValueSize;
+        this.key = key;
+        this.value = value;
+        this.headers = headers;
+        this.leaderEpoch = Optional.<Integer>empty();
+        this.producer = producer;
+    }
+
     public ConsumerRecord(String topic,
                           int partition,
                           long offset,
@@ -170,6 +233,37 @@ public class ConsumerRecord<K, V> {
         this.value = value;
         this.headers = headers;
         this.leaderEpoch = leaderEpoch;
+        this.producer = null;
+    }
+
+    /**
+     * Creates a record to be received from a specified topic and partition
+     *
+     * @param topic The topic this record is received from
+     * @param partition The partition of the topic this record is received from
+     * @param offset The offset of this record in the corresponding Kafka partition
+     * @param key The key of the record, if one exists (null is allowed)
+     * @param value The record contents
+     * @param timestamp The timestamp at which the record was produced
+     * @param producer The producer for this record
+     */
+    public ConsumerRecord(String topic, int partition, long offset, K key, V value,
+                          long timestamp, String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.key = key;
+        this.value = value;
+        this.timestamp = timestamp;
+        this.producer = producer;
+        this.leaderEpoch = Optional.<Integer>empty();
+        this.timestampType = TimestampType.NO_TIMESTAMP_TYPE;
+        this.serializedKeySize = 0; // TODO cyalamanchili fix this
+        this.serializedValueSize = 0;
+        this.checksum = 0L;
+        this.headers = null;
     }
 
     /**
@@ -271,6 +365,13 @@ public class ConsumerRecord<K, V> {
         return leaderEpoch;
     }
 
+		/**
+     * The producer for this record.
+     */
+    public String producer() {
+        return this.producer;
+		}
+
     @Override
     public String toString() {
         return "ConsumerRecord(topic = " + topic
@@ -280,7 +381,7 @@ public class ConsumerRecord<K, V> {
                + ", " + timestampType + " = " + timestamp
                + ", serialized key size = "  + serializedKeySize
                + ", serialized value size = " + serializedValueSize
-               + ", headers = " + headers
+               + ", headers = " + headers + ", producer = " + producer
                + ", key = " + key
                + ", value = " + value + ")";
     }

@@ -316,7 +316,8 @@ public class KStreamImplTest {
         stream1.to("topic-5");
         stream2.through("topic-6");
 
-        final ProcessorTopology processorTopology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").build(null);
+        ProcessorTopology processorTopology = StreamsBuilderTest.internalTopologyBuilder(builder)
+                .setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").build(null);
         assertThat(processorTopology.source("topic-6").getTimestampExtractor(), instanceOf(FailOnInvalidTimestamp.class));
         assertEquals(processorTopology.source("topic-4").getTimestampExtractor(), null);
         assertEquals(processorTopology.source("topic-3").getTimestampExtractor(), null);
@@ -395,7 +396,8 @@ public class KStreamImplTest {
 
         final ProcessorTopology topology = TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("X").build();
 
-        final SourceNode originalSourceNode = topology.source("topic-1");
+        ProcessorTopology processorTopology = builder.setApplicationIdAndInternalStream("X", "/sample-stream", "/sample-stream").build(null);
+        SourceNode originalSourceNode = processorTopology.source("topic-1");
 
         for (final SourceNode sourceNode : topology.sources()) {
             if (sourceNode.name().equals(originalSourceNode.name())) {

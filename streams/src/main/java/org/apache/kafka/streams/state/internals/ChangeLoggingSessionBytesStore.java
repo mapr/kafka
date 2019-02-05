@@ -18,6 +18,7 @@ package org.apache.kafka.streams.state.internals;
 
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.internals.ProcessorStateManager;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -45,7 +46,7 @@ class ChangeLoggingSessionBytesStore extends WrappedStateStore.AbstractStateStor
         bytesStore.init(context, root);
         final String topic = ProcessorStateManager.storeChangelogTopic(
                 context.applicationId(),
-                bytesStore.name());
+                bytesStore.name(),  context.applicationInternalStream());
         changeLogger = new StoreChangeLogger<>(
                 name(),
                 context,

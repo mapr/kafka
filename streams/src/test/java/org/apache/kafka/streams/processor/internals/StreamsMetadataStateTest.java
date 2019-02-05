@@ -95,7 +95,8 @@ public class StreamsMetadataStateTest {
                             Consumed.with(null, null),
                             Materialized.<Object, Object, KeyValueStore<Bytes, byte[]>>as(globalTable));
 
-        TopologyWrapper.getInternalTopologyBuilder(builder.build()).setApplicationId("appId");
+        StreamsBuilderTest.internalTopologyBuilder(builder).setApplicationIdAndInternalStream("appId",
+                "/sample-stream", "/sample-stream");
 
         topic1P0 = new TopicPartition("topic-one", 0);
         topic1P1 = new TopicPartition("topic-one", 1);

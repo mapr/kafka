@@ -29,6 +29,7 @@ import org.apache.kafka.connect.runtime.rest.errors.ConnectExceptionMapper;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorsResource;
 import org.apache.kafka.connect.runtime.rest.resources.RootResource;
+import org.eclipse.jetty.jaas.JAASLoginService;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
@@ -43,6 +44,12 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.DefaultIdentityService;
+import org.eclipse.jetty.security.SecurityHandler;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
@@ -70,6 +77,7 @@ public class RestServer {
 
     private static final Pattern LISTENER_PATTERN = Pattern.compile("^(.*)://\\[?([0-9a-zA-Z\\-%._:]*)\\]?:(-?[0-9]+)");
     private static final long GRACEFUL_SHUTDOWN_TIMEOUT_MS = 60 * 1000;
+    private static final String AUTHENTICATION_METHOD_BASIC = "BASIC";
 
     private static final String PROTOCOL_HTTP = "http";
     private static final String PROTOCOL_HTTPS = "https";
@@ -181,6 +189,14 @@ public class RestServer {
         context.setContextPath("/");
         context.addServlet(servletHolder, "/*");
 
+      String authMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
+      if (WorkerConfig.AUTHENTICATION_METHOD_BASIC.equals(authMethod)) {
+        String realm = config.getString(WorkerConfig.AUTHENTICATION_REALM_CONFIG);
+        List<String> roles = config.getList(WorkerConfig.AUTHENTICATION_ROLES_CONFIG);
+        final SecurityHandler securityHandler = createSecurityHandler(realm, roles);
+        context.setSecurityHandler(securityHandler);
+      }
+
         String allowedOrigins = config.getString(WorkerConfig.ACCESS_CONTROL_ALLOW_ORIGIN_CONFIG);
         if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
             FilterHolder filterHolder = new FilterHolder(new CrossOriginFilter());
@@ -220,6 +236,27 @@ public class RestServer {
 
     public URI serverUrl() {
         return jettyServer.getURI();
+    }
+
+    static ConstraintSecurityHandler createSecurityHandler(String realm, List<String> roles) {
+        final ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
+        Constraint constraint = new Constraint();
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[]{"**"});
+        ConstraintMapping constraintMapping = new ConstraintMapping();
+        constraintMapping.setConstraint(constraint);
+        constraintMapping.setMethod("*");
+        constraintMapping.setPathSpec("/*");
+
+        securityHandler.addConstraintMapping(constraintMapping);
+        securityHandler.setAuthenticator(new BasicAuthenticator());
+        securityHandler.setLoginService(new JAASLoginService(realm));
+        securityHandler.setIdentityService(new DefaultIdentityService());
+        securityHandler.setRealmName(realm);
+        securityHandler.setDenyUncoveredHttpMethods(false);
+        securityHandler.addRole("*");
+
+        return securityHandler;
     }
 
     public void stop() {

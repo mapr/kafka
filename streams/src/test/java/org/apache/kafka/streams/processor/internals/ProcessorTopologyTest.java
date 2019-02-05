@@ -108,6 +108,7 @@ public class ProcessorTopologyTest {
         topology.addProcessor("processor-2", new MockProcessorSupplier<>(), "source-1", "source-2");
         topology.addSink("sink-1", "topic-3", "processor-1");
         topology.addSink("sink-2", "topic-4", "processor-1", "processor-2");
+        builder.setApplicationIdAndInternalStream("X", "/sample-stream");
 
         final ProcessorTopology processorTopology = topology.getInternalBuilder("X").build();
 

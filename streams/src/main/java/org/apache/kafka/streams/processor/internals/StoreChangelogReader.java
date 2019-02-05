@@ -80,7 +80,9 @@ public class StoreChangelogReader implements ChangelogReader {
         }
 
         if (needsRestoring.isEmpty()) {
-            restoreConsumer.unsubscribe();
+            if(restoreConsumer.subscription().size() > 0) {
+                restoreConsumer.unsubscribe();
+            }
             return completed();
         }
 
@@ -116,7 +118,7 @@ public class StoreChangelogReader implements ChangelogReader {
 
         needsRestoring.removeAll(completedRestorers);
 
-        if (needsRestoring.isEmpty()) {
+        if (needsRestoring.isEmpty() && restoreConsumer.subscription().size() > 0) {
             restoreConsumer.unsubscribe();
         }
 

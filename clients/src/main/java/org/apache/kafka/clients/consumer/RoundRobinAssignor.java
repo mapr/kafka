@@ -29,7 +29,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 /**
- * The round robin assignor lays out all the available partitions and all the available consumers. It
+ * <p><b>This class is not supported.
+ * <p>The round robin assignor lays out all the available partitions and all the available consumers. It
  * then proceeds to do a round robin assignment from partition to consumer. If the subscriptions of all consumer
  * instances are identical, then the partitions will be uniformly distributed. (i.e., the partition ownership counts
  * will be within a delta of exactly one across all consumers.)

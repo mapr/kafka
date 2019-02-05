@@ -323,6 +323,10 @@ public class KafkaAdminClient extends AdminClient {
         return throwable.getClass().getSimpleName();
     }
 
+    static KafkaAdminClient createInternal(AdminClientConfig config) {
+        return createInternal(config, null);
+    }
+
     static KafkaAdminClient createInternal(AdminClientConfig config, TimeoutProcessorFactory timeoutProcessorFactory) {
         Metrics metrics = null;
         NetworkClient networkClient = null;
@@ -1415,6 +1419,11 @@ public class KafkaAdminClient extends AdminClient {
             }
         }, now);
         return new ListTopicsResult(topicListingFuture);
+    }
+
+    @Override
+    public ListTopicsResult listTopics(String streamPath, final ListTopicsOptions options) {
+        throw new KafkaException("listTopics(streamPath) API not implemented");
     }
 
     @Override

@@ -30,6 +30,11 @@ public interface WorkerRebalanceListener {
      */
     void onAssigned(ConnectProtocol.Assignment assignment, int generation);
 
+    /*
+     * Present to ensure compatibility with MEP 4.1
+     */
+    void onAssigned(ConnectProtocol.Assignment assignment);
+
     /**
      * Invoked when a rebalance operation starts, revoking ownership for the set of connectors and tasks.
      */

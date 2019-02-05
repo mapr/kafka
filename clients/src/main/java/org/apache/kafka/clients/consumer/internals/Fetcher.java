@@ -1025,11 +1025,12 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             ByteBuffer valueBytes = record.value();
             byte[] valueByteArray = valueBytes == null ? null : Utils.toArray(valueBytes);
             V value = valueBytes == null ? null : this.valueDeserializer.deserialize(partition.topic(), headers, valueByteArray);
-            return new ConsumerRecord<>(partition.topic(), partition.partition(), offset,
+            return new ConsumerRecord<K, V>
+                    (partition.topic(), partition.partition(), offset,
                                         timestamp, timestampType, record.checksumOrNull(),
                                         keyByteArray == null ? ConsumerRecord.NULL_SIZE : keyByteArray.length,
                                         valueByteArray == null ? ConsumerRecord.NULL_SIZE : valueByteArray.length,
-                                        key, value, headers, leaderEpoch);
+                                        key, value, headers, leaderEpoch, null);
         } catch (RuntimeException e) {
             throw new SerializationException("Error deserializing key/value for partition " + partition +
                     " at offset " + record.offset() + ". If needed, please seek past the record to continue consumption.", e);

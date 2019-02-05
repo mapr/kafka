@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.HashMap;
 
 /**
  * An immutable snapshot of the configuration state of connectors and tasks in a Kafka Connect cluster.
@@ -80,6 +81,23 @@ public class ClusterConfigState {
         this.taskConfigs = taskConfigs;
         this.inconsistentConnectors = inconsistentConnectors;
         this.configTransformer = configTransformer;
+    }
+
+    /*
+     * For backward compatibility of mapr-core with MEP 4.1
+     */
+    public ClusterConfigState(long offset,
+                              Map<String, Integer> connectorTaskCounts,
+                              Map<String, Map<String, String>> connectorConfigs,
+                              Map<ConnectorTaskId, Map<String, String>> taskConfigs,
+                              Set<String> inconsistentConnectors) {
+        this.offset = offset;
+        this.connectorTaskCounts = connectorTaskCounts;
+        this.connectorConfigs = connectorConfigs;
+        this.connectorTargetStates = new HashMap<>();
+        this.taskConfigs = taskConfigs;
+        this.inconsistentConnectors = inconsistentConnectors;
+        this.configTransformer = null;
     }
 
     /**

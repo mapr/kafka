@@ -45,6 +45,18 @@ should_include_file() {
   fi
 }
 
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
+# Set up Java classpath, start with $MAPR_CONF
+CLASSPATH=$MAPR_CONF
+# Add MapR jars
+CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
+# Add logger jars
+CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
+# Add 3rd party jars
+CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
+
 base_dir=$(dirname $0)/..
 
 if [ -z "$SCALA_VERSION" ]; then
@@ -158,6 +170,18 @@ do
 done
 shopt -u nullglob
 
+
+# Add kafka Connect plugins to classpath
+if [ ! -z $CONNECTORS_CLASSPATH ]; then
+    CLASSPATH="$CLASSPATH$CONNECTORS_CLASSPATH"
+fi
+
+# Remove old guava from classpath
+CLASSPATH=$(echo $CLASSPATH |sed 's/\/opt\/mapr\/lib\/guava-14.0.1.jar//')
+
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
+
 if [ -z "$CLASSPATH" ] ; then
   echo "Classpath is empty. Please build the project first e.g. by running './gradlew jar -PscalaVersion=$SCALA_VERSION'"
   exit 1
@@ -219,6 +243,13 @@ if [ "x$KAFKA_DEBUG" != "x" ]; then
 
     echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
     KAFKA_OPTS="$JAVA_DEBUG_OPTS $KAFKA_OPTS"
+fi
+
+env=$MAPR_CONF/env.sh
+[ -f $env ] && . $env
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  KAFKA_OPTS="$KAFKA_OPTS -Dhadoop.login=hybrid"
 fi
 
 # Which java to use
@@ -298,6 +329,7 @@ CLASSPATH=${CLASSPATH#:}
 
 # If Cygwin is detected, classpath is converted to Windows format.
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
+export MAPR_IMPERSONATION_ENABLED=true
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
