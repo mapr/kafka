@@ -346,7 +346,7 @@ public class TopologyTestDriver implements Closeable {
                     createRestoreConsumer(processorTopology.storeToChangelogTopic()),
                     Duration.ZERO,
                     stateRestoreListener,
-                    new LogContext("topology-test-driver ")),
+                    new LogContext("topology-test-driver "), ""),
                 streamsConfig,
                 streamsMetrics,
                 stateDirectory,

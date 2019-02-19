@@ -51,15 +51,18 @@ public class StoreChangelogReader implements ChangelogReader {
     private final Set<TopicPartition> needsInitializing = new HashSet<>();
     private final Set<TopicPartition> completedRestorers = new HashSet<>();
     private final Duration pollTime;
+    private final String internalStreamCompacted;
 
     public StoreChangelogReader(final Consumer<byte[], byte[]> restoreConsumer,
                                 final Duration pollTime,
                                 final StateRestoreListener userStateRestoreListener,
-                                final LogContext logContext) {
+                                final LogContext logContext,
+                                final String internalStreamCompacted) {
         this.restoreConsumer = restoreConsumer;
         this.pollTime = pollTime;
         this.log = logContext.logger(getClass());
         this.userStateRestoreListener = userStateRestoreListener;
+        this.internalStreamCompacted = internalStreamCompacted;
     }
 
     @Override
@@ -255,6 +258,7 @@ public class StoreChangelogReader implements ChangelogReader {
     private void refreshChangelogInfo() {
         try {
             partitionInfo.putAll(restoreConsumer.listTopics());
+            partitionInfo.putAll(restoreConsumer.listTopics(internalStreamCompacted));
         } catch (final TimeoutException e) {
             log.debug("Could not fetch topic metadata within the timeout, will retry in the next run loop");
         }

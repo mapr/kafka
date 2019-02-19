@@ -234,7 +234,7 @@ public class AbstractTaskTest {
                                 storeTopicPartitions,
                                 ProcessorTopology.withLocalStores(new ArrayList<>(stateStoresToChangelogTopics.keySet()), storeNamesToChangelogTopics),
                                 consumer,
-                                new StoreChangelogReader(consumer, Duration.ZERO, new MockStateRestoreListener(), new LogContext("stream-task-test ")),
+                                new StoreChangelogReader(consumer, Duration.ZERO, new MockStateRestoreListener(), new LogContext("stream-task-test "), ""),
                                 false,
                                 stateDirectory,
                                 config) {

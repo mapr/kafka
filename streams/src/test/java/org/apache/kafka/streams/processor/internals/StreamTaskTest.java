@@ -123,7 +123,7 @@ public class StreamTaskTest {
     private MockProducer<byte[], byte[]> producer;
     private final MockConsumer<byte[], byte[]> restoreStateConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
     private final StateRestoreListener stateRestoreListener = new MockStateRestoreListener();
-    private final StoreChangelogReader changelogReader = new StoreChangelogReader(restoreStateConsumer, Duration.ZERO, stateRestoreListener, new LogContext("stream-task-test ")) {
+    private final StoreChangelogReader changelogReader = new StoreChangelogReader(restoreStateConsumer, Duration.ZERO, stateRestoreListener, new LogContext("stream-task-test "), "") {
         @Override
         public Map<TopicPartition, Long> restoredOffsets() {
             return Collections.singletonMap(changelogPartition, offset);

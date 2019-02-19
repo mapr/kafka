@@ -140,7 +140,8 @@ public class StandbyTaskTest {
         restoreStateConsumer,
         Duration.ZERO,
         stateRestoreListener,
-        new LogContext("standby-task-test ")
+        new LogContext("standby-task-test "),
+            ""
     );
 
     private final byte[] recordValue = intSerializer.serialize(null, 10);
@@ -254,7 +255,8 @@ public class StandbyTaskTest {
                 restoreStateConsumer,
                 Duration.ZERO,
                 stateRestoreListener,
-                new LogContext("standby-task-test ")
+                new LogContext("standby-task-test "),
+                    ""
             ),
             createConfig(baseDir),
             new MockStreamsMetrics(new Metrics()),
