@@ -32,18 +32,18 @@ if [ $? -ne 0 ] ; then
 fi
 
 KAFKA_CONNECT_PORT=8083
-KAFKA_HOME=${MAPR_HOME}/kafka/kafka-1.1.1/
+KAFKA_HOME=${MAPR_HOME}/kafka/kafka-2.1.1/
 KAFKA_CONNECT_HOME=${MAPR_HOME}/kafka-connect*/kafka-connect*
-KAFKA_CONNECT_HDFS_HOME=${MAPR_HOME}/kafka-connect-hdfs/kafka-connect-hdfs-4.1.0/
-KAFKA_CONNECT_JDBC_HOME=${MAPR_HOME}/kafka-connect-jdbc/kafka-connect-jdbc-4.1.0/
+KAFKA_CONNECT_HDFS_HOME=${MAPR_HOME}/kafka-connect-hdfs/kafka-connect-hdfs-5.1.2/
+KAFKA_CONNECT_JDBC_HOME=${MAPR_HOME}/kafka-connect-jdbc/kafka-connect-jdbc-5.1.2/
 WARDEN_KAFKA_CONNECT_DEST_CONF=${MAPR_HOME}/conf/conf.d/warden.kafka-connect.conf
 WARDEN_KAFKA_CONNECT_FILE=${KAFKA_HOME}/config/warden.kafka-connect.conf
 KAFKA_CONNECT_PROPERTIES=${KAFKA_CONNECT_PROPERTIES:-${KAFKA_HOME}/config/connect-distributed.properties}
 KAFKA_VERSION_FILE=${MAPR_HOME}/kafka/kafkaversion
 DAEMON_CONF=${MAPR_HOME}/conf/daemon.conf
-VERSION=1.1.1
+VERSION=2.1.1
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
-KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-4.1.0.restart}
+KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-5.1.2.restart}
 
 function write_version_file() {
     if [ -f ${KAFKA_VERSION_FILE} ]; then
