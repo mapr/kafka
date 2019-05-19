@@ -67,6 +67,9 @@ public class Utils {
         }
     }
 
+    /** The method enables logCompaction for the stream and disables TTL.
+     *  Unlike Apache Kafka, MapR Streams allows both
+     *  TTL and LogCompaction being enabled **/
     public static void enableLogCompactionForStreamIfNotEnabled(String streamName){
         try {
             Configuration conf = new Configuration();
@@ -74,6 +77,7 @@ public class Utils {
             StreamDescriptor desc = admin.getStreamDescriptor(streamName);
             if(!desc.getCompact()) {
                 desc.setCompact(true);
+                desc.setTimeToLiveSec(0);
                 admin.editStream(streamName, desc);
             }
         } catch (IOException e){
