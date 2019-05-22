@@ -157,7 +157,7 @@ public class WorkerConfig extends AbstractConfig {
     public static final String REST_DOAS_CONFIG = "connect.enable.doAs";
     private static final String REST_DOAS_DOC
             = "Port for the REST API to listen on.";
-    public static final boolean REST_DOAS_DEFAULT = true;
+    public static final boolean REST_DOAS_DEFAULT = false;
 
     public static final String LISTENERS_CONFIG = "listeners";
     private static final String LISTENERS_DOC
@@ -308,12 +308,12 @@ public class WorkerConfig extends AbstractConfig {
                         Importance.LOW, HEADER_CONVERTER_CLASS_DOC)
                 .define(AUTHENTICATION_METHOD_CONFIG,
                         Type.STRING,
-                        AUTHENTICATION_METHOD_BASIC,
+                        AUTHENTICATION_METHOD_NONE,
                         Importance.LOW,
                         AUTHENTICATION_METHOD_DOC)
                 .define(AUTHENTICATION_REALM_CONFIG,
                         Type.STRING,
-                        "jpamLogin",
+                        "",
                         Importance.LOW,
                         AUTHENTICATION_REALM_DOC)
                 .define(AUTHENTICATION_ROLES_CONFIG,

@@ -101,6 +101,8 @@ function configure_secure_mode() {
     if ! enable_ssl; then
         return 1
     fi
+    enable_authentication
+    enable_impersonation
     change_permissions
     setup_warden_config
     return 0
@@ -128,6 +130,19 @@ function enable_ssl() {
 	create_properties_file_with_ssl_config
 
     return 0
+}
+
+function enable_authentication() {
+        cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
+		authentication.method=BASIC
+		authentication.realm=jpamLogin
+		EOL
+}
+
+function enable_impersonation() {
+        cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
+		connect.enable.doAs=true
+		EOL
 }
 
 function stopService(){
