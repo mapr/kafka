@@ -155,6 +155,22 @@ public class Utils {
         }
     }
 
+    public static void createStreamWithPublicPerms(String streamName) {
+        try {
+            Configuration conf = new Configuration();
+            Admin admin = Streams.newAdmin(conf);
+            StreamDescriptor desc = Streams.newStreamDescriptor();
+            desc.setConsumePerms("p");
+            desc.setProducePerms("p");
+            desc.setTopicPerms("p");
+            admin.createStream(streamName, desc);
+        } catch (Exception e){
+            if(!streamExists(streamName)) {
+                throw new KafkaException(e);
+            }
+        }
+    }
+
     public static boolean maprFSpathExists(FileSystem fs, String path) throws IOException {
         return fs.exists(new Path(path));
     }
