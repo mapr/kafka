@@ -162,7 +162,6 @@ public class Utils {
             StreamDescriptor desc = Streams.newStreamDescriptor();
             desc.setConsumePerms("p");
             desc.setProducePerms("p");
-            desc.setTopicPerms("p");
             admin.createStream(streamName, desc);
         } catch (Exception e){
             if(!streamExists(streamName)) {
