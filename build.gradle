@@ -1668,6 +1668,9 @@ project(':connect:runtime') {
     compileOnly (libs.hadoopCommon) {
         transitive = false
     }
+    compileOnly (libs.hadoopAuth) {
+      transitive = false
+    }
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet
     compile libs.jerseyHk2

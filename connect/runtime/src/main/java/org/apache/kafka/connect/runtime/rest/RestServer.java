@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.runtime.rest;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.rest.ConnectRestExtension;
@@ -189,13 +190,17 @@ public class RestServer {
         context.setContextPath("/");
         context.addServlet(servletHolder, "/*");
 
-      String authMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
-      if (WorkerConfig.AUTHENTICATION_METHOD_BASIC.equals(authMethod)) {
-        String realm = config.getString(WorkerConfig.AUTHENTICATION_REALM_CONFIG);
-        List<String> roles = config.getList(WorkerConfig.AUTHENTICATION_ROLES_CONFIG);
-        final SecurityHandler securityHandler = createSecurityHandler(realm, roles);
-        context.setSecurityHandler(securityHandler);
-      }
+        String authMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
+        if (WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authMethod)) {
+            FilterHolder holder = new FilterHolder(new AuthenticationFilter());
+            holder.setInitParameter(
+                    AuthenticationFilter.AUTH_TYPE,
+                    "org.apache.hadoop.security.authentication.server.MultiMechsAuthenticationHandler");
+            Long cookiesExpirationTime = config.getLong(WorkerConfig.AUTHENTICATION_COOKIE_EXPIRATION_CONFIG);
+            holder.setInitParameter(AuthenticationFilter.AUTH_TOKEN_VALIDITY, cookiesExpirationTime.toString());
+            context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
+            log.debug("Basic and MapR SASL authentications enabled");
+        }
 
         String allowedOrigins = config.getString(WorkerConfig.ACCESS_CONTROL_ALLOW_ORIGIN_CONFIG);
         if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {

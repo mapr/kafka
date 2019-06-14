@@ -170,9 +170,11 @@ public class Worker {
      */
     public void start() {
         log.info("Worker starting");
-        if ((config.getBoolean(WorkerConfig.REST_DOAS_CONFIG)) &&
-              ! config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG).equals(WorkerConfig.AUTHENTICATION_METHOD_BASIC)){
-            throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+        String authenticationMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
+        if (config.getBoolean(WorkerConfig.REST_DOAS_CONFIG) &&
+              !WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)){
+            throw new RuntimeException(WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH +
+                    " authentication must be enabled in order to support MapR Streams impersonation");
         }
 
         offsetBackingStore.start();

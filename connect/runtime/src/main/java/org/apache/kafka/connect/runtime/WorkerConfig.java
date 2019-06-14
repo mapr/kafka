@@ -222,8 +222,14 @@ public class WorkerConfig extends AbstractConfig {
     public static final String METRICS_NUM_SAMPLES_CONFIG = CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG;
     public static final String METRICS_RECORDING_LEVEL_CONFIG = CommonClientConfigs.METRICS_RECORDING_LEVEL_CONFIG;
     public static final String METRIC_REPORTER_CLASSES_CONFIG = CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG;
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_CONFIG =
+            "authentication.cookie.expiration";
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_DOC =
+            "The option is used to specify expiration time (in seconds) for authentication" +
+                    " cookie. ";
     public static final String AUTHENTICATION_METHOD_CONFIG = "authentication.method";
     public static final String AUTHENTICATION_METHOD_BASIC = "BASIC";
+    public static final String AUTHENTICATION_METHOD_MULTIAUTH = "MULTIAUTH";
     public static final String AUTHENTICATION_METHOD_NONE = "NONE";
     public static final String AUTHENTICATION_METHOD_DOC =
           "Method of authentication. Must be BASIC to enable authentication. "
@@ -306,6 +312,11 @@ public class WorkerConfig extends AbstractConfig {
                 .define(HEADER_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         HEADER_CONVERTER_CLASS_DEFAULT,
                         Importance.LOW, HEADER_CONVERTER_CLASS_DOC)
+                .define(AUTHENTICATION_COOKIE_EXPIRATION_CONFIG,
+                        Type.LONG,
+                        2 * 3600, // 2 hours
+                        Importance.LOW,
+                        AUTHENTICATION_COOKIE_EXPIRATION_DOC)
                 .define(AUTHENTICATION_METHOD_CONFIG,
                         Type.STRING,
                         AUTHENTICATION_METHOD_NONE,
