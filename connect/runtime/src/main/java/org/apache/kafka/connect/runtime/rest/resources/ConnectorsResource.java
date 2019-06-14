@@ -17,9 +17,11 @@
 package org.apache.kafka.connect.runtime.rest.resources;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.HerderProvider;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.RebalanceNeededException;
 import org.apache.kafka.connect.runtime.distributed.RequestTargetException;
@@ -103,10 +105,14 @@ public class ConnectorsResource {
         String name = createRequest.name() == null ? "" : createRequest.name().trim();
 
         Map<String, String> configs = createRequest.config();
+
+        String remoteUser = httpRequest.getRemoteUser();
+        configs.put(TaskConfig.TASK_USER_CONFIG,
+                remoteUser != null ? remoteUser : UserGroupInformation.getCurrentUser().getShortUserName());
+
         checkAndPutConnectorConfigName(name, configs);
 
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
-        configs.put("task.user", httpRequest.getRemoteUser());
         herder().putConnectorConfig(name, configs, false, cb);
         Herder.Created<ConnectorInfo> info = completeOrForwardRequest(cb, "/connectors", "POST", createRequest,
                 new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
@@ -145,6 +151,10 @@ public class ConnectorsResource {
                                        final @PathParam("connector") String connector,
                                        final @QueryParam("forward") Boolean forward,
                                        final Map<String, String> connectorConfig) throws Throwable {
+        String remoteUser = httpRequest.getRemoteUser();
+        connectorConfig.put(TaskConfig.TASK_USER_CONFIG,
+                remoteUser != null ? remoteUser : UserGroupInformation.getCurrentUser().getShortUserName());
+
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
         checkAndPutConnectorConfigName(connector, connectorConfig);
 
@@ -152,7 +162,6 @@ public class ConnectorsResource {
         Herder.Created<ConnectorInfo> createdInfo = completeOrForwardRequest(cb, "/connectors/" + connector + "/config",
                 "PUT", connectorConfig, new TypeReference<ConnectorInfo>() { }, new CreatedConnectorInfoTranslator(), forward);
         Response.ResponseBuilder response;
-        connectorConfig.put("task.user", httpRequest.getRemoteUser());
 
         if (createdInfo.created()) {
             URI location = UriBuilder.fromUri("/connectors").path(connector).build();

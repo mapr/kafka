@@ -409,7 +409,10 @@ public class Worker {
             String connType = connConfig.getString(ConnectorConfig.CONNECTOR_CLASS_CONFIG);
             ClassLoader connectorLoader = plugins.delegatingLoader().connectorLoader(connType);
             savedLoader = Plugins.compareAndSwapLoaders(connectorLoader);
-            taskProps.put(TaskConfig.TASK_USER_CONFIG, connProps.get("task.user"));
+            String taskUser = connProps.get(TaskConfig.TASK_USER_CONFIG);
+            if (taskUser != null) {
+                taskProps.put(TaskConfig.TASK_USER_CONFIG, taskUser);
+            }
             final TaskConfig taskConfig = new TaskConfig(taskProps);
             final Class<? extends Task> taskClass = taskConfig.getClass(TaskConfig.TASK_CLASS_CONFIG).asSubclass(Task.class);
             final Task task = plugins.newTask(taskClass);

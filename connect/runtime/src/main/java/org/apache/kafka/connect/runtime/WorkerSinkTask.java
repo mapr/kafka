@@ -192,14 +192,12 @@ class WorkerSinkTask extends WorkerTask {
     public void execute() {
         if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
             try {
-                UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskConfig.get(TaskConfig.TASK_USER_CONFIG),
-                  UserGroupInformation.getCurrentUser());
-                ugi.doAs(new PrivilegedExceptionAction() {
-                    @Override
-                    public Object run() {
-                      startTaskLoop();
-                      return null;
-                    }
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                        taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                        UserGroupInformation.getCurrentUser());
+                ugi.doAs((PrivilegedExceptionAction<Object>) () -> {
+                  startTaskLoop();
+                  return null;
                 });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -495,14 +493,10 @@ class WorkerSinkTask extends WorkerTask {
         KafkaConsumer<byte[], byte[]> newConsumer;
         try {
             if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
-                UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskConfig.get(TaskConfig.TASK_USER_CONFIG),
-                  UserGroupInformation.getCurrentUser());
-                newConsumer = ugi.doAs(new PrivilegedExceptionAction<KafkaConsumer>() {
-                    @Override
-                    public KafkaConsumer run() {
-                        return new KafkaConsumer<>(props);
-                    }
-                });
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                        taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                        UserGroupInformation.getCurrentUser());
+                newConsumer = ugi.doAs((PrivilegedExceptionAction<KafkaConsumer<byte[], byte[]>>) () -> new KafkaConsumer<>(props));
             } else {
                 newConsumer = new KafkaConsumer<>(props);
             }

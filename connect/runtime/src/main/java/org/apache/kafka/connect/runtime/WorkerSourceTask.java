@@ -49,6 +49,7 @@ import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -79,7 +80,6 @@ class WorkerSourceTask extends WorkerTask {
     private final OffsetStorageWriter offsetWriter;
     private final Time time;
     private final SourceTaskMetricsGroup sourceTaskMetricsGroup;
-    private String taskOwner;
     private List<SourceRecord> toSend;
     private boolean lastSendFailed; // Whether the last send failed *synchronously*, i.e. never made it into the producer's RecordAccumulator
     // Use IdentityHashMap to ensure correctness with duplicate records. This is a HashMap because
@@ -138,7 +138,6 @@ class WorkerSourceTask extends WorkerTask {
 
     @Override
     public void initialize(TaskConfig taskConfig) {
-        taskOwner = taskConfig.getString(TaskConfig.TASK_USER_CONFIG);
         try {
             this.taskConfig = taskConfig.originalsStrings();
         } catch (Throwable t) {
@@ -319,17 +318,15 @@ class WorkerSourceTask extends WorkerTask {
             try {
                 if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
                     try {
-                        UserGroupInformation ugi = UserGroupInformation.createProxyUser(taskOwner,
-                          UserGroupInformation.getCurrentUser());
-                        ugi.doAs(new PrivilegedExceptionAction<Object>() {
-                            @Override
-                            public Object run() {
-                                produceRecord(producerRecord, preTransformRecord, counter);
-                                return null;
-                            }
+                        UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                                taskConfig.get(TaskConfig.TASK_USER_CONFIG),
+                                UserGroupInformation.getCurrentUser());
+                        ugi.doAs((PrivilegedExceptionAction<Object>) () -> {
+                            produceRecord(producerRecord, preTransformRecord, counter);
+                            return null;
                         });
-                    } catch (Exception e) {
-                         log.error("{} failed to impersonate user {}: {}", this, taskOwner, e);
+                    } catch (IOException | InterruptedException e) {
+                         log.error("Failed to impersonate user", e);
                     }
                 } else {
                     produceRecord(producerRecord, preTransformRecord, counter);
