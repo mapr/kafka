@@ -90,7 +90,8 @@ public class Utils {
         try {
             String[] boolExprs = ace.getBooleanExpression().split(",");
             for (String boolExpr : boolExprs) {
-                if ((AceHelper.toPostfix(boolExpr)).equals(userBoolExpr)) {
+                String postfix = AceHelper.toPostfix(boolExpr);
+                if (postfix.equals(userBoolExpr) || postfix.equals("p")) {
                     return true;
                 }
             }
