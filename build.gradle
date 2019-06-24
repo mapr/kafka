@@ -590,7 +590,9 @@ project(':core') {
   dependencies {
     compile project(':clients')
 
-    compileOnly (libs.maprStreams)
+    compileOnly (libs.maprStreams) {
+      exclude module: 'connect-runtime'
+    }
     compileOnly (libs.hadoopCommon)
     compileOnly (libs.maprFs)
 
@@ -1483,6 +1485,24 @@ project(':connect:transforms') {
 
   jar {
     dependsOn copyDependantLibs
+  }
+  
+  publishing {
+    publications {
+      connectTransforms(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "connect-transforms"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
   }
 }
 
