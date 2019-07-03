@@ -23,6 +23,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
@@ -46,9 +47,8 @@ import java.util.concurrent.CountDownLatch;
  * represent lines of text; and the histogram output is written to topic "streams-wordcount-processor-output" where each record
  * is an updated count of a single word.
  * <p>
- * Before running this example you must create the input topic and the output topic (e.g. via
- * {@code bin/kafka-topics.sh --create ...}), and write some data to the input topic (e.g. via
- * {@code bin/kafka-console-producer.sh}). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  */
 public final class WordCountProcessorDemo {
 
@@ -113,6 +113,9 @@ public final class WordCountProcessorDemo {
         // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+        // MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
+
         final Topology builder = new Topology();
 
         builder.addSource("Source", "streams-plaintext-input");
@@ -124,7 +127,7 @@ public final class WordCountProcessorDemo {
                 Serdes.Integer()),
                 "Process");
 
-        builder.addSink("Sink", "streams-wordcount-processor-output", "Process");
+        builder.addSink("Sink", MaprConfig.STREAM_NAME + ":streams-wordcount-processor-output", "Process");
 
         final KafkaStreams streams = new KafkaStreams(builder, props);
         final CountDownLatch latch = new CountDownLatch(1);

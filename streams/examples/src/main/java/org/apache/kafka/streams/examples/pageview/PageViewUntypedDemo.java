@@ -27,6 +27,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.json.JsonSerializer;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -49,9 +50,8 @@ import java.util.Properties;
  * with a user profile table that reads from a topic named "streams-userprofile-input", where the data format
  * is JSON string representing a record in the stream or table, to compute the number of pageviews per user region.
  *
- * Before running this example you must create the input topics and the output topic (e.g. via
- * bin/kafka-topics.sh --create ...), and write some data to the input topics (e.g. via
- * bin/kafka-console-producer.sh). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  */
 public class PageViewUntypedDemo {
 
@@ -63,6 +63,9 @@ public class PageViewUntypedDemo {
 
         // setting offset reset to earliest so that we can re-run the demo code with the same pre-loaded data
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        //MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
 
         final StreamsBuilder builder = new StreamsBuilder();
 

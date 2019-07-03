@@ -21,6 +21,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
@@ -38,9 +39,8 @@ import java.util.concurrent.CountDownLatch;
  * represent lines of text; and the histogram output is written to topic "streams-wordcount-output" where each record
  * is an updated count of a single word.
  * <p>
- * Before running this example you must create the input topic and the output topic (e.g. via
- * {@code bin/kafka-topics.sh --create ...}), and write some data to the input topic (e.g. via
- * {@code bin/kafka-console-producer.sh}). Otherwise you won't see any data arriving in the output topic.
+ * Before running this example you must create the stream, the input topic and the output topic (see MaprConfig)
+ * Otherwise you won't see any data arriving in the output topic.
  */
 public final class WordCountDemo {
 
@@ -56,6 +56,9 @@ public final class WordCountDemo {
         // https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Streams+Application+Reset+Tool
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+        // MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
+
         final StreamsBuilder builder = new StreamsBuilder();
 
         final KStream<String, String> source = builder.stream("streams-plaintext-input");
@@ -66,7 +69,7 @@ public final class WordCountDemo {
             .count();
 
         // need to override value serde to Long type
-        counts.toStream().to("streams-wordcount-output", Produced.with(Serdes.String(), Serdes.Long()));
+        counts.toStream().to(MaprConfig.STREAM_NAME + ":streams-wordcount-output", Produced.with(Serdes.String(), Serdes.Long()));
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         final CountDownLatch latch = new CountDownLatch(1);

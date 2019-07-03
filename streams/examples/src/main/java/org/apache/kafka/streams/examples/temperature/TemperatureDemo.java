@@ -23,6 +23,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.examples.MaprConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.TimeWindows;
@@ -41,22 +42,20 @@ import java.util.concurrent.CountDownLatch;
  * represent temperature values; using a TEMPERATURE_WINDOW_SIZE seconds "tumbling" window, the maximum value is processed and
  * sent to a topic named "iot-temperature-max" if it exceeds the TEMPERATURE_THRESHOLD.
  *
- * Before running this example you must create the input topic for temperature values in the following way :
+ * Before running this example you must create the stream (see MaprConfig), and topics:
+ * - iot-temperature
+ * - iot-temperature-max
  *
- * bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic iot-temperature
- *
- * and at same time the output topic for filtered values :
- *
- * bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic iot-temperature-max
+ * Otherwise you won't see any data arriving in the output topic.
  *
  * After that, a console consumer can be started in order to read filtered values from the "iot-temperature-max" topic :
  *
- * bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic iot-temperature-max --from-beginning
+ * bin/kafka-console-consumer.sh --bootstrap-server fake.server:9092 --topic iot-temperature-max --from-beginning
  *
  * On the other side, a console producer can be used for sending temperature values (which needs to be integers)
  * to "iot-temperature" typing them on the console :
  *
- * bin/kafka-console-producer.sh --broker-list localhost:9092 --topic iot-temperature
+ * bin/kafka-console-producer.sh --broker-list fake.server:9092 --topic iot-temperature
  * > 10
  * > 15
  * > 22
@@ -77,6 +76,9 @@ public class TemperatureDemo {
 
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+
+        // MapR
+        props.put(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG, MaprConfig.STREAM_NAME);
 
         final StreamsBuilder builder = new StreamsBuilder();
 
@@ -100,7 +102,7 @@ public class TemperatureDemo {
         final Serde<Windowed<String>> windowedSerde = WindowedSerdes.timeWindowedSerdeFrom(String.class);
 
         // need to override key serde to Windowed<String> type
-        max.to("iot-temperature-max", Produced.with(windowedSerde, Serdes.String()));
+        max.to(MaprConfig.STREAM_NAME + ":iot-temperature-max", Produced.with(windowedSerde, Serdes.String()));
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), props);
         final CountDownLatch latch = new CountDownLatch(1);
