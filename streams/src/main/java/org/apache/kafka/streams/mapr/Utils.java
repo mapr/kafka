@@ -22,12 +22,21 @@ import java.util.List;
 
 public class Utils {
 
+    public static void createAppDirAndInternalStreamsIfNotExist(StreamsConfig config) {
+        createAppDirAndInternalStreams(config, false);
+    }
+
+    public static void createAppDirAndInternalStreamsForKafkaStreams(StreamsConfig config) {
+        createAppDirAndInternalStreams(config, true);
+    }
+
     /**
      * The method creates internal streams (without log compaction and with log compaction)
      * and appropriate paths if they don't exist.
      *
      */
-    public static void createAppDirAndInternalStreamsIfNotExist(StreamsConfig config) {
+    private static void createAppDirAndInternalStreams(StreamsConfig config,
+                                                       boolean isKafkaStreams) {
         try {
             FileSystem fs = FileSystem.get(new Configuration());
             if (!maprFSpathExists(fs, StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER)) {
@@ -56,7 +65,11 @@ public class Utils {
             maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(),
                     aceList, currentUser, validateDirErrorMessage);
             createStream(config.getStreamsInternalStreamNotcompacted());
-            createStream(config.getStreamsInternalStreamCompacted());
+            if (isKafkaStreams) {
+                createKafkaStreamsInternalStream(config.getStreamsInternalStreamCompacted(), currentUser);
+            } else {
+                createStream(config.getStreamsInternalStreamCompacted());
+            }
             enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
 
             if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
@@ -144,25 +157,37 @@ public class Utils {
     }
 
     public static void createStream(String streamName) {
+        createStreamWithPerms(streamName, null);
+    }
+
+    public static void createKafkaStreamsInternalStream(String streamName, String currentUser) {
         try {
-            Configuration conf = new Configuration();
-            Admin admin = Streams.newAdmin(conf);
-            StreamDescriptor desc = Streams.newStreamDescriptor();
-            admin.createStream(streamName, desc);
-        } catch (Exception e){
-            if(!streamExists(streamName)) {
-                throw new KafkaException(e);
+            String clusterAdminUser = UserGroupInformation.getLoginUser().getUserName();
+            if (!currentUser.equals(clusterAdminUser)) {
+                String perms = "u:" + clusterAdminUser + " | u:" + currentUser;
+                createStreamWithPerms(streamName, perms);
+            } else {
+                createStreamWithPerms(streamName, null);
             }
+        } catch (IOException e) {
+            throw new KafkaException(e);
         }
     }
 
     public static void createStreamWithPublicPerms(String streamName) {
+        createStreamWithPerms(streamName, "p");
+    }
+
+    private static void createStreamWithPerms(String streamName,
+                                              String perms) {
         try {
             Configuration conf = new Configuration();
             Admin admin = Streams.newAdmin(conf);
             StreamDescriptor desc = Streams.newStreamDescriptor();
-            desc.setConsumePerms("p");
-            desc.setProducePerms("p");
+            if (perms != null) {
+                desc.setConsumePerms(perms);
+                desc.setProducePerms(perms);
+            }
             admin.createStream(streamName, desc);
         } catch (Exception e){
             if(!streamExists(streamName)) {

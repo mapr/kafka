@@ -660,7 +660,7 @@ public class KafkaStreams {
         reporters.add(new JmxReporter(JMX_PREFIX));
         metrics = new Metrics(metricConfig, reporters, time);
 
-        Utils.createAppDirAndInternalStreamsIfNotExist(config);
+        Utils.createAppDirAndInternalStreamsForKafkaStreams(config);
         internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId,
                 config.getStreamsInternalStreamNotcompacted(),
                 config.getStreamsInternalStreamCompacted());
