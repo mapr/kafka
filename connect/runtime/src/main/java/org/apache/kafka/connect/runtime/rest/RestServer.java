@@ -48,7 +48,6 @@ import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.DefaultIdentityService;
-import org.eclipse.jetty.security.SecurityHandler;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
@@ -190,8 +189,7 @@ public class RestServer {
         context.setContextPath("/");
         context.addServlet(servletHolder, "/*");
 
-        String authMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
-        if (WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authMethod)) {
+        if (config.getBoolean(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
             FilterHolder holder = new FilterHolder(new AuthenticationFilter());
             holder.setInitParameter(
                     AuthenticationFilter.AUTH_TYPE,

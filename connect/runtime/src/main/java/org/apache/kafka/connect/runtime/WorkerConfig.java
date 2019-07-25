@@ -227,22 +227,10 @@ public class WorkerConfig extends AbstractConfig {
     public static final String AUTHENTICATION_COOKIE_EXPIRATION_DOC =
             "The option is used to specify expiration time (in seconds) for authentication" +
                     " cookie. ";
-    public static final String AUTHENTICATION_METHOD_CONFIG = "authentication.method";
-    public static final String AUTHENTICATION_METHOD_BASIC = "BASIC";
-    public static final String AUTHENTICATION_METHOD_MULTIAUTH = "MULTIAUTH";
-    public static final String AUTHENTICATION_METHOD_NONE = "NONE";
-    public static final String AUTHENTICATION_METHOD_DOC =
-          "Method of authentication. Must be BASIC to enable authentication. "
-                  + "You must supply a valid JAAS config file for the 'java.security.auth.login.config'"
-                  + " system property for the appropriate authentication provider.";
-    public static final String AUTHENTICATION_REALM_CONFIG = "authentication.realm";
-    public static final String AUTHENTICATION_REALM_DOC =
-          "Security realm to be used in authentication.";
-    public static final String AUTHENTICATION_ROLES_CONFIG = "authentication.roles";
-    public static final String AUTHENTICATION_ROLES_DOC = "Valid roles to authenticate against.";
-    public static final List<String> AUTHENTICATION_ROLES_DEFAULT =
-          Collections.unmodifiableList(Arrays.asList("*"));
-
+    public static final String AUTHENTICATION_ENABLE_CONFIG = "authentication.enable";
+    public static final boolean AUTHENTICATION_ENABLE_DEFAULT = false;
+    public static final String AUTHENTICATION_ENABLE_DOC =
+            "Enable authentication. MapR supports multiple authentication methods at same time: Basic and MapR SASL";
 
   /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
@@ -317,21 +305,11 @@ public class WorkerConfig extends AbstractConfig {
                         2 * 3600, // 2 hours
                         Importance.LOW,
                         AUTHENTICATION_COOKIE_EXPIRATION_DOC)
-                .define(AUTHENTICATION_METHOD_CONFIG,
-                        Type.STRING,
-                        AUTHENTICATION_METHOD_NONE,
+                .define(AUTHENTICATION_ENABLE_CONFIG,
+                        Type.BOOLEAN,
+                        AUTHENTICATION_ENABLE_DEFAULT,
                         Importance.LOW,
-                        AUTHENTICATION_METHOD_DOC)
-                .define(AUTHENTICATION_REALM_CONFIG,
-                        Type.STRING,
-                        "",
-                        Importance.LOW,
-                        AUTHENTICATION_REALM_DOC)
-                .define(AUTHENTICATION_ROLES_CONFIG,
-                        Type.LIST,
-                        AUTHENTICATION_ROLES_DEFAULT,
-                        Importance.LOW,
-                        AUTHENTICATION_ROLES_DOC)
+                        AUTHENTICATION_ENABLE_DOC)
                 .define(ENABLE_IMPERSONATION_CONFIG,
                         Type.BOOLEAN,
                         ENABLE_IMPERSONATION_DEFAULT,

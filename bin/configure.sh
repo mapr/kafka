@@ -134,8 +134,7 @@ function enable_ssl() {
 
 function enable_authentication() {
         cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
-		authentication.method=BASIC
-		authentication.realm=jpamLogin
+		authentication.enable=true
 		EOL
 }
 

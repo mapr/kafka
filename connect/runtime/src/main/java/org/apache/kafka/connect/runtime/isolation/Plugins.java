@@ -263,8 +263,7 @@ public class Plugins {
             }
         }
 
-        String authenticationMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
-        if (WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+        if (config.getBoolean(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
             converterConfig.put("maprsasl.auth", "true");
         }
 
