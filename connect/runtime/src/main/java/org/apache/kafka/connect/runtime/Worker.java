@@ -171,7 +171,7 @@ public class Worker {
     public void start() {
         log.info("Worker starting");
         String authenticationMethod = config.getString(WorkerConfig.AUTHENTICATION_METHOD_CONFIG);
-        if (config.getBoolean(WorkerConfig.REST_DOAS_CONFIG) &&
+        if (config.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG) &&
               !WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)){
             throw new RuntimeException(WorkerConfig.AUTHENTICATION_METHOD_MULTIAUTH +
                     " authentication must be enabled in order to support MapR Streams impersonation");

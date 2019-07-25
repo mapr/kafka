@@ -141,7 +141,7 @@ function enable_authentication() {
 
 function enable_impersonation() {
         cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
-		connect.enable.doAs=true
+		impersonation.enable=true
 		EOL
 }
 

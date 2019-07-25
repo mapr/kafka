@@ -190,7 +190,7 @@ class WorkerSinkTask extends WorkerTask {
 
     @Override
     public void execute() {
-        if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+        if (workerConfig.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)){
             try {
                 UserGroupInformation ugi = UserGroupInformation.createProxyUser(
                         taskConfig.get(TaskConfig.TASK_USER_CONFIG),
@@ -492,7 +492,7 @@ class WorkerSinkTask extends WorkerTask {
 
         KafkaConsumer<byte[], byte[]> newConsumer;
         try {
-            if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+            if (workerConfig.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)){
                 UserGroupInformation ugi = UserGroupInformation.createProxyUser(
                         taskConfig.get(TaskConfig.TASK_USER_CONFIG),
                         UserGroupInformation.getCurrentUser());

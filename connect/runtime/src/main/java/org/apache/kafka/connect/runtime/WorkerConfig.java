@@ -154,10 +154,10 @@ public class WorkerConfig extends AbstractConfig {
             = "Port for the REST API to listen on.";
     public static final int REST_PORT_DEFAULT = 8083;
 
-    public static final String REST_DOAS_CONFIG = "connect.enable.doAs";
-    private static final String REST_DOAS_DOC
-            = "Port for the REST API to listen on.";
-    public static final boolean REST_DOAS_DEFAULT = false;
+    public static final String ENABLE_IMPERSONATION_CONFIG = "impersonation.enable";
+    private static final String ENABLE_IMPERSONATION_DOC
+            = "Enable impersonation.";
+    public static final boolean ENABLE_IMPERSONATION_DEFAULT = false;
 
     public static final String LISTENERS_CONFIG = "listeners";
     private static final String LISTENERS_DOC
@@ -332,11 +332,11 @@ public class WorkerConfig extends AbstractConfig {
                         AUTHENTICATION_ROLES_DEFAULT,
                         Importance.LOW,
                         AUTHENTICATION_ROLES_DOC)
-                .define(REST_DOAS_CONFIG,
+                .define(ENABLE_IMPERSONATION_CONFIG,
                         Type.BOOLEAN,
-                        REST_DOAS_DEFAULT,
+                        ENABLE_IMPERSONATION_DEFAULT,
                         Importance.MEDIUM,
-                        REST_DOAS_DOC)
+                        ENABLE_IMPERSONATION_DOC)
                 .define(CONFIG_PROVIDERS_CONFIG, Type.LIST,
                         Collections.emptyList(),
                         Importance.LOW, CONFIG_PROVIDERS_DOC)

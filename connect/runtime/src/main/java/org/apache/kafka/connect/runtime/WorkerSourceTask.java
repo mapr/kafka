@@ -316,7 +316,7 @@ class WorkerSourceTask extends WorkerTask {
                 }
             }
             try {
-                if (workerConfig.getBoolean(WorkerConfig.REST_DOAS_CONFIG)){
+                if (workerConfig.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)){
                     try {
                         UserGroupInformation ugi = UserGroupInformation.createProxyUser(
                                 taskConfig.get(TaskConfig.TASK_USER_CONFIG),
