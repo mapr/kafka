@@ -103,6 +103,7 @@ function configure_secure_mode() {
     fi
     enable_authentication
     enable_impersonation
+    enable_security_headers
     change_permissions
     setup_warden_config
     return 0
@@ -141,6 +142,12 @@ function enable_authentication() {
 function enable_impersonation() {
         cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
 		impersonation.enable=true
+		EOL
+}
+
+function enable_security_headers() {
+        cat >> ${KAFKA_CONNECT_PROPERTIES} <<-EOL
+		headers.file=${KAFKA_HOME}/config/headers.xml
 		EOL
 }
 

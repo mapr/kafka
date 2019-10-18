@@ -88,7 +88,8 @@ versions += [
   zkclient: "0.11",
   zookeeper: "3.4.13",
   zstd: "1.3.7-1",
-  restutils: "5.1.2.0-mapr-SNAPSHOT"
+  restutils: "5.1.2.0-mapr-SNAPSHOT",
+  commonsIo: "2.6"
 ]
 
 libs += [
@@ -157,5 +158,6 @@ libs += [
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   maprStreams: "com.mapr.streams:mapr-streams:$maprVersion",
   maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
-  restutils: "io.confluent:rest-utils:$versions.restutils"
+  restutils: "io.confluent:rest-utils:$versions.restutils",
+  commonsIo: "commons-io:commons-io:$versions.commonsIo"
 ]

@@ -232,6 +232,13 @@ public class WorkerConfig extends AbstractConfig {
     public static final String AUTHENTICATION_ENABLE_DOC =
             "Enable authentication. MapR supports multiple authentication methods at same time: Basic and MapR SASL";
 
+    //SecurityHeaders and custom headers file
+    public static final String HEADERS_FILE_CONFIG = "headers.file";
+    public static final String HEADERS_FILE_DEFAULT = "";
+    public static final String HEADERS_FILE_CONFIG_DOC =
+            "The option is used to specify XML file that contains security and custom headers. "
+                    + "The headers will be added to a response by Jetty server.";
+
   /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
      * bootstrap their own ConfigDef.
@@ -310,6 +317,12 @@ public class WorkerConfig extends AbstractConfig {
                         AUTHENTICATION_ENABLE_DEFAULT,
                         Importance.LOW,
                         AUTHENTICATION_ENABLE_DOC)
+                .define(
+                        HEADERS_FILE_CONFIG,
+                        Type.STRING,
+                        HEADERS_FILE_DEFAULT,
+                        Importance.LOW,
+                        HEADERS_FILE_CONFIG_DOC)
                 .define(ENABLE_IMPERSONATION_CONFIG,
                         Type.BOOLEAN,
                         ENABLE_IMPERSONATION_DEFAULT,

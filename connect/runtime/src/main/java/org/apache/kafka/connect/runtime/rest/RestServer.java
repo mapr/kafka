@@ -30,8 +30,13 @@ import org.apache.kafka.connect.runtime.rest.errors.ConnectExceptionMapper;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorsResource;
 import org.apache.kafka.connect.runtime.rest.resources.RootResource;
-import org.eclipse.jetty.jaas.JAASLoginService;
+import org.apache.kafka.connect.runtime.rest.util.HeadersFilter;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
+import org.eclipse.jetty.jaas.JAASLoginService;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.DefaultIdentityService;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -45,10 +50,6 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
-import org.eclipse.jetty.security.ConstraintMapping;
-import org.eclipse.jetty.security.ConstraintSecurityHandler;
-import org.eclipse.jetty.security.DefaultIdentityService;
-import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -211,6 +212,7 @@ public class RestServer {
             }
             context.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
         }
+        configureCustomAndSecurityHeaders(context);
 
         RequestLogHandler requestLogHandler = new RequestLogHandler();
         Slf4jRequestLog requestLog = new Slf4jRequestLog();
@@ -235,6 +237,20 @@ public class RestServer {
         }
 
         log.info("REST server listening at " + jettyServer.getURI() + ", advertising URL " + advertisedUrl());
+    }
+
+    private void configureCustomAndSecurityHeaders(ServletContextHandler context) {
+        String headersFile = config.getString(WorkerConfig.HEADERS_FILE_CONFIG);
+        if (headersFile != null && !headersFile.isEmpty()) {
+            addScurityAndCustomHeadersFilter(context);
+        }
+    }
+
+    private void addScurityAndCustomHeadersFilter(ServletContextHandler context) {
+        FilterHolder holder = new FilterHolder(new HeadersFilter());
+        holder.setInitParameter(WorkerConfig.HEADERS_FILE_CONFIG,
+                config.getString(WorkerConfig.HEADERS_FILE_CONFIG));
+        context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
     }
 
     public URI serverUrl() {

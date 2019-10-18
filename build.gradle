@@ -1588,6 +1588,7 @@ project(':connect:runtime') {
     compile project(':connect:transforms')
 
     compile libs.slf4jApi
+    compile libs.commonsIo
     compile libs.restutils
     compileOnly (libs.hadoopCommon) {
         transitive = false
