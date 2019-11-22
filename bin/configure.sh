@@ -136,11 +136,10 @@ function stopService(){
 }
 
 # Parse options
+USAGE="usage: $0 [-h] [-R] [--secure|--unsecure|--customSecure] [--EC <options>][-h|--help]"
 
-USAGE="usage: $0 [-h] [-R]"
 
-
-{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,help,EC -- "$@"`; } 2>/dev/null
+{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC: -- "$@"`; } 2>/dev/null
 eval set -- "$OPTS"
 
 isSecure=false
@@ -172,8 +171,7 @@ for i in "$@" ; do
       echo "${USAGE}"
       exit ${RETURN_SUCCESS}
       ;;
-    --EC)
-      ecosystemParams="$2"
+    --EC | -EC)
       shift 2;;
     --)
       shift; break;;
