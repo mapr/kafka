@@ -379,6 +379,11 @@ public class StreamsConfig extends AbstractConfig {
             + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
             + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
+    /** {@code}streams.log.compaction} */
+    public static final String STREAMS_LOG_COMPACTION_CONFIG = "streams.log.compaction";
+    private static final String STREAMS_LOG_COMPACTION_DOC = "The option is intended to enable or disable "
+            + "log compaction for streams. Default is true";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -588,6 +593,11 @@ public class StreamsConfig extends AbstractConfig {
                     24 * 60 * 60 * 1000,
                     Importance.LOW,
                     WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_DOC)
+            .define(STREAMS_LOG_COMPACTION_CONFIG,
+                    Type.BOOLEAN,
+                    true,
+                    Importance.LOW,
+                    STREAMS_LOG_COMPACTION_DOC)
 
             // @deprecated
 

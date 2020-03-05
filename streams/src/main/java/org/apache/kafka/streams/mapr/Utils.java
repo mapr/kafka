@@ -57,7 +57,9 @@ public class Utils {
                     aceList, currentUser, validateDirErrorMessage);
             createStream(config.getStreamsInternalStreamNotcompacted());
             createStream(config.getStreamsInternalStreamCompacted());
-            enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
+            if (config.getBoolean(StreamsConfig.STREAMS_LOG_COMPACTION_CONFIG)) {
+                enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
+            }
 
             if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
                 throw new InternalStreamNotExistException(config.getStreamsCliSideAssignmentInternalStream() + " doesn't exist");
