@@ -23,7 +23,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.log4j.AppenderSkeleton;
-import org.apache.log4j.helpers.LogLog;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.log4j.spi.LoggingEvent;
 
 import java.nio.charset.StandardCharsets;
@@ -50,6 +51,8 @@ import static org.apache.kafka.common.config.SaslConfigs.SASL_KERBEROS_SERVICE_N
  * A log4j appender that produces log messages to Kafka
  */
 public class KafkaLog4jAppender extends AppenderSkeleton {
+
+    private final static Logger logger = StatusLogger.getLogger();
 
     private String brokerList;
     private String topic;
@@ -235,8 +238,8 @@ public class KafkaLog4jAppender extends AppenderSkeleton {
         props.put(KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         props.put(VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         this.producer = getKafkaProducer(props);
-        LogLog.debug("Kafka producer connected to " + brokerList);
-        LogLog.debug("Logging for topic: " + topic);
+        logger.debug("Kafka producer connected to " + brokerList);
+        logger.debug("Logging for topic: " + topic);
     }
 
     protected Producer<byte[], byte[]> getKafkaProducer(Properties props) {
@@ -246,7 +249,7 @@ public class KafkaLog4jAppender extends AppenderSkeleton {
     @Override
     protected void append(LoggingEvent event) {
         String message = subAppend(event);
-        LogLog.debug("[" + new Date(event.getTimeStamp()) + "]" + message);
+        logger.debug("[" + new Date(event.getTimeStamp()) + "]" + message);
         Future<RecordMetadata> response = producer.send(
             new ProducerRecord<byte[], byte[]>(topic, message.getBytes(StandardCharsets.UTF_8)));
         if (syncSend) {
