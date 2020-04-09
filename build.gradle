@@ -635,6 +635,7 @@ project(':core') {
     testCompile libs.apachedsJdbmPartition
     testCompile libs.junit
     testCompile libs.scalatest
+    testCompile libs.log4j
     testCompile libs.slf4jlog4j
     testCompile libs.jfreechart
 
@@ -666,8 +667,8 @@ project(':core') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -997,8 +998,8 @@ project(':tools') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1075,8 +1076,8 @@ project(':streams') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1359,6 +1360,7 @@ project(':log4j-appender') {
 
   dependencies {
     compile project(':clients')
+    compile libs.log4j
     compile libs.slf4jlog4j
 
     testCompile project(':clients').sourceSets.test.output
@@ -1412,8 +1414,8 @@ project(':connect:api') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1470,8 +1472,8 @@ project(':connect:transforms') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1527,8 +1529,8 @@ project(':connect:json') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1630,8 +1632,8 @@ project(':connect:runtime') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1721,8 +1723,8 @@ project(':connect:file') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')
@@ -1761,8 +1763,8 @@ project(':connect:basic-auth-extension') {
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
-      include('slf4j-log4j12*')
-      include('log4j*jar')
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
     }
     from (configurations.runtime) {
       exclude('kafka-clients*')

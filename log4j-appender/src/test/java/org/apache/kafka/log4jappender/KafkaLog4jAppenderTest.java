@@ -21,7 +21,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
-import org.apache.log4j.helpers.LogLog;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.status.StatusLogger;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,7 +40,7 @@ public class KafkaLog4jAppenderTest {
 
     @Before
     public void setup() {
-        LogLog.setInternalDebugging(true);
+        StatusLogger.getLogger().setLevel(Level.TRACE);
     }
 
     @Test
