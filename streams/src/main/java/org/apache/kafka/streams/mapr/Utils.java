@@ -1,6 +1,6 @@
 package org.apache.kafka.streams.mapr;
 
-import com.mapr.fs.AceHelper;
+import com.mapr.baseutils.utils.AceHelper;
 import com.mapr.fs.MapRFileAce;
 import com.mapr.fs.MapRFileSystem;
 import com.mapr.fs.proto.Common;
