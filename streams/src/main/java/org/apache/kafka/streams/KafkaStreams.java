@@ -40,7 +40,7 @@ import org.apache.kafka.streams.internals.ApiUtils;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.mapr.Utils;
+import org.apache.kafka.streams.mapr.KafkaStreamsInternalStorageInitializer;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.StateStore;
@@ -660,7 +660,7 @@ public class KafkaStreams {
         reporters.add(new JmxReporter(JMX_PREFIX));
         metrics = new Metrics(metricConfig, reporters, time);
 
-        Utils.createAppDirAndInternalStreamsForKafkaStreams(config);
+        KafkaStreamsInternalStorageInitializer.createAppDirAndInternalStreams(config);
         internalTopologyBuilder.setApplicationIdAndInternalStream(applicationId,
                 config.getStreamsInternalStreamNotcompacted(),
                 config.getStreamsInternalStreamCompacted());

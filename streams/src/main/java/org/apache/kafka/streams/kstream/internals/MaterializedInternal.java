@@ -17,8 +17,8 @@
 package org.apache.kafka.streams.kstream.internals;
 
 import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.mapr.tools.KafkaMaprStreams;
 import org.apache.kafka.streams.kstream.Materialized;
-import org.apache.kafka.streams.mapr.Utils;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.StoreSupplier;
 
@@ -37,7 +37,8 @@ public class MaterializedInternal<K, V, S extends StateStore> extends Materializ
     public void generateStoreNameIfNeeded(final InternalNameProvider nameProvider,
                                           final String generatedStorePrefix) {
         if (storeName() == null) {
-            storeName = nameProvider.newStoreName(Utils.getShortTopicNameFromFullTopicName(generatedStorePrefix));
+            storeName = nameProvider.newStoreName(
+                    KafkaMaprStreams.getShortTopicNameFromFullTopicName(generatedStorePrefix));
         }
     }
 

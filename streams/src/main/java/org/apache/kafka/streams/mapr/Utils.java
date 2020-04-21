@@ -1,232 +1,88 @@
 package org.apache.kafka.streams.mapr;
 
-import com.mapr.baseutils.utils.AceHelper;
 import com.mapr.fs.MapRFileAce;
-import com.mapr.fs.MapRFileSystem;
-import com.mapr.fs.proto.Common;
-import com.mapr.streams.Admin;
-import com.mapr.streams.StreamDescriptor;
-import com.mapr.streams.Streams;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.PermissionNotMatchException;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.mapr.tools.KafkaMaprStreams;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
+import org.apache.kafka.mapr.tools.KafkaMaprfs;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.errors.mapr.InternalStreamNotExistException;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
+/**
+ * @deprecated - use mapr-eco-tools utils instead
+ */
+@SuppressWarnings("unused")
 public class Utils {
-
-    public static void createAppDirAndInternalStreamsIfNotExist(StreamsConfig config) {
-        createAppDirAndInternalStreams(config, false);
-    }
-
     public static void createAppDirAndInternalStreamsForKafkaStreams(StreamsConfig config) {
-        createAppDirAndInternalStreams(config, true);
+        KafkaStreamsInternalStorageInitializer.createAppDirAndInternalStreams(config);
     }
 
-    /**
-     * The method creates internal streams (without log compaction and with log compaction)
-     * and appropriate paths if they don't exist.
-     *
-     */
-    private static void createAppDirAndInternalStreams(StreamsConfig config,
-                                                       boolean isKafkaStreams) {
-        try {
-            FileSystem fs = FileSystem.get(new Configuration());
-            if (!maprFSpathExists(fs, StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER)) {
-                throw new KafkaException(StreamsConfig.STREAMS_INTERNAL_STREAM_COMMON_FOLDER + " doesn't exist");
-            }
-            String currentUser = UserGroupInformation.getCurrentUser().getUserName();
-            String validateDirErrorMessage = "User: "
-                    + currentUser
-                    + " has no permissions to run KStreams application with ID: "
-                    + config.getString(StreamsConfig.APPLICATION_ID_CONFIG);
-            // Creation of application forler with appropriate aces
-            ArrayList<MapRFileAce> aceList = new ArrayList<MapRFileAce>();
-            MapRFileAce ace = new MapRFileAce(MapRFileAce.AccessType.READDIR);
-            ace.setBooleanExpression("u:" + currentUser);
-            aceList.add(ace);
-            ace = new MapRFileAce(MapRFileAce.AccessType.ADDCHILD);
-            ace.setBooleanExpression("u:" + currentUser);
-            aceList.add(ace);
-            ace = new MapRFileAce(MapRFileAce.AccessType.LOOKUPDIR);
-            ace.setBooleanExpression("u:" + currentUser);
-            aceList.add(ace);
-            ace = new MapRFileAce(MapRFileAce.AccessType.DELETECHILD);
-            ace.setBooleanExpression("u:" + currentUser);
-            aceList.add(ace);
-
-            maprFSpathCreate(fs, config.getStreamsInternalStreamFolder(),
-                    aceList, currentUser, validateDirErrorMessage);
-            createStream(config.getStreamsInternalStreamNotcompacted());
-            if (isKafkaStreams) {
-                createKafkaStreamsInternalStream(config.getStreamsInternalStreamCompacted(), currentUser);
-            } else {
-                createStream(config.getStreamsInternalStreamCompacted());
-            }
-            enableLogCompactionForStreamIfNotEnabled(config.getStreamsInternalStreamCompacted());
-
-            if(!streamExists(config.getStreamsCliSideAssignmentInternalStream())){
-                throw new InternalStreamNotExistException(config.getStreamsCliSideAssignmentInternalStream() + " doesn't exist");
-            }
-        }catch (IOException e) {
-            throw new KafkaException(e);
+    @Deprecated
+    public static void enableLogCompactionForStreamIfNotEnabled(String streamName) {
+        try (KafkaMaprStreams maprStreams = KafkaMaprTools.tools().streams()) {
+            maprStreams.ensureStreamLogCompactionIsEnabled(streamName);
         }
     }
 
-    /** The method enables logCompaction for the stream and disables TTL.
-     *  Unlike Apache Kafka, MapR Streams allows both
-     *  TTL and LogCompaction being enabled **/
-    public static void enableLogCompactionForStreamIfNotEnabled(String streamName){
-        try {
-            Configuration conf = new Configuration();
-            Admin admin = Streams.newAdmin(conf);
-            StreamDescriptor desc = admin.getStreamDescriptor(streamName);
-            if(!desc.getCompact()) {
-                desc.setCompact(true);
-                desc.setTimeToLiveSec(0);
-                admin.editStream(streamName, desc);
-            }
-        } catch (IOException e){
-            throw new KafkaException(e);
+    @Deprecated
+    public static void validateDirectoryPerms(FileSystem fs, String path, String user, String errorMsg) {
+        final KafkaMaprfs maprfs = KafkaMaprTools.tools().maprfs();
+        if (!maprfs.isAccessibleAsDirectory(path)) {
+            throw new KafkaException(new PermissionNotMatchException(errorMsg));
         }
     }
 
-    private static boolean validatePermsHelper(MapRFileAce ace,
-                                               String userBoolExpr){
-        try {
-            String[] boolExprs = ace.getBooleanExpression().split(",");
-            for (String boolExpr : boolExprs) {
-                String postfix = AceHelper.toPostfix(boolExpr);
-                if (postfix.equals(userBoolExpr) || postfix.equals("p")) {
-                    return true;
-                }
-            }
-        } catch(IOException e){
-            throw new KafkaException(e);
-        }
-        return false;
-    }
-
-    public static void validateDirectoryPerms(FileSystem fs, String path, String user, String errorMsg){
-        try {
-            List<MapRFileAce> aces = ((MapRFileSystem) fs).getAces(new Path(path));
-            boolean readDirAce = false;
-            boolean addChild = false;
-            boolean lookupDir = false;
-            boolean deleteChild = false;
-            String userBoolExpr = AceHelper.toPostfix(String.format("u:%s", user));
-            for(MapRFileAce ace : aces) {
-                boolean userHasPerms = validatePermsHelper(ace, userBoolExpr);
-                if(ace.getAccessType().equals(MapRFileAce.AccessType.READDIR)){
-                    readDirAce = userHasPerms;
-                }
-                if(ace.getAccessType().equals(MapRFileAce.AccessType.ADDCHILD)){
-                    addChild = userHasPerms;
-                }
-                if(ace.getAccessType().equals(MapRFileAce.AccessType.LOOKUPDIR)){
-                    lookupDir = userHasPerms;
-                }
-                if(ace.getAccessType().equals(MapRFileAce.AccessType.DELETECHILD)){
-                    deleteChild = userHasPerms;
-                }
-            }
-            boolean userHasAllNeededPerms = readDirAce && lookupDir && addChild && deleteChild;
-            if(!userHasAllNeededPerms) {
-                throw new PermissionNotMatchException(errorMsg);
-            }
-        } catch (IOException e){
-            throw new KafkaException(e);
+    @Deprecated
+    public static boolean streamExists(String streamName) {
+        try (KafkaMaprStreams maprStreams = KafkaMaprTools.tools().streams()) {
+            return maprStreams.streamExists(streamName);
         }
     }
 
-    public static boolean streamExists(String streamName){
-        try {
-            Configuration conf = new Configuration();
-            Admin admin = Streams.newAdmin(conf);
-            return admin.streamExists(streamName);
-        } catch (IOException e){
-            throw new KafkaException(e);
-        }
+    @Deprecated
+    public static String getShortTopicNameFromFullTopicName(final String fullTopicName) {
+        return KafkaMaprStreams.getShortTopicNameFromFullTopicName(fullTopicName);
     }
 
+    @Deprecated
     public static void createStream(String streamName) {
-        createStreamWithPerms(streamName, null);
-    }
-
-    public static void createKafkaStreamsInternalStream(String streamName, String currentUser) {
-        try {
-            String clusterAdminUser = UserGroupInformation.getLoginUser().getUserName();
-            if (!currentUser.equals(clusterAdminUser)) {
-                String perms = "u:" + clusterAdminUser + " | u:" + currentUser;
-                createStreamWithPerms(streamName, perms);
-            } else {
-                createStreamWithPerms(streamName, null);
-            }
-        } catch (IOException e) {
-            throw new KafkaException(e);
+        try (KafkaMaprStreams maprStreams = KafkaMaprTools.tools().streams()) {
+            maprStreams.createStreamForClusterAdmin(streamName);
         }
     }
 
+    @Deprecated
     public static void createStreamWithPublicPerms(String streamName) {
-        createStreamWithPerms(streamName, "p");
-    }
-
-    private static void createStreamWithPerms(String streamName,
-                                              String perms) {
-        try {
-            Configuration conf = new Configuration();
-            Admin admin = Streams.newAdmin(conf);
-            StreamDescriptor desc = Streams.newStreamDescriptor();
-            if (perms != null) {
-                desc.setConsumePerms(perms);
-                desc.setProducePerms(perms);
-            }
-            admin.createStream(streamName, desc);
-        } catch (Exception e){
-            if(!streamExists(streamName)) {
-                throw new KafkaException(e);
-            }
+        try (KafkaMaprStreams maprStreams = KafkaMaprTools.tools().streams()) {
+            maprStreams.createStreamForAllUsers(streamName);
         }
     }
 
-    public static boolean maprFSpathExists(FileSystem fs, String path) throws IOException {
-        return fs.exists(new Path(path));
+    @SuppressWarnings("RedundantThrows")
+    @Deprecated
+    public static boolean maprFSpathExists(FileSystem fs,
+                                           String path) throws IOException {
+        return KafkaMaprTools.tools().maprfs().exists(path);
     }
 
+    @Deprecated
     public static void maprFSpathCreate(FileSystem fs,
                                         String pathStr,
                                         ArrayList<MapRFileAce> aces,
                                         String currentUser,
-                                        String validateDirErrorMsg) throws IOException{
+                                        String errorMsg) throws IOException {
+        KafkaMaprfs maprfs = KafkaMaprTools.tools().maprfs();
+        maprfs.mkdirs(pathStr);
         try {
-            Path path = new Path(pathStr);
-            fs.mkdirs(path);
-
-            // Set other aces
-            ((MapRFileSystem) fs).setAces(path, aces);
-
-            // Setting inherits to false
-            int noinherit = 1;
-            ((MapRFileSystem) fs).setAces(path, new ArrayList<Common.FileACE>(), false,
-                    noinherit, 0, false, null);
-        }catch(IOException e){
-            if(maprFSpathExists(fs, pathStr)){
-                validateDirectoryPerms(fs, pathStr, currentUser, validateDirErrorMsg);
-                return;
+            maprfs.setAces(pathStr, aces);
+        } catch (KafkaException e) {
+            if (!maprfs.isAccessibleAsDirectory(pathStr)) {
+                throw new PermissionNotMatchException(errorMsg);
             }
-            throw new KafkaException(e);
         }
-    }
-
-    public static String getShortTopicNameFromFullTopicName(final String fullTopicName){
-        String [] arr = fullTopicName.split(":");
-        return (arr.length > 1) ? arr[1] : arr[0];
     }
 }

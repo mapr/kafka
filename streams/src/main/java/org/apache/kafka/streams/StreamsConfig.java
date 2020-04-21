@@ -489,6 +489,11 @@ public class StreamsConfig extends AbstractConfig {
             + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
             + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
 
+    /** {@code}streams.appdir.permissions} */
+    public static final String APPLICATION_DIR_ACES_CONFIG = "streams.appdir.aces";
+    private static final String APPLICATION_DIR_ACES_DOC = "Map with ACEs (Access Control Expressions) " +
+            "for internal application directory";
+
     static {
         CONFIG = new ConfigDef()
 
@@ -578,6 +583,11 @@ public class StreamsConfig extends AbstractConfig {
                     "",
                     Importance.MEDIUM,
                     STREAMS_DEFAULT_STREAM_DOC)
+            .define(APPLICATION_DIR_ACES_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    APPLICATION_DIR_ACES_DOC)
             .define(TOPOLOGY_OPTIMIZATION,
                     Type.STRING,
                     NO_OPTIMIZATION,
