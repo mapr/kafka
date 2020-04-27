@@ -1810,6 +1810,7 @@ task maprPublicPublish() {
     ":log4j-appender:uploadArchives",
     ":streams:publishKafkaStreamsPublicationToTargetrepoRepository",
     ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
+    ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
     "uploadCoreArchives_2_11",
     "uploadCoreArchives_2_12"
 }
@@ -1864,7 +1865,7 @@ project(':mapr-eco-tools') {
 
   publishing {
     publications {
-      kafkaTools(MavenPublication) {
+      maprEcoTools(MavenPublication) {
         groupId "org.apache.kafka"
         artifactId "mapr-eco-tools"
 
