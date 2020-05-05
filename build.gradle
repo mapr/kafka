@@ -983,6 +983,7 @@ project(':tools') {
     compile libs.jettyServer
     compile libs.jettyServlet
     compile libs.jettyServlets
+    compile libs.zookeeper
 
     testCompile project(':clients')
     testCompile libs.junit
