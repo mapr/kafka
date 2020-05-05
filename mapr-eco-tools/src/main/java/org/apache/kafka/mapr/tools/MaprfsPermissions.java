@@ -71,10 +71,10 @@ public class MaprfsPermissions {
 
     private static String substituteExpression(String expression) {
         if (expression.contains(STARTUP_USER)) {
-            expression = expression.replaceAll(STARTUP_USER, KafkaMaprTools.tools().getCurrentUserName());
+            expression = expression.replaceAll(STARTUP_USER, "u:" + KafkaMaprTools.tools().getCurrentUserName());
         }
         if (expression.contains(CLUSTER_ADMIN)) {
-            expression = expression.replaceAll(CLUSTER_ADMIN, KafkaMaprTools.tools().getClusterAdminUserName());
+            expression = expression.replaceAll(CLUSTER_ADMIN, "u:" + KafkaMaprTools.tools().getClusterAdminUserName());
         }
         return expression;
     }
