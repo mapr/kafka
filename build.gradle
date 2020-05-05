@@ -153,8 +153,8 @@ subprojects {
     apply plugin: 'findbugs'
   apply plugin: 'maven-publish'
 
-  sourceCompatibility = 1.7
-  targetCompatibility = 1.7
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
 
   compileJava {
     options.encoding = 'UTF-8'
@@ -166,7 +166,7 @@ subprojects {
     // set --source and --target via `sourceCompatibility` and `targetCompatibility`. If/when Gradle supports `--release`
     // natively (https://github.com/gradle/gradle/issues/2510), we should switch to that.
     if (JavaVersion.current().isJava9Compatible())
-      options.compilerArgs << "--release" << "7"
+      options.compilerArgs << "--release" << "8"
   }
 
   uploadArchives {
@@ -1555,6 +1555,7 @@ project(':connect:runtime') {
     compile project(":connect:transforms")
     compile project(':clients')
     compile project(':tools')
+    compile project(':streams')
     compile libs.slf4jApi
     compile (libs.restutils) {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'

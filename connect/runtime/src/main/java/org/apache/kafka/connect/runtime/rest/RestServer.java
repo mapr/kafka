@@ -25,6 +25,7 @@ import org.apache.kafka.connect.runtime.rest.errors.ConnectExceptionMapper;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectorsResource;
 import org.apache.kafka.connect.runtime.rest.resources.RootResource;
+import org.apache.kafka.connect.runtime.rest.resources.HealthCheckResource;
 import org.eclipse.jetty.jaas.JAASLoginService;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
 import org.eclipse.jetty.server.Connector;
@@ -168,6 +169,7 @@ public class RestServer {
         resourceConfig.register(new RootResource(herder));
         resourceConfig.register(new ConnectorsResource(herder, config));
         resourceConfig.register(new ConnectorPluginsResource(herder));
+        resourceConfig.register(new HealthCheckResource(config));
 
         resourceConfig.register(ConnectExceptionMapper.class);
 
