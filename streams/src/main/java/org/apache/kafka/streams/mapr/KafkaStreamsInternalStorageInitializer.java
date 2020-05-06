@@ -34,6 +34,7 @@ public class KafkaStreamsInternalStorageInitializer {
                     .put(MapRFileAce.AccessType.READDIR, MaprfsPermissions.PUBLIC)
                     .put(MapRFileAce.AccessType.LOOKUPDIR, MaprfsPermissions.PUBLIC)
                     .put(MapRFileAce.AccessType.ADDCHILD, MaprfsPermissions.STARTUP_USER)
+                    .put(MapRFileAce.AccessType.DELETECHILD, MaprfsPermissions.STARTUP_USER)
                     .put(MapRFileAce.AccessType.WRITEFILE, MaprfsPermissions.STARTUP_USER)
                     .loadFromConfig(config.getString(StreamsConfig.APPLICATION_DIR_ACES_CONFIG)));
         }
