@@ -49,8 +49,12 @@ public class KafkaStreamsInternalStorageInitializer {
     }
 
     private static void createInternalStreams(KafkaMaprStreams maprStreams, StreamsConfig config) {
-        maprStreams.createStreamForClusterAdmin(config.getStreamsInternalStreamNotcompacted());
-        maprStreams.createStreamForCurrentUser(config.getStreamsInternalStreamCompacted());
+        if (!maprStreams.streamExists(config.getStreamsInternalStreamNotcompacted())) {
+            maprStreams.createStreamForClusterAdmin(config.getStreamsInternalStreamNotcompacted());
+        }
+        if (!maprStreams.streamExists(config.getStreamsInternalStreamCompacted())) {
+            maprStreams.createStreamForCurrentUser(config.getStreamsInternalStreamCompacted());
+        }
         maprStreams.ensureStreamLogCompactionIsEnabled(config.getStreamsInternalStreamCompacted());
 
         String cliSideAssignmentInternalStream = config.getStreamsCliSideAssignmentInternalStream();
