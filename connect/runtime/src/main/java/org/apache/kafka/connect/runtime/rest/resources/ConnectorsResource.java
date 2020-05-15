@@ -110,6 +110,8 @@ public class ConnectorsResource {
         configs.put(TaskConfig.TASK_USER_CONFIG,
                 remoteUser != null ? remoteUser : UserGroupInformation.getCurrentUser().getShortUserName());
 
+        configs.putIfAbsent(ConnectorConfig.AUTHENTICATION_ENABLE_CONFIG, Boolean.toString(UserGroupInformation.isSecurityEnabled()));
+
         checkAndPutConnectorConfigName(name, configs);
 
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
