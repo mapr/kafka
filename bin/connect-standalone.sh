@@ -31,6 +31,7 @@ if [ "x$KAFKA_HEAP_OPTS" = "x" ]; then
 fi
 
 EXTRA_ARGS=${EXTRA_ARGS-'-name connectStandalone'}
+HIVE_HOME=$(ls -d /opt/mapr/hive/hive-* 2> /dev/null)
 
 COMMAND=$1
 case $COMMAND in
@@ -49,5 +50,6 @@ do
         CONNECTORS_CLASSPATH="$CONNECTORS_CLASSPATH:$jar"
 done
 export CONNECTORS_CLASSPATH
+export HIVE_HOME
 
 exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectStandalone "$@"
