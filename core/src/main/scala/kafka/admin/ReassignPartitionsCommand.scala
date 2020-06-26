@@ -477,8 +477,7 @@ object ReassignPartitionsCommand extends Logging {
 
   private def topicDescriptionFutureToState(partition: Int,
                                             future: KafkaFuture[TopicDescription],
-                                            targetReplicas: Seq[Int])
-                                            : PartitionReassignmentState = {
+                                            targetReplicas: Seq[Int]): PartitionReassignmentState = {
     try {
       val topicDescription = future.get()
       if (topicDescription.partitions().size() < partition) {
@@ -492,7 +491,8 @@ object ReassignPartitionsCommand extends Logging {
       case t: ExecutionException =>
         t.getCause match {
           case _: UnknownTopicOrPartitionException =>
-            new PartitionReassignmentState(Seq(), targetReplicas, true)
+            PartitionReassignmentState(Seq(), targetReplicas, true)
+          case e => throw e
         }
     }
   }
@@ -1111,7 +1111,7 @@ object ReassignPartitionsCommand extends Logging {
     // Check for the presence of the legacy partition reassignment ZNode.  This actually
     // won't detect all rebalances... only ones initiated by the legacy method.
     // This is a limitation of the legacy ZK API.
-    val reassignPartitionsInProgress = zkClient.reassignPartitionsInProgress()
+    val reassignPartitionsInProgress = zkClient.reassignPartitionsInProgress
     if (reassignPartitionsInProgress) {
       // Note: older versions of this tool would modify the broker quotas here (but not
       // topic quotas, for some reason).  This behavior wasn't documented in the --execute

@@ -65,7 +65,7 @@ done
 base_dir=$(dirname $0)/..
 
 if [ -z "$SCALA_VERSION" ]; then
-  SCALA_VERSION=2.13.2
+  SCALA_VERSION=2.13.12
   if [[ -f "$base_dir/gradle.properties" ]]; then
     SCALA_VERSION=`grep "^scalaVersion=" "$base_dir/gradle.properties" | cut -d= -f 2`
   fi

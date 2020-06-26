@@ -411,6 +411,7 @@ abstract class AbstractIndex(@volatile private var _file: File, val baseOffset: 
     searchEntity match {
       case IndexSearchType.KEY => java.lang.Long.compare(indexEntry.indexKey, target)
       case IndexSearchType.VALUE => java.lang.Long.compare(indexEntry.indexValue, target)
+      case entityType => throw new IllegalArgumentException(s"Invalid entity type: $entityType")
     }
   }
 

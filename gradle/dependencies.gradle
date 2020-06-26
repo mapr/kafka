@@ -27,8 +27,8 @@ ext {
 }
 
 // Add Scala version
-def defaultScala212Version = '2.12.11'
-def defaultScala213Version = '2.13.2'
+def defaultScala212Version = '2.12.18'
+def defaultScala213Version = '2.13.12'
 if (hasProperty('scalaVersion')) {
   if (scalaVersion == '2.12') {
     versions["scala"] = defaultScala212Version
@@ -80,7 +80,7 @@ versions += [
   lombok: "1.18.20",
   hamcrest: "2.2",
   reload4j: "1.2.20",
-  scalaLogging: "3.9.2",
+  scalaLogging: "3.9.4",
   jaxb: "2.3.0",
   jaxrs: "2.1.1",
   jfreechart: "1.0.0",
@@ -109,9 +109,9 @@ versions += [
   powermock: "2.0.7",
   reflections: "0.9.12",
   rocksDB: "5.18.4",
-  scalaCollectionCompat: "2.1.6",
-  scalafmt: "1.5.1",
-  scalaJava8Compat : "0.9.1",
+  scalaCollectionCompat: "2.6.0",
+  scalafmt: "2.7.5",
+  scalaJava8Compat : "1.0.2",
   scalatest: "3.0.8",
   scoverage: "1.4.1",
   scoveragePlugin: "4.0.1",

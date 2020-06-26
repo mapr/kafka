@@ -67,7 +67,7 @@ object AclAuthorizer {
     def find(p: AclEntry => Boolean): Option[AclEntry] = {
       // Lazily iterate through the inner `Seq` elements and stop as soon as we find a match
       val it = seqs.iterator.flatMap(_.find(p))
-      if (it.hasNext) Some(it.next)
+      if (it.hasNext) Some(it.next())
       else None
     }
 
@@ -286,7 +286,6 @@ class AclAuthorizer extends Authorizer with Logging {
     }.map(CompletableFuture.completedFuture[AclDeleteResult]).asJava
   }
 
-  @nowarn("cat=optimizer")
   override def acls(filter: AclBindingFilter): lang.Iterable[AclBinding] = {
       val aclBindings = new util.ArrayList[AclBinding]()
       aclCache.foreach { case (resource, versionedAcls) =>
@@ -366,7 +365,7 @@ class AclAuthorizer extends Authorizer with Logging {
     } else false
   }
 
-  @nowarn("cat=optimizer")
+  @nowarn("cat=deprecation")
   private def matchingAcls(resourceType: ResourceType, resourceName: String): AclSeqs = {
     // this code is performance sensitive, make sure to run AclAuthorizerBenchmark after any changes
 
@@ -522,7 +521,7 @@ class AclAuthorizer extends Authorizer with Logging {
       }
     }
 
-    if(!writeComplete)
+    if (!writeComplete)
       throw new IllegalStateException(s"Failed to update ACLs for $resource after trying a maximum of $maxUpdateRetries times")
 
     if (newVersionedAcls.acls != currentVersionedAcls.acls) {
@@ -547,9 +546,9 @@ class AclAuthorizer extends Authorizer with Logging {
 
   private def updateCache(resource: ResourcePattern, versionedAcls: VersionedAcls): Unit = {
     if (versionedAcls.acls.nonEmpty) {
-      aclCache = aclCache + (resource -> versionedAcls)
+      aclCache = aclCache.updated(resource, versionedAcls)
     } else {
-      aclCache = aclCache - resource
+      aclCache -= resource
     }
   }
 

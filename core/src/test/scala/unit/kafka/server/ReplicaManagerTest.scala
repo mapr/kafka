@@ -1503,11 +1503,12 @@ class ReplicaManagerTest {
                                                      time: Time,
                                                      threadNamePrefix: Option[String],
                                                      quotaManager: ReplicationQuotaManager): ReplicaFetcherManager = {
-        new ReplicaFetcherManager(config, this, metrics, time, threadNamePrefix, quotaManager) {
+        val rm = this
+        new ReplicaFetcherManager(config, rm, metrics, time, threadNamePrefix, quotaManager) {
 
           override def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): ReplicaFetcherThread = {
             new ReplicaFetcherThread(s"ReplicaFetcherThread-$fetcherId", fetcherId,
-              sourceBroker, config, failedPartitions, replicaManager, metrics, time, quota.follower, Some(blockingSend)) {
+              sourceBroker, config, failedPartitions, rm, metrics, time, quota.follower, Some(blockingSend)) {
 
               override def doWork() = {
                 // In case the thread starts before the partition is added by AbstractFetcherManager,

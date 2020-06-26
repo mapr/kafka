@@ -53,6 +53,7 @@ class ClientQuotaManagerTest {
     response match {
       case _: StartThrottlingResponse =>
       case _: EndThrottlingResponse => numCallbacks += 1
+      case entityType => throw new IllegalArgumentException(s"Invalid entity type: $entityType")
     }
   }
 

@@ -651,7 +651,7 @@ abstract class AbstractFetcherThread(name: String,
     } finally partitionMapLock.unlock()
   }
 
-  def partitionCount(): Int = {
+  def partitionCount: Int = {
     partitionMapLock.lockInterruptibly()
     try partitionStates.size
     finally partitionMapLock.unlock()
@@ -672,7 +672,7 @@ abstract class AbstractFetcherThread(name: String,
   }
 
   protected def toMemoryRecords(records: Records): MemoryRecords = {
-    records match {
+    (records: @unchecked) match {
       case r: MemoryRecords => r
       case r: FileRecords =>
         val buffer = ByteBuffer.allocate(r.sizeInBytes)
