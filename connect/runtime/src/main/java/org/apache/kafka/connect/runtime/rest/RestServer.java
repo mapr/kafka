@@ -28,8 +28,10 @@ import org.apache.kafka.connect.runtime.rest.resources.RootResource;
 import org.apache.kafka.connect.runtime.rest.resources.HealthCheckResource;
 import org.eclipse.jetty.jaas.JAASLoginService;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
+import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Slf4jRequestLog;
@@ -150,6 +152,12 @@ public class RestServer {
         } else {
             connector = new ServerConnector(jettyServer);
             connector.setName(String.format("%s_%s%d", PROTOCOL_HTTP, hostname, port));
+        }
+
+        for (ConnectionFactory cf : connector.getConnectionFactories()) {
+            if (cf instanceof HttpConnectionFactory) {
+                ((HttpConnectionFactory) cf).getHttpConfiguration().setSendServerVersion(false);
+            }
         }
 
         if (!hostname.isEmpty())
