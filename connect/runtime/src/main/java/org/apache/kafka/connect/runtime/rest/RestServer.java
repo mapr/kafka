@@ -37,8 +37,10 @@ import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Slf4jRequestLog;
@@ -158,6 +160,12 @@ public class RestServer {
         } else {
             connector = new ServerConnector(jettyServer);
             connector.setName(String.format("%s_%s%d", PROTOCOL_HTTP, hostname, port));
+        }
+
+        for (ConnectionFactory cf : connector.getConnectionFactories()) {
+            if (cf instanceof HttpConnectionFactory) {
+                ((HttpConnectionFactory) cf).getHttpConfiguration().setSendServerVersion(false);
+            }
         }
 
         if (!hostname.isEmpty())
