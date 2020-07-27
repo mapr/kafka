@@ -53,7 +53,15 @@ CLASSPATH=$MAPR_CONF
 # Add MapR jars
 CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
 # Add logger jars
-CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
+LOGGER_JARS=''
+IFS=':' read -r -a strarr <<< $(get_logger_jars) # function in mapr-config.sh
+for val in ${strarr[@]}
+do
+  if [[ ! $val =~ .*log4j2.* ]]; then
+    LOGGER_JARS=$LOGGER_JARS:$val
+  fi
+done
+CLASSPATH=$CLASSPATH:$LOGGER_JARS
 # Add 3rd party jars
 CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
 
