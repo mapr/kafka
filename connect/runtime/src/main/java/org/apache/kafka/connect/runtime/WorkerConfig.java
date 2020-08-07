@@ -239,6 +239,12 @@ public class WorkerConfig extends AbstractConfig {
             "The option is used to specify XML file that contains security and custom headers. "
                     + "The headers will be added to a response by Jetty server.";
 
+    public static final String HADOOP_AUTHENTICATION_TYPES_CONFIG = "hadoop.http.authentication.types";
+    public static final List<String> HADOOP_AUTHENTICATION_TYPES_DEFAULT =
+            Collections.unmodifiableList(Arrays.asList("maprauth", "basic"));
+    public static final String HADOOP_AUTHENTICATION_TYPES_DOC =
+            "A list of hadoop authentication types for MultiMechsAuthenticationHandler";
+
   /**
      * Get a basic ConfigDef for a WorkerConfig. This includes all the common settings. Subclasses can use this to
      * bootstrap their own ConfigDef.
@@ -328,6 +334,11 @@ public class WorkerConfig extends AbstractConfig {
                         ENABLE_IMPERSONATION_DEFAULT,
                         Importance.MEDIUM,
                         ENABLE_IMPERSONATION_DOC)
+                .define(HADOOP_AUTHENTICATION_TYPES_CONFIG,
+                        Type.LIST,
+                        HADOOP_AUTHENTICATION_TYPES_DEFAULT,
+                        Importance.LOW,
+                        HADOOP_AUTHENTICATION_TYPES_DOC)
                 .define(CONFIG_PROVIDERS_CONFIG, Type.LIST,
                         Collections.emptyList(),
                         Importance.LOW, CONFIG_PROVIDERS_DOC)

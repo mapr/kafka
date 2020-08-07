@@ -68,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -205,6 +206,12 @@ public class RestServer {
                     "org.apache.hadoop.security.authentication.server.MultiMechsAuthenticationHandler");
             Long cookiesExpirationTime = config.getLong(WorkerConfig.AUTHENTICATION_COOKIE_EXPIRATION_CONFIG);
             holder.setInitParameter(AuthenticationFilter.AUTH_TOKEN_VALIDITY, cookiesExpirationTime.toString());
+            List<String> authenticationTypes = config.getList(WorkerConfig.HADOOP_AUTHENTICATION_TYPES_CONFIG);
+            ListIterator<String> authenticationTypesIterator = authenticationTypes.listIterator();
+            while (authenticationTypesIterator.hasNext()) {
+                holder.setInitParameter("type" + authenticationTypesIterator.nextIndex(),
+                    authenticationTypesIterator.next());
+            }
             context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
             log.debug("Basic and MapR SASL authentications enabled");
         }
