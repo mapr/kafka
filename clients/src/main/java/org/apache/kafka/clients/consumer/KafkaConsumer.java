@@ -1362,6 +1362,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       if (isStreams) {
         acquireAndEnsureOpen();
         try {
+          if (this.subscriptions.hasPatternSubscription() || !this.subscriptions.subscription().isEmpty()) {
+            log.error("Consumer was not unsubscribed before assign");
+            throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                            "and pattern are mutually exclusive");
+          }
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
           consumerDriver.assign(partitions);
           this.subscriptions.assignFromUser(new HashSet<>(partitions));
@@ -1375,6 +1380,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 throw new IllegalArgumentException("Topic partition collection to assign to cannot be null");
             } else if (partitions.isEmpty()) {
                 this.unsubscribe();
+            } else if (this.subscriptions.hasPatternSubscription() || !this.subscriptions.subscription().isEmpty()) {
+                log.error("Consumer was not unsubscribed before assign");
+                throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                                "and pattern are mutually exclusive");
             } else {
                 Set<String> topics = new HashSet<>();
                 for (TopicPartition tp : partitions) {
