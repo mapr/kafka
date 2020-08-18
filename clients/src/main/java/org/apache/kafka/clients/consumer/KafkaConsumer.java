@@ -1140,6 +1140,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       if (isStreams) {
         acquireAndEnsureOpen();
         try {
+          if (!this.subscriptions.assignedPartitions().isEmpty()) {
+            log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
+            throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                            "and pattern are mutually exclusive");
+          }
           topics = getNewTopicCollectionWithDefaultStream(topics);
           consumerDriver.subscribe(topics, listener);
           this.subscriptions.subscribe(new HashSet<>(topics), listener);
@@ -1151,6 +1156,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             if (topics == null) {
                 throw new IllegalArgumentException("Topic collection to subscribe to cannot be null");
+            } else if (!this.subscriptions.assignedPartitions().isEmpty()) {
+              log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
+              throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                              "and pattern are mutually exclusive");  
             } else if (topics.isEmpty()) {
                 // treat subscribing to empty topic list as the same as unsubscribing
                 this.unsubscribe();
@@ -1249,6 +1258,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       if (isStreams) {
         acquireAndEnsureOpen();
         try {
+          if (!this.subscriptions.assignedPartitions().isEmpty()) {
+            log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
+            throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                            "and pattern are mutually exclusive");
+          }
           pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
           consumerDriver.subscribe(pattern, listener);
           this.subscriptions.subscribe(pattern, listener);
@@ -1260,6 +1274,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             throw new IllegalArgumentException("Topic pattern to subscribe to cannot be null");
         acquireAndEnsureOpen();
         try {
+            if (!this.subscriptions.assignedPartitions().isEmpty()) {
+              log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
+              throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                                              "and pattern are mutually exclusive");
+            }
             log.debug("Subscribed to pattern: {}", pattern);
             this.subscriptions.subscribe(pattern, listener);
             this.metadata.needMetadataForAllTopics(true);
