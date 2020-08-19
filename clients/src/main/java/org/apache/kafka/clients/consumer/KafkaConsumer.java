@@ -1142,11 +1142,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
           topics = getNewTopicCollectionWithDefaultStream(topics);
           consumerDriver.subscribe(topics, listener);
-          if (topics.isEmpty()) {
-            this.subscriptions.unsubscribe();
-          } else {
-            this.subscriptions.subscribe(new HashSet<>(topics), listener);
-          }
+          this.subscriptions.subscribe(new HashSet<>(topics), listener);
         } finally {
           release();
         }
@@ -1368,11 +1364,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
           consumerDriver.assign(partitions);
-          if (partitions.isEmpty()) {
-            this.subscriptions.unsubscribe();
-          } else {
-            this.subscriptions.assignFromUser(new HashSet<>(partitions));
-          }
+          this.subscriptions.assignFromUser(new HashSet<>(partitions));
         } finally {
           release();
         }
@@ -1969,8 +1961,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
-          Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
-          for (TopicPartition tp : parts) {
+          for (TopicPartition tp : partitions) {
             if (!this.subscriptions.isAssigned(tp)) {
               log.error("Partition {} is not assigned", tp);
               throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
@@ -2037,8 +2028,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
-          Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
-          for (TopicPartition tp : parts) {
+          for (TopicPartition tp : partitions) {
             if (!this.subscriptions.isAssigned(tp)) {
               log.error("Partition {} is not assigned", tp);
               throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
