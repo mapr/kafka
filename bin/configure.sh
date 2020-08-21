@@ -119,8 +119,11 @@ function create_properties_file_with_ssl_config() {
 
 
 function create_standard_properties_file() {
-        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_CONNECT_PROPERTIES} | sed '/^ssl.key/d')
-        echo "$TMP_CONFIG" > ${KAFKA_CONNECT_PROPERTIES}
+    sed -i '/^listeners/d' ${KAFKA_CONNECT_PROPERTIES}
+    sed -i '/^ssl.key/d' ${KAFKA_CONNECT_PROPERTIES}
+    sed -i '/^authentication.enable/d' ${KAFKA_CONNECT_PROPERTIES}
+    sed -i '/^impersonation.enable/d' ${KAFKA_CONNECT_PROPERTIES}
+    sed -i '/^headers.file/d' ${KAFKA_CONNECT_PROPERTIES}
 }
 
 function enable_ssl() {
@@ -238,7 +241,7 @@ else
     if ${custom}; then
         exit ${RETURN_SUCCESS}
     fi
-    if  grep -q ssl ${KAFKA_CONNECT_PROPERTIES}; then
+    if  grep -q "listeners=https" ${KAFKA_CONNECT_PROPERTIES}; then
        configure_insecure_mode
        stopService
        logInfo 'Kafka Connect successfully configured to run in unsecure mode.'
