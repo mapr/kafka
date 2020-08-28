@@ -188,126 +188,127 @@ if [ -z "$CLASSPATH" ] ; then
 fi
 
 # JMX settings
+if [[ ( -n $2 ) && ( $2 = "connectDistributed" || $2 = "connectStandalone" ) ]]; then
 
-MAPR_JMX_PORT=${MAPR_JMX_KAFKA_CONNECT_PORT:-12010}
+  MAPR_JMX_PORT=${MAPR_JMX_KAFKA_CONNECT_PORT:-12010}
 
-isSecure="false"
-if [ -f "${MAPR_HOME}/conf/mapr-clusters.conf" ]; then
-    isSecure=$(head -1 ${MAPR_HOME}/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
+  isSecure="false"
+  if [ -f "${MAPR_HOME}/conf/mapr-clusters.conf" ]; then
+      isSecure=$(head -1 ${MAPR_HOME}/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
+  fi
+
+  if [ -z "$MAPR_JMXLOCALBINDING" ]; then
+      MAPR_JMXLOCALBINDING="false"
+  fi
+
+  if [ -z "$MAPR_JMXAUTH" ]; then
+      MAPR_JMXAUTH="false"
+  fi
+
+  if [ -z "$MAPR_JMXSSL" ]; then
+      MAPR_JMXSSL="false"
+  fi
+
+  if [ -z "$MAPR_AUTH_LOGIN_CONFIG_FILE" ]; then
+      MAPR_AUTH_LOGIN_CONFIG_FILE="${MAPR_HOME:-/opt/mapr}/conf/mapr.login.conf"
+  fi
+
+  if [ -z "$MAPR_LOGIN_CONFIG" ]; then
+      MAPR_LOGIN_CONFIG="JMX_AGENT_LOGIN"
+  fi
+
+  if [ -z "$MAPR_JMXDISABLE" ] && [ -z "$MAPR_JMXLOCALHOST" ] && [ -z "$MAPR_JMXREMOTEHOST" ]; then
+      echo "No MapR JMX options given - defaulting to local binding"
+  fi
+
+  if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && \
+        ( -z "$MAPR_JMX_KAFKA_CONNECT_ENABLE" || "$MAPR_JMX_KAFKA_CONNECT_ENABLE" = "true" ) ]]; then
+
+      # default setting for localBinding
+      MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+
+      if [ "$MAPR_JMXLOCALHOST" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+          echo "WARNING: Both MAPR_JMXLOCALHOST and MAPR_JMXREMOTEHOST options are enabled - defaulting to MAPR_JMXLOCAHOST config"
+          MAPR_JMXREMOTEHOST=false
+      fi
+
+      if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+          JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
+          if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
+              MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
+              -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG \
+              -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
+              MAPR_JMXAUTH="true"
+          else
+              echo "jmxagent jar file missed"
+              exit 1
+          fi
+      fi
+
+      if [ "$MAPR_JMXAUTH" = "true" ]; then
+          if [ "$isSecure" = "true" ]; then
+              if [ -f "$MAPR_AUTH_LOGIN_CONFIG_FILE" ] && \
+                 [ -f "${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true \
+                    -Djava.security.auth.login.config=$MAPR_AUTH_LOGIN_CONFIG_FILE \
+                    -Dcom.sun.management.jmxremote.access.file=${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access"
+              else
+                  echo "JMX login config or access file missing - not starting since we are in secure mode"
+                  exit 1
+              fi
+
+              if [ "$MAPR_JMXREMOTEHOST" = "false" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.login.config=$MAPR_LOGIN_CONFIG"
+              fi
+          else
+              echo "JMX Authentication configured - not starting since we are not in secure mode"
+              exit 1
+          fi
+      else
+          MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false"
+      fi
+
+      if [ "$MAPR_JMXLOCALHOST" = "true" ] || [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+          if [ "$MAPR_JMXSSL" = "true" ] && [ "$MAPR_JMXLOCALHOST" = "true" ] ; then
+              echo "WARNING: ssl is not supported in localhost. Setting default to false"
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+          else
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+          fi
+
+          if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+              MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Djava.rmi.server.hostname=localhost \
+                  -Dcom.sun.management.jmxremote.host=localhost \
+                  -Dcom.sun.management.jmxremote.local.only=true"
+          fi
+
+          if [ -z "$MAPR_JMX_PORT" ]; then
+              echo "WARNING: No JMX port given for Kafka connect - disabling TCP base JMX service"
+              MAPR_JMX_OPTS=""
+          else
+              if [ "$MAPR_JMXREMOTEHOST" = "true" ] && [ "$isSecure" = "true" ]; then
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
+                  echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
+              else
+                  MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.port=$MAPR_JMX_PORT"
+                  if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+                      echo "Enabling TCP JMX for Kafka connect only on localhost port $MAPR_JMX_PORT"
+                  else
+                      echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
+                  fi
+              fi
+          fi
+      fi
+
+      if [ "$MAPR_JMXLOCALBINDING" = "true" ] && [ -z "$MAPR_JMX_OPTS" ]; then
+          echo "Enabling JMX local binding only"
+          MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+      fi
+  else
+      echo "JMX disabled by user request"
+      MAPR_JMX_OPTS=""
+  fi
 fi
-
-if [ -z "$MAPR_JMXLOCALBINDING" ]; then
-    MAPR_JMXLOCALBINDING="false"
-fi
-
-if [ -z "$MAPR_JMXAUTH" ]; then
-    MAPR_JMXAUTH="false"
-fi
-
-if [ -z "$MAPR_JMXSSL" ]; then
-    MAPR_JMXSSL="false"
-fi
-
-if [ -z "$MAPR_AUTH_LOGIN_CONFIG_FILE" ]; then
-    MAPR_AUTH_LOGIN_CONFIG_FILE="${MAPR_HOME:-/opt/mapr}/conf/mapr.login.conf"
-fi
-
-if [ -z "$MAPR_LOGIN_CONFIG" ]; then
-    MAPR_LOGIN_CONFIG="JMX_AGENT_LOGIN"
-fi
-
-if [ -z "$MAPR_JMXDISABLE" ] && [ -z "$MAPR_JMXLOCALHOST" ] && [ -z "$MAPR_JMXREMOTEHOST" ]; then
-    echo "No MapR JMX options given - defaulting to local binding"
-fi
-
-if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && \
-      ( -z "$MAPR_JMX_KAFKA_CONNECT_ENABLE" || "$MAPR_JMX_KAFKA_CONNECT_ENABLE" = "true" ) ]]; then
-
-    # default setting for localBinding
-    MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
-
-    if [ "$MAPR_JMXLOCALHOST" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
-        echo "WARNING: Both MAPR_JMXLOCALHOST and MAPR_JMXREMOTEHOST options are enabled - defaulting to MAPR_JMXLOCAHOST config"
-        MAPR_JMXREMOTEHOST=false
-    fi
-
-    if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
-        JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
-        if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
-            MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
-            -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG \
-            -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
-            MAPR_JMXAUTH="true"
-        else
-            echo "jmxagent jar file missed"
-            exit 1
-        fi
-    fi
-
-    if [ "$MAPR_JMXAUTH" = "true" ]; then
-        if [ "$isSecure" = "true" ]; then
-            if [ -f "$MAPR_AUTH_LOGIN_CONFIG_FILE" ] && \
-               [ -f "${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access" ]; then
-                MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true \
-                  -Djava.security.auth.login.config=$MAPR_AUTH_LOGIN_CONFIG_FILE \
-                  -Dcom.sun.management.jmxremote.access.file=${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access"
-            else
-                echo "JMX login config or access file missing - not starting since we are in secure mode"
-                exit 1
-            fi
-            
-            if [ "$MAPR_JMXREMOTEHOST" = "false" ]; then
-                MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.login.config=$MAPR_LOGIN_CONFIG"
-            fi
-        else
-            echo "JMX Authentication configured - not starting since we are not in secure mode"
-            exit 1
-        fi
-    else
-        MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false"
-    fi
-
-    if [ "$MAPR_JMXLOCALHOST" = "true" ] || [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
-        if [ "$MAPR_JMXSSL" = "true" ] && [ "$MAPR_JMXLOCALHOST" = "true" ] ; then
-            echo "WARNING: ssl is not supported in localhost. Setting default to false"
-            MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
-        else
-            MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
-        fi
-
-        if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
-            MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Djava.rmi.server.hostname=localhost \
-                -Dcom.sun.management.jmxremote.host=localhost \
-                -Dcom.sun.management.jmxremote.local.only=true"
-        fi
-
-        if [ -z "$MAPR_JMX_PORT" ]; then
-            echo "WARNING: No JMX port given for Kafka connect - disabling TCP base JMX service"
-            MAPR_JMX_OPTS=""
-        else
-            if [ "$MAPR_JMXREMOTEHOST" = "true" ] && [ "$isSecure" = "true" ]; then
-                MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
-                echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
-            else
-                MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.port=$MAPR_JMX_PORT"
-                if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
-                    echo "Enabling TCP JMX for Kafka connect only on localhost port $MAPR_JMX_PORT"
-                else
-                    echo "Enabling TCP JMX for Kafka connect on port $MAPR_JMX_PORT"
-                fi
-            fi
-        fi
-    fi
-
-    if [ "$MAPR_JMXLOCALBINDING" = "true" ] && [ -z "$MAPR_JMX_OPTS" ]; then
-        echo "Enabling JMX local binding only"
-        MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
-    fi
-else
-    echo "JMX disabled by user request"
-    MAPR_JMX_OPTS=""
-fi
-
 KAFKA_JMX_OPTS=$MAPR_JMX_OPTS
 
 
