@@ -187,6 +187,8 @@ if [ -z "$CLASSPATH" ] ; then
   exit 1
 fi
 
+JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
+
 # JMX settings
 if [[ ( -n $2 ) && ( $2 = "connectDistributed" || $2 = "connectStandalone" ) ]]; then
 
@@ -233,8 +235,7 @@ if [[ ( -n $2 ) && ( $2 = "connectDistributed" || $2 = "connectStandalone" ) ]];
       fi
 
       if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
-          JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
-          if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
+         if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
               MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
               -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG \
               -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
@@ -440,7 +441,7 @@ fi
 # Remove a possible colon prefix from the classpath (happens at lines like `CLASSPATH="$CLASSPATH:$file"` when CLASSPATH is blank)
 # Syntax used on the right side is native Bash string manipulation; for more details see
 # http://tldp.org/LDP/abs/html/string-manipulation.html, specifically the section titled "Substring Removal"
-CLASSPATH=${CLASSPATH#:}
+CLASSPATH=${CLASSPATH#:}:$JMX_JAR
 
 # If Cygwin is detected, classpath is converted to Windows format.
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
