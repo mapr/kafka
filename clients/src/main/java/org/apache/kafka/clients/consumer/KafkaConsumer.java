@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -759,8 +760,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
           OffsetResetStrategy offsetResetStrategy = OffsetResetStrategy.valueOf(config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).toUpperCase(Locale.ROOT));
           this.subscriptions = new SubscriptionState(offsetResetStrategy);
-        } else if (defaultStream == null || defaultStream == "") {
-          throw new IllegalStateException("There is no stream in topic and no default stream was set");
         } else {
           isStreams = false;
           consumerDriver = this;
@@ -1938,7 +1937,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
           partition = getNewTopicPartitionWithDefaultStream(partition);
-          if (!this.subscriptions.isAssigned(partition)) {
+          if (!isTopicPartitionAssignedOrSubscribed(partition)) {
             log.error("Partition {} is not assigned", partition);
             throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                           partition.topic(), partition.partition()));
@@ -1950,7 +1949,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       } else {
         acquireAndEnsureOpen();
         try {
-            if (!this.subscriptions.isAssigned(partition)) {
+            if (!isTopicPartitionAssignedOrSubscribed(partition)) {
               log.error("Partition {} is not assigned", partition);
               throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                             partition.topic(), partition.partition()));
@@ -1990,7 +1989,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
           for (TopicPartition tp : partitions) {
-            if (!this.subscriptions.isAssigned(tp)) {
+            if (!isTopicPartitionAssignedOrSubscribed(tp)) {
               log.error("Partition {} is not assigned", tp);
               throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                             tp.topic(), tp.partition()));
@@ -2005,7 +2004,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             for (TopicPartition tp : parts) {
-                if (!this.subscriptions.isAssigned(tp)) {
+                if (!isTopicPartitionAssignedOrSubscribed(tp)) {
                   log.error("Partition {} is not assigned", tp);
                   throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                                 tp.topic(), tp.partition()));
@@ -2057,7 +2056,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
           partitions = getNewPartitionCollectionWithDefaultStream(partitions);
           for (TopicPartition tp : partitions) {
-            if (!this.subscriptions.isAssigned(tp)) {
+            if (!isTopicPartitionAssignedOrSubscribed(tp)) {
               log.error("Partition {} is not assigned", tp);
               throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                             tp.topic(), tp.partition()));
@@ -2072,7 +2071,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             for (TopicPartition tp : parts) {
-                if (!this.subscriptions.isAssigned(tp)) {
+                if (!isTopicPartitionAssignedOrSubscribed(tp)) {
                   log.error("Partition {} is not assigned", tp);
                   throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
                                                                 tp.topic(), tp.partition()));
@@ -3024,6 +3023,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (assignors.isEmpty())
             throw new IllegalStateException("Must configure at least one partition assigner class name to " +
                 ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG + " configuration property");
+    }
+
+    private boolean isTopicPartitionAssignedOrSubscribed(TopicPartition topicPartition) {
+      String topic = topicPartition.topic();
+      return this.subscriptions.isAssigned(topicPartition)
+          || this.subscriptions.subscription().contains(topic)
+          || Optional.ofNullable(this.subscriptions.subscribedPattern())
+              .map(pattern -> pattern.matcher(topic).matches()).orElse(false);
     }
 
     // Visible for testing
