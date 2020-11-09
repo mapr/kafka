@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime.distributed;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.errors.WakeupException;
@@ -41,6 +42,7 @@ import org.apache.kafka.connect.runtime.HerderConnectorContext;
 import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.apache.kafka.connect.runtime.SourceConnectorConfig;
 import org.apache.kafka.connect.runtime.TargetState;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.runtime.rest.RestServer;
@@ -55,6 +57,7 @@ import org.apache.kafka.connect.util.SinkUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -896,6 +899,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         final Map<String, String> configProps = configState.connectorConfig(connectorName);
         final ConnectorContext ctx = new HerderConnectorContext(this, connectorName);
         final TargetState initialState = configState.targetState(connectorName);
+        setTaskUserIfNull(configProps);
         boolean started = worker.startConnector(connectorName, configProps, ctx, this, initialState);
 
         // Immediately request configuration since this could be a brand new connector. However, also only update those
@@ -905,6 +909,18 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
             reconfigureConnectorTasksWithRetry(connectorName);
 
         return started;
+    }
+
+    private void setTaskUserIfNull(Map<String, String> configProps) {
+        // If no task.user in config then authentication.method=NONE and task.user should be set to the current user
+        if (configProps.containsKey(TaskConfig.TASK_USER_CONFIG) && configProps.get(TaskConfig.TASK_USER_CONFIG) == null) {
+            try {
+                configProps.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+
+            } catch (IOException e) {
+                log.error("Can not get the current user: " +  e);
+            }
+        }
     }
 
     private Callable<Void> getConnectorStartingCallable(final String connectorName) {
