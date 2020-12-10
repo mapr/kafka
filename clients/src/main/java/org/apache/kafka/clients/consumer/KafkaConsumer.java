@@ -66,6 +66,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -749,6 +750,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                                                     ConsumerInterceptors.class});
           isStreams = true;
           consumerDriver = ac;
+
+          OffsetResetStrategy offsetResetStrategy = OffsetResetStrategy.valueOf(config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).toUpperCase(Locale.ROOT));
+          this.subscriptions = new SubscriptionState(offsetResetStrategy);
         } else {
           isStreams = false;
           consumerDriver = this;
@@ -1120,8 +1124,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        topics = getNewTopicCollectionWithDefaultStream(topics);
-        consumerDriver.subscribe(topics, listener);
+        acquireAndEnsureOpen();
+        try {
+          topics = getNewTopicCollectionWithDefaultStream(topics);
+          consumerDriver.subscribe(topics, listener);
+          this.subscriptions.subscribe(new HashSet<>(topics), listener);
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1223,8 +1233,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
-        consumerDriver.subscribe(pattern, listener);
+        acquireAndEnsureOpen();
+        try {
+          pattern = Pattern.compile(getNewTopicNameWithDefaultStream(pattern.toString()));
+          consumerDriver.subscribe(pattern, listener);
+          this.subscriptions.subscribe(pattern, listener);
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1276,7 +1292,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        consumerDriver.unsubscribe();
+        acquireAndEnsureOpen();
+        try {
+          consumerDriver.unsubscribe();
+          this.subscriptions.unsubscribe();
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1326,8 +1348,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        partitions = getNewPartitionCollectionWithDefaultStream(partitions);
-        consumerDriver.assign(partitions);
+        acquireAndEnsureOpen();
+        try {
+          partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+          consumerDriver.assign(partitions);
+          this.subscriptions.assignFromUser(new HashSet<>(partitions));
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1722,14 +1750,29 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-        partition = getNewTopicPartitionWithDefaultStream(partition);
-        consumerDriver.seek(partition, offset);
+        acquireAndEnsureOpen();
+        try {
+          partition = getNewTopicPartitionWithDefaultStream(partition);
+          if (!isTopicPartitionAssignedOrSubscribed(partition)) {
+            log.error("Partition {} is not assigned", partition);
+            throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                          partition.topic(), partition.partition()));
+          }
+          consumerDriver.seek(partition, offset);
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
             if (offset < 0)
                 throw new IllegalArgumentException("seek offset must not be a negative number");
 
+            if (!isTopicPartitionAssignedOrSubscribed(partition)) {
+              log.error("Partition {} is not assigned", partition);
+              throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                            partition.topic(), partition.partition()));
+            }
             log.debug("Seeking to offset {} for partition {}", offset, partition);
             this.subscriptions.seek(partition, offset);
         } finally {
@@ -1756,8 +1799,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
-        consumerDriver.seekToBeginning(partitions);
+        acquireAndEnsureOpen();
+        try {
+          partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+          for (TopicPartition tp : partitions) {
+            if (!isTopicPartitionAssignedOrSubscribed(tp)) {
+              log.error("Partition {} is not assigned", tp);
+              throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                            tp.topic(), tp.partition()));
+            }
+          }
+          consumerDriver.seekToBeginning(partitions);
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1766,6 +1821,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             }
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             for (TopicPartition tp : parts) {
+                if (!isTopicPartitionAssignedOrSubscribed(tp)) {
+                  log.error("Partition {} is not assigned", tp);
+                  throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                                tp.topic(), tp.partition()));
+                }
                 log.debug("Seeking to beginning of partition {}", tp);
                 subscriptions.requestOffsetReset(tp, OffsetResetStrategy.EARLIEST);
             }
@@ -1804,8 +1864,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
       }
 
       if (isStreams) {
-				partitions = getNewPartitionCollectionWithDefaultStream(partitions);
-        consumerDriver.seekToEnd(partitions);
+        acquireAndEnsureOpen();
+        try {
+          partitions = getNewPartitionCollectionWithDefaultStream(partitions);
+          for (TopicPartition tp : partitions) {
+            if (!isTopicPartitionAssignedOrSubscribed(tp)) {
+              log.error("Partition {} is not assigned", tp);
+              throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                            tp.topic(), tp.partition()));
+            }
+          }
+          consumerDriver.seekToEnd(partitions);
+        } finally {
+          release();
+        }
       } else {
         acquireAndEnsureOpen();
         try {
@@ -1814,6 +1886,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             }
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             for (TopicPartition tp : parts) {
+                if (!isTopicPartitionAssignedOrSubscribed(tp)) {
+                  log.error("Partition {} is not assigned", tp);
+                  throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                                                                tp.topic(), tp.partition()));
+                }
                 log.debug("Seeking to end of partition {}", tp);
                 subscriptions.requestOffsetReset(tp, OffsetResetStrategy.LATEST);
             }
@@ -2538,5 +2615,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (assignors.isEmpty())
             throw new IllegalStateException("Must configure at least one partition assigner class name to " +
                 ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG + " configuration property");
+    }
+
+    private boolean isTopicPartitionAssignedOrSubscribed(TopicPartition topicPartition) {
+      String topic = topicPartition.topic();
+      return this.subscriptions.isAssigned(topicPartition)
+          || this.subscriptions.subscription().contains(topic)
+          || Optional.ofNullable(this.subscriptions.subscribedPattern())
+              .map(pattern -> pattern.matcher(topic).matches()).orElse(false);
     }
 }
