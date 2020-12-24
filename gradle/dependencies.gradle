@@ -82,7 +82,7 @@ versions += [
   zookeeper: "3.4.10",
   jfreechart: "1.0.0",
   mavenArtifact: "3.5.3",
-  restutils: "4.0.0"
+  restutils: "4.0.0-mapr-SNAPSHOT"
 ]
 
 libs += [
