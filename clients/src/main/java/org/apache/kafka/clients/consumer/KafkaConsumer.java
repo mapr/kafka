@@ -83,6 +83,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.kafka.clients.consumer.internals.PartitionAssignorAdapter.getAssignorInstances;
 
@@ -988,6 +989,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private TopicPartition addDefaultStreamNameToTopicPartition(TopicPartition tp) {
         return new TopicPartition(addDefaultStreamNameToTopicName(tp.topic()), tp.partition());
+    }
+
+    private Set<TopicPartition>  getNewTopicPartitionWithDefaultStream(Set<TopicPartition> tp) {
+        return tp.stream().map(topicPartition ->
+                getNewTopicPartitionWithDefaultStream(topicPartition))
+                .collect(Collectors.toSet());
     }
 
     private TopicPartition getNewTopicPartitionWithDefaultStream(TopicPartition tp) {
@@ -2404,8 +2411,24 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *             the timeout specified by {@code default.api.timeout.ms} expires.
      */
     @Override
-    public Map<TopicPartition, OffsetAndMetadata> committed(final Set<TopicPartition> partitions) {
-        return committed(partitions, Duration.ofMillis(defaultApiTimeoutMs));
+    public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions) {
+        if (consumerDriver == null) {
+            // topic name is used only to indicate if this is Mapr Streams or not,
+            // so only one topic can be used
+            initializeConsumer(partitions.iterator().next().topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get committed");
+            throw new NoOffsetForPartitionException(partitions);
+        }
+
+        if (isStreams) {
+            partitions = getNewTopicPartitionWithDefaultStream(partitions);
+            return consumerDriver.committed(partitions);
+        } else {
+            return committed(partitions, Duration.ofMillis(defaultApiTimeoutMs));
+        }
     }
 
     /**
@@ -2698,6 +2721,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void resume(Collection<TopicPartition> partitions) {
+        if (partitions.size() == 0) {
+            log.debug("resuming empty partitions list");
+            return;
+        }
+
         if (consumerDriver == null) {
             initializeConsumer(partitions.iterator().next().topic());
         }
