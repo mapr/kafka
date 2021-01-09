@@ -49,7 +49,7 @@ public class SSLUtils {
     public static SslContextFactory createSslContextFactory(WorkerConfig config, boolean client) {
         Map<String, Object> sslConfigValues = config.valuesWithPrefixAllOrNothing("listeners.https.");
 
-        SslContextFactory ssl = new SslContextFactory();
+        SslContextFactory ssl = client ? new SslContextFactory.Client() : new SslContextFactory.Server();
 
         configureSslContextFactoryKeyStore(ssl, sslConfigValues);
         configureSslContextFactoryTrustStore(ssl, sslConfigValues);

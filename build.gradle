@@ -591,10 +591,13 @@ project(':core') {
     compile project(':clients')
 
     compileOnly (libs.maprStreams) {
+      exclude group: 'xerces', module: 'xercesImpl'
       exclude module: 'connect-runtime'
     }
     compileOnly (libs.hadoopCommon)
-    compileOnly (libs.maprFs)
+    compileOnly (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
     compile libs.jacksonDatabind
     compile libs.joptSimple
@@ -1058,7 +1061,9 @@ project(':streams') {
       transitive = false
     }
     compileOnly (libs.hadoopCommon)
-    compileOnly(libs.maprFs)
+    compileOnly(libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
     // testCompileOnly prevents streams from exporting a dependency on test-utils, which would cause a dependency cycle
     testCompileOnly project(':streams:test-utils')
@@ -1823,10 +1828,16 @@ project(':mapr-eco-tools') {
       transitive = false
     }
     compileOnly libs.hadoopCommon
-    compileOnly libs.maprFs
+    compileOnly (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
-    testCompile libs.maprStreams
-    testCompile libs.maprFs
+    testCompile (libs.maprStreams) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
+    testCompile (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
     testCompile project(':clients')
     testCompile libs.junit
     testCompile project(':clients').sourceSets.test.output

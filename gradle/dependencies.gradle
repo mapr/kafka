@@ -54,7 +54,7 @@ versions += [
   bcpkix: "1.60",
   easymock: "4.0.1",
   jackson: "2.9.8",
-  jetty: "9.4.19.v20190610",
+  jetty: "9.4.35.v20201120",
   jersey: "2.27",
   jmh: "1.21",
   hadoop: "2.7.4.0-mapr-1908-SNAPSHOT",
