@@ -191,7 +191,6 @@ public class StoreChangelogReader implements ChangelogReader {
     private final Time time;
     private final Logger log;
     private final Duration pollTime;
-    private final String internalStreamCompacted;
     private final long updateOffsetIntervalMs;
 
     // 1) we keep adding partitions to restore consumer whenever new tasks are registered with the state manager;
@@ -223,15 +222,13 @@ public class StoreChangelogReader implements ChangelogReader {
                                 final LogContext logContext,
                                 final Admin adminClient,
                                 final Consumer<byte[], byte[]> restoreConsumer,
-                                final StateRestoreListener stateRestoreListener,
-                                final String internalStreamCompacted) {
+                                final StateRestoreListener stateRestoreListener) {
         this.time = time;
         this.log = logContext.logger(StoreChangelogReader.class);
         this.state = ChangelogReaderState.ACTIVE_RESTORING;
         this.adminClient = adminClient;
         this.restoreConsumer = restoreConsumer;
         this.stateRestoreListener = stateRestoreListener;
-        this.internalStreamCompacted = internalStreamCompacted;
 
         this.pollTime = Duration.ofMillis(config.getLong(StreamsConfig.POLL_MS_CONFIG));
         this.updateOffsetIntervalMs = config.getLong(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG) == Long.MAX_VALUE ?

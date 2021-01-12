@@ -309,8 +309,7 @@ public class StreamThread extends Thread {
             logContext,
             adminClient,
             restoreConsumer,
-            userStateRestoreListener,
-            config.getStreamsInternalStreamCompacted()
+            userStateRestoreListener
         );
 
         final ThreadCache cache = new ThreadCache(logContext, cacheSizeBytes, streamsMetrics);
