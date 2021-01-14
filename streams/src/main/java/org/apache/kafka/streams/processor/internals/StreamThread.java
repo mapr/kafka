@@ -637,6 +637,10 @@ public class StreamThread extends Thread {
 
         final long pollLatency = advanceNowAndComputeLatency();
 
+        if (taskManager.needsInitializationOrRestoration()) {
+            taskManager.tryToCompleteRestoration();
+        }
+
         if (records != null && !records.isEmpty()) {
             pollSensor.record(pollLatency, now);
             pollRecordsSensor.record(records.count(), now);
