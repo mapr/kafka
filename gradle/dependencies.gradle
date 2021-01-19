@@ -79,10 +79,10 @@ versions += [
   slf4j: "1.7.30",
   snappy: "1.1.7.1",
   zkclient: "0.10",
-  zookeeper: "3.4.10",
+  zookeeper: "3.4.11-mapr-1808",
   jfreechart: "1.0.0",
   mavenArtifact: "3.5.3",
-  restutils: "4.0.0-mapr-SNAPSHOT"
+  restutils: "4.0.0-mapr-2101"
 ]
 
 libs += [
@@ -113,7 +113,7 @@ libs += [
   joptSimple: "net.sf.jopt-simple:jopt-simple:$versions.jopt",
   jpam: "net.sf.jpam:jpam:$versions.jpam",
   junit: "junit:junit:$versions.junit",
-  hadoopCommon: "org.apache.hadoop:hadoop-common:2.7.0-mapr-1607",
+  hadoopCommon: "org.apache.hadoop:hadoop-common:2.7.0-mapr-1808",
   kafkaStreams_0100: "org.apache.kafka:kafka-streams:$versions.kafka_0100",
   kafkaStreams_0101: "org.apache.kafka:kafka-streams:$versions.kafka_0101",
   kafkaStreams_0102: "org.apache.kafka:kafka-streams:$versions.kafka_0102",
