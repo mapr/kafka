@@ -992,8 +992,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     private Set<TopicPartition>  getNewTopicPartitionWithDefaultStream(Set<TopicPartition> tp) {
-        return tp.stream().map(topicPartition ->
-                getNewTopicPartitionWithDefaultStream(topicPartition))
+        return tp.stream().map(this::getNewTopicPartitionWithDefaultStream)
                 .collect(Collectors.toSet());
     }
 
@@ -1770,15 +1769,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync(Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            maybeThrowInvalidGroupIdException();
-            if (!coordinator.commitOffsetsSync(subscriptions.allConsumed(), time.timer(timeout))) {
-                throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before successfully " +
-                        "committing the current consumed offsets");
+        if (consumerDriver == null) {
+            throw new IllegalStateException("No active subscriptions");
+        }
+
+        if (isStreams) {
+            consumerDriver.commitSync(timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                maybeThrowInvalidGroupIdException();
+                if (!coordinator.commitOffsetsSync(subscriptions.allConsumed(), time.timer(timeout))) {
+                    throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before successfully " +
+                            "committing the current consumed offsets");
+                }
+            } finally {
+                release();
             }
-        } finally {
-            release();
         }
     }
 
@@ -1897,16 +1904,38 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync(final Map<TopicPartition, OffsetAndMetadata> offsets, final Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            maybeThrowInvalidGroupIdException();
-            offsets.forEach(this::updateLastSeenEpochIfNewer);
-            if (!coordinator.commitOffsetsSync(new HashMap<>(offsets), time.timer(timeout))) {
-                throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before successfully " +
-                        "committing offsets " + offsets);
+        if (offsets.size() == 0) {
+            log.debug("commitSync called with empty offsets");
+            return;
+        }
+
+        if (consumerDriver == null) {
+            Set<TopicPartition> partitions = offsets.keySet();
+            initializeConsumer((partitions.iterator().next()).topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot commit");
+            return;
+        }
+
+        if (isStreams) {
+            @SuppressWarnings("unchecked")
+            Map<TopicPartition, OffsetAndMetadata> newoffsets =
+                    (Map<TopicPartition, OffsetAndMetadata> )getNewPartitionMapWithDefaultStream(offsets);
+            consumerDriver.commitSync(newoffsets);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                maybeThrowInvalidGroupIdException();
+                offsets.forEach(this::updateLastSeenEpochIfNewer);
+                if (!coordinator.commitOffsetsSync(new HashMap<>(offsets), time.timer(timeout))) {
+                    throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before successfully " +
+                            "committing offsets " + offsets);
+                }
+            } finally {
+                release();
             }
-        } finally {
-            release();
         }
     }
 
@@ -2081,23 +2110,47 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             throw new IllegalArgumentException("seek offset must not be a negative number");
         }
 
-        acquireAndEnsureOpen();
-        try {
-            if (offsetAndMetadata.leaderEpoch().isPresent()) {
-                log.info("Seeking to offset {} for partition {} with epoch {}",
-                        offset, partition, offsetAndMetadata.leaderEpoch().get());
-            } else {
-                log.info("Seeking to offset {} for partition {}", offset, partition);
+        if (consumerDriver == null) {
+            initializeConsumer(partition.topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot seek");
+            return;
+        }
+
+        if (isStreams) {
+            acquireAndEnsureOpen();
+            try {
+                partition = getNewTopicPartitionWithDefaultStream(partition);
+                if (!isTopicPartitionAssignedOrSubscribed(partition)) {
+                    log.error("Partition {} is not assigned", partition);
+                    throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                            partition.topic(), partition.partition()));
+                }
+                consumerDriver.seek(partition, offsetAndMetadata);
+            } finally {
+                release();
             }
-            Metadata.LeaderAndEpoch currentLeaderAndEpoch = this.metadata.currentLeader(partition);
-            SubscriptionState.FetchPosition newPosition = new SubscriptionState.FetchPosition(
-                    offsetAndMetadata.offset(),
-                    offsetAndMetadata.leaderEpoch(),
-                    currentLeaderAndEpoch);
-            this.updateLastSeenEpochIfNewer(partition, offsetAndMetadata);
-            this.subscriptions.seekUnvalidated(partition, newPosition);
-        } finally {
-            release();
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                if (offsetAndMetadata.leaderEpoch().isPresent()) {
+                    log.info("Seeking to offset {} for partition {} with epoch {}",
+                            offset, partition, offsetAndMetadata.leaderEpoch().get());
+                } else {
+                    log.info("Seeking to offset {} for partition {}", offset, partition);
+                }
+                Metadata.LeaderAndEpoch currentLeaderAndEpoch = this.metadata.currentLeader(partition);
+                SubscriptionState.FetchPosition newPosition = new SubscriptionState.FetchPosition(
+                        offsetAndMetadata.offset(),
+                        offsetAndMetadata.leaderEpoch(),
+                        currentLeaderAndEpoch);
+                this.updateLastSeenEpochIfNewer(partition, offsetAndMetadata);
+                this.subscriptions.seekUnvalidated(partition, newPosition);
+            } finally {
+                release();
+            }
         }
     }
 
@@ -2288,25 +2341,39 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public long position(TopicPartition partition, final Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            if (!this.subscriptions.isAssigned(partition))
-                throw new IllegalStateException("You can only check the position for partitions assigned to this consumer.");
+        if (consumerDriver == null) {
+            initializeConsumer(partition.topic());
+        }
 
-            Timer timer = time.timer(timeout);
-            do {
-                SubscriptionState.FetchPosition position = this.subscriptions.validPosition(partition);
-                if (position != null)
-                    return position.offset;
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get position");
+            throw new NoOffsetForPartitionException(partition);
+        }
 
-                updateFetchPositions(timer);
-                client.poll(timer);
-            } while (timer.notExpired());
+        if (isStreams) {
+            partition = getNewTopicPartitionWithDefaultStream(partition);
+            return consumerDriver.position(partition, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                if (!this.subscriptions.isAssigned(partition))
+                    throw new IllegalStateException("You can only check the position for partitions assigned to this consumer.");
 
-            throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before the position " +
-                    "for partition " + partition + " could be determined");
-        } finally {
-            release();
+                Timer timer = time.timer(timeout);
+                do {
+                    SubscriptionState.FetchPosition position = this.subscriptions.validPosition(partition);
+                    if (position != null)
+                        return position.offset;
+
+                    updateFetchPositions(timer);
+                    client.poll(timer);
+                } while (timer.notExpired());
+
+                throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before the position " +
+                        "for partition " + partition + " could be determined");
+            } finally {
+                release();
+            }
         }
     }
 
@@ -2411,24 +2478,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *             the timeout specified by {@code default.api.timeout.ms} expires.
      */
     @Override
-    public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions) {
-        if (consumerDriver == null) {
-            // topic name is used only to indicate if this is Mapr Streams or not,
-            // so only one topic can be used
-            initializeConsumer(partitions.iterator().next().topic());
-        }
-
-        if (consumerDriver == null) {
-            log.error("consumer closed, cannot get committed");
-            throw new NoOffsetForPartitionException(partitions);
-        }
-
-        if (isStreams) {
-            partitions = getNewTopicPartitionWithDefaultStream(partitions);
-            return consumerDriver.committed(partitions);
-        } else {
-            return committed(partitions, Duration.ofMillis(defaultApiTimeoutMs));
-        }
+    public Map<TopicPartition, OffsetAndMetadata> committed(final Set<TopicPartition> partitions) {
+        return committed(partitions, Duration.ofMillis(defaultApiTimeoutMs));
     }
 
     /**
@@ -2455,21 +2506,37 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *             expiration of the timeout
      */
     @Override
-    public Map<TopicPartition, OffsetAndMetadata> committed(final Set<TopicPartition> partitions, final Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            maybeThrowInvalidGroupIdException();
-            Map<TopicPartition, OffsetAndMetadata> offsets = coordinator.fetchCommittedOffsets(partitions, time.timer(timeout));
-            if (offsets == null) {
-                throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before the last " +
-                    "committed offset for partitions " + partitions + " could be determined. Try tuning default.api.timeout.ms " +
-                    "larger to relax the threshold.");
-            } else {
-                offsets.forEach(this::updateLastSeenEpochIfNewer);
-                return offsets;
+    public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions, final Duration timeout) {
+        if (consumerDriver == null) {
+            // topic name is used only to indicate if this is Mapr Streams or not,
+            // so only one topic can be used
+            initializeConsumer(partitions.iterator().next().topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get committed");
+            throw new NoOffsetForPartitionException(partitions);
+        }
+
+        if (isStreams) {
+            partitions = getNewTopicPartitionWithDefaultStream(partitions);
+            return consumerDriver.committed(partitions, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                maybeThrowInvalidGroupIdException();
+                Map<TopicPartition, OffsetAndMetadata> offsets = coordinator.fetchCommittedOffsets(partitions, time.timer(timeout));
+                if (offsets == null) {
+                    throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before the last " +
+                            "committed offset for partitions " + partitions + " could be determined. Try tuning default.api.timeout.ms " +
+                            "larger to relax the threshold.");
+                } else {
+                    offsets.forEach(this::updateLastSeenEpochIfNewer);
+                    return offsets;
+                }
+            } finally {
+                release();
             }
-        } finally {
-            release();
         }
     }
 
@@ -2548,19 +2615,33 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public List<PartitionInfo> partitionsFor(String topic, Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            Cluster cluster = this.metadata.fetch();
-            List<PartitionInfo> parts = cluster.partitionsForTopic(topic);
-            if (!parts.isEmpty())
-                return parts;
+        if (consumerDriver == null) {
+            initializeConsumer(topic);
+        }
 
-            Timer timer = time.timer(timeout);
-            Map<String, List<PartitionInfo>> topicMetadata = fetcher.getTopicMetadata(
-                    new MetadataRequest.Builder(Collections.singletonList(topic), metadata.allowAutoTopicCreation()), timer);
-            return topicMetadata.get(topic);
-        } finally {
-            release();
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get partitionsFor " + topic);
+            return null;
+        }
+
+        if (isStreams) {
+            topic = getNewTopicNameWithDefaultStream(topic);
+            return consumerDriver.partitionsFor(topic, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                Cluster cluster = this.metadata.fetch();
+                List<PartitionInfo> parts = cluster.partitionsForTopic(topic);
+                if (!parts.isEmpty())
+                    return parts;
+
+                Timer timer = time.timer(timeout);
+                Map<String, List<PartitionInfo>> topicMetadata = fetcher.getTopicMetadata(
+                        new MetadataRequest.Builder(Collections.singletonList(topic), metadata.allowAutoTopicCreation()), timer);
+                return topicMetadata.get(topic);
+            } finally {
+                release();
+            }
         }
     }
 
@@ -2612,11 +2693,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<String, List<PartitionInfo>> listTopics(Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            return fetcher.getAllTopicMetadata(time.timer(timeout));
-        } finally {
-            release();
+        if (consumerDriver == null) {
+            log.info("consumer closed or not initialized, cannot listTopics");
+            return new HashMap<String, List<PartitionInfo>>();
+        }
+
+        if (isStreams) {
+            if (defaultStream == null) {
+                throw new KafkaException("Cannot get listTopics() without default stream name");
+            }
+            return consumerDriver.listTopics(defaultStream, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                return fetcher.getAllTopicMetadata(time.timer(timeout));
+            } finally {
+                release();
+            }
         }
     }
 
@@ -2639,6 +2732,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         if (isStreams) {
             return consumerDriver.listTopics(stream);
+        } else {
+            throw new KafkaException("Unsupported method for KafkaConsumer");
+        }
+    }
+
+    /**
+     * Get metadata about partitions for all topics of the stream. This method will issue a remote
+     * call to the server.
+     *
+     * @return The map of topics and its partitions
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout) {
+        if (consumerDriver == null) {
+            initializeConsumer(stream + ":");
+        }
+
+        if (consumerDriver == null) {
+            log.info("consumer closed or not initialized, cannot listTopics");
+            return new HashMap<String, List<PartitionInfo>>();
+        }
+
+        if (isStreams) {
+            return consumerDriver.listTopics(stream, timeout);
         } else {
             throw new KafkaException("Unsupported method for KafkaConsumer");
         }
@@ -2850,18 +2967,37 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            for (Map.Entry<TopicPartition, Long> entry : timestampsToSearch.entrySet()) {
-                // we explicitly exclude the earliest and latest offset here so the timestamp in the returned
-                // OffsetAndTimestamp is always positive.
-                if (entry.getValue() < 0)
-                    throw new IllegalArgumentException("The target time for partition " + entry.getKey() + " is " +
-                            entry.getValue() + ". The target time cannot be negative.");
+        if (timestampsToSearch.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        if (consumerDriver == null) {
+            initializeConsumer(timestampsToSearch.keySet().iterator().next().topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get offsetsForTimes");
+            return new HashMap<TopicPartition, OffsetAndTimestamp>();
+        }
+
+        if (isStreams) {
+            @SuppressWarnings("unchecked")
+            Map<TopicPartition, Long> newTimestampsToSearch =
+                    (Map<TopicPartition, Long>) getNewPartitionMapWithDefaultStream(timestampsToSearch);
+            return consumerDriver.offsetsForTimes(newTimestampsToSearch, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                for (Map.Entry<TopicPartition, Long> entry : timestampsToSearch.entrySet()) {
+                    // we explicitly exclude the earliest and latest offset here so the timestamp in the returned
+                    // OffsetAndTimestamp is always positive.
+                    if (entry.getValue() < 0)
+                        throw new IllegalArgumentException("The target time for partition " + entry.getKey() + " is " +
+                                entry.getValue() + ". The target time cannot be negative.");
+                }
+                return fetcher.offsetsForTimes(timestampsToSearch, time.timer(timeout));
+            } finally {
+                release();
             }
-            return fetcher.offsetsForTimes(timestampsToSearch, time.timer(timeout));
-        } finally {
-            release();
         }
     }
 
@@ -2920,11 +3056,29 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions, Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            return fetcher.beginningOffsets(partitions, time.timer(timeout));
-        } finally {
-            release();
+        if (partitions.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        if (consumerDriver == null) {
+            initializeConsumer(partitions.iterator().next().topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get endOffsets");
+            return new HashMap<TopicPartition, Long>();
+        }
+
+        if (isStreams) {
+            Collection<TopicPartition> newPartitions =
+                    getNewPartitionCollectionWithDefaultStream(partitions);
+            return consumerDriver.beginningOffsets(newPartitions, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                return fetcher.beginningOffsets(partitions, time.timer(timeout));
+            } finally {
+                release();
+            }
         }
     }
 
@@ -2993,11 +3147,29 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
-        acquireAndEnsureOpen();
-        try {
-            return fetcher.endOffsets(partitions, time.timer(timeout));
-        } finally {
-            release();
+        if (partitions.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        if (consumerDriver == null) {
+            initializeConsumer(partitions.iterator().next().topic());
+        }
+
+        if (consumerDriver == null) {
+            log.error("consumer closed, cannot get endOffsets");
+            return new HashMap<TopicPartition, Long>();
+        }
+
+        if (isStreams) {
+            Collection<TopicPartition> newPartitions =
+                    getNewPartitionCollectionWithDefaultStream(partitions);
+            return consumerDriver.endOffsets(newPartitions, timeout);
+        } else {
+            acquireAndEnsureOpen();
+            try {
+                return fetcher.endOffsets(partitions, time.timer(timeout));
+            } finally {
+                release();
+            }
         }
     }
 
@@ -3139,18 +3311,38 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void close(Duration timeout) {
-        if (timeout.toMillis() < 0)
+        if (timeout.toMillis() < 0) {
             throw new IllegalArgumentException("The timeout cannot be negative.");
-        acquire();
-        try {
-            if (!closed) {
-                // need to close before setting the flag since the close function
-                // itself may trigger rebalance callback that needs the consumer to be open still
-                close(timeout.toMillis(), false);
+        }
+
+        Consumer<K, V> consumerDriverToDelete = null;
+        synchronized (this) {
+            if (isStreamsClosed) {
+                return;
             }
-        } finally {
-            closed = true;
-            release();
+            isStreamsClosed = true;
+            if (consumerDriver == null) {
+                return;
+            }
+
+            consumerDriverToDelete = consumerDriver;
+            consumerDriver = null;
+        }
+
+        if (isStreams) {
+            consumerDriverToDelete.close(timeout);
+        } else {
+            acquire();
+            try {
+                if (!closed) {
+                    // need to close before setting the flag since the close function
+                    // itself may trigger rebalance callback that needs the consumer to be open still
+                    close(timeout.toMillis(), false);
+                }
+            } finally {
+                closed = true;
+                release();
+            }
         }
     }
 

@@ -418,6 +418,11 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout) {
+        throw new KafkaException("listTopics(String, timeout) is not supported");
+    }
+
+    @Override
     public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
       throw new KafkaException("listTopics(Pattern) is not supported");
     }
