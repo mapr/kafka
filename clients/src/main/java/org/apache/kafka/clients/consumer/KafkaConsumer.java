@@ -3180,7 +3180,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public ConsumerGroupMetadata groupMetadata() {
-        return coordinator.groupMetadata();
+        if (isStreams) {
+            return consumerDriver.groupMetadata();
+        } else {
+            return coordinator.groupMetadata();
+        }
     }
 
     /**
@@ -3206,13 +3210,17 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     @Override
     public void enforceRebalance() {
         acquireAndEnsureOpen();
-        try {
-            if (coordinator == null) {
-                throw new IllegalStateException("Tried to force a rebalance but consumer does not have a group.");
+        if (isStreams) {
+            consumerDriver.enforceRebalance();
+        } else {
+            try {
+                if (coordinator == null) {
+                    throw new IllegalStateException("Tried to force a rebalance but consumer does not have a group.");
+                }
+                coordinator.requestRejoin();
+            } finally {
+                release();
             }
-            coordinator.requestRejoin();
-        } finally {
-            release();
         }
     }
 
