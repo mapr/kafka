@@ -86,7 +86,6 @@ public class StateDirectoryTest {
             new StreamsConfig(new Properties() {
                 {
                     put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
-                    put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
                     put(StreamsConfig.STATE_DIR_CONFIG, stateDir.getPath());
                 }
             }),
@@ -393,7 +392,6 @@ public class StateDirectoryTest {
             new StreamsConfig(new Properties() {
                 {
                     put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
-                    put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
                     put(StreamsConfig.STATE_DIR_CONFIG, stateDir.getPath());
                 }
             }),
@@ -438,7 +436,6 @@ public class StateDirectoryTest {
             new StreamsConfig(new Properties() {
                 {
                     put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
-                    put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
                     put(StreamsConfig.STATE_DIR_CONFIG, stateDir.getPath());
                 }
             }),
@@ -545,9 +542,13 @@ public class StateDirectoryTest {
 
     @Test
     public void shouldNotCreateBaseDirectory() throws IOException {
-        initializeStateDirectory(false);
-        assertFalse(stateDir.exists());
-        assertFalse(appDir.exists());
+        try (final LogCaptureAppender appender = LogCaptureAppender.createAndRegister(StateDirectory.class)) {
+            initializeStateDirectory(false);
+            assertThat(stateDir.exists(), is(false));
+            assertThat(appDir.exists(), is(false));
+            assertThat(appender.getMessages(),
+                       not(hasItem(containsString("Error changing permissions for the state or base directory"))));
+        }
     }
 
     @Test
