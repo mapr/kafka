@@ -110,12 +110,13 @@ public class KafkaOffsetBackingStore implements OffsetBackingStore {
                 try (TopicAdmin admin = new TopicAdmin(adminProps)) {
                     // Create the topic if it doesn't exist
                     Set<String> newTopics = admin.createTopics(topicDescription);
-                    if (!newTopics.contains(topic)) {
-                        // It already existed, so check that the topic cleanup policy is compact only and not delete
-                        log.debug("Using admin client to check cleanup policy for '{}' topic is '{}'", topic, TopicConfig.CLEANUP_POLICY_COMPACT);
-                        admin.verifyTopicCleanupPolicyOnlyCompact(topic,
-                                DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "source connector offsets");
-                    }
+                    // Workaround for not implemented method MarlinAdminClientImpl.describeConfigs
+                    //if (!newTopics.contains(topic)) {
+                    //    // It already existed, so check that the topic cleanup policy is compact only and not delete
+                    //    log.debug("Using admin client to check cleanup policy for '{}' topic is '{}'", topic, TopicConfig.CLEANUP_POLICY_COMPACT);
+                    //    admin.verifyTopicCleanupPolicyOnlyCompact(topic,
+                    //            DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "source connector offsets");
+                    //}
                 }
             }
         };

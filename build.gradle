@@ -385,7 +385,7 @@ subprojects {
       exceptionFormat = testExceptionFormat
     }
     logTestStdout.rehydrate(delegate, owner, this)()
-    
+
     // The suites are for running sets of tests in IDEs.
     // Gradle will run each test class, so we exclude the suites to avoid redundantly running the tests twice.
     exclude '**/*Suite.class'
@@ -742,11 +742,13 @@ project(':core') {
     compile project(':clients')
 
     compileOnly (libs.maprStreams) {
+      exclude group: 'xerces', module: 'xercesImpl'
       exclude module: 'connect-runtime'
     }
     compileOnly (libs.hadoopCommon)
-    compileOnly (libs.xerces)
-    compileOnly (libs.maprFs)
+    compileOnly (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
     compile libs.jacksonDatabind
     compile libs.jacksonModuleScala
@@ -767,6 +769,9 @@ project(':core') {
     }
     // ZooKeeperMain depends on commons-cli but declares the dependency as `provided`
     compile libs.commonsCli
+
+    // Needed for...
+    compile libs.xerces
 
     compileOnly libs.log4j
 
@@ -1254,8 +1259,9 @@ project(':streams') {
       transitive = false
     }
     compileOnly (libs.hadoopCommon)
-    compileOnly (libs.xerces)
-    compileOnly(libs.maprFs)
+    compileOnly(libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
     // testCompileOnly prevents streams from exporting a dependency on test-utils, which would cause a dependency cycle
     testCompileOnly project(':streams:test-utils')
@@ -2218,12 +2224,16 @@ project(':mapr-eco-tools') {
       transitive = false
     }
     compileOnly libs.hadoopCommon
-    compileOnly libs.xerces
-    compileOnly libs.maprFs
+    compileOnly (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
 
-    testCompile libs.maprStreams
-    testCompile libs.xerces
-    testCompile libs.maprFs
+    testCompile (libs.maprStreams) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
+    testCompile (libs.maprFs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
     testCompile project(':clients')
     testCompile libs.junit
     testCompile project(':clients').sourceSets.test.output
