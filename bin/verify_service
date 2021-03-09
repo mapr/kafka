@@ -1,0 +1,72 @@
+#!/bin/bash
+
+MAPR_HOME=${MAPR_HOME:-/opt/mapr}
+KAFKA_HOME="${KAFKA_HOME:-__INSTALL__}"
+KAFKA_CONNECT_CONF_FILE="${KAFKA_CONNECT_CONF_FILE:-${KAFKA_HOME}/config/connect-distributed.properties}"
+LOGFILE_BASE=${LOGFILE_BASE:-${KAFKA_HOME}/var/log/kafka-connect/verify_service}
+PID_FILE=${MAPR_HOME}/pid/kafka-connect.pid
+
+EXIT_SUCCESS=0
+EXIT_NOT_RUNNING=1
+EXIT_RUNNING_NOT_RESPONDING=2
+EXIT_USAGE=3
+CONNECT_TIMEOUT=15
+USAGE="$0 [-q]"
+QUIET=0
+NOW=`date "+%Y%m%d_%H%M%S"`
+
+if [ $# -eq 1 ] && [ "$1" == '-q' ]; then
+    QUIET=1
+elif [ $# -ge 1 ]; then
+    echo $USAGE
+    exit $EXIT_USAGE
+fi
+
+# Check if the process is running
+echo "Starting verifier at $(date)" >> $LOGFILE_BASE.$NOW
+if [ -e "$PID_FILE" ] || [ -h "$PID_FILE" ]; then
+    kafka_connect_pid=$(cat $PID_FILE 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        PID_FILE=$(ls -l $PID_FILE | awk '{print $11}')
+        kafka_connect_pid=$(cat $PID_FILE 2> /dev/null)
+    fi
+    if [ -z "$kafka_connect_pid" ]; then
+        echo "ERROR - could not get pid for kafka-connect" >> $LOGFILE_BASE.$NOW
+        exit $EXIT_NOT_RUNNING
+    fi
+    echo "checking to see if pid $kafka_connect_pid is alive" >> $LOGFILE_BASE.$NOW
+    if kill -s 0 $kafka_connect_pid ; then
+        echo "pid $kafka_connect_pid is alive" >> $LOGFILE_BASE.$NOW
+        RC=$EXIT_RUNNING_NOT_RESPONDING
+    else
+        echo "pid $kafka_connect_pid is NOT running" >> $LOGFILE_BASE.$NOW
+        [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+        exit $EXIT_NOT_RUNNING
+    fi
+else
+    echo "no pid file, kafka-connect is NOT running" >> $LOGFILE_BASE.$NOW
+    [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+    exit $EXIT_NOT_RUNNING
+fi
+
+# Check if the process is responding
+echo "checking to see if kafka-connect pid $kafka_connect_pid is responsive" >> $LOGFILE_BASE.$NOW
+listeners=$(grep listeners "$KAFKA_CONNECT_CONF_FILE" | cut -d'=' -f 2 | sed -e 's/ //g')
+protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
+kafka_connect_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
+kafka_connect_ip=$(hostname -i | head -n 1 | cut -d' ' -f1)
+if [ "$protocol" == "https" ]; then
+  OUTPUT=$(curl -umapr:mapr "$protocol://${kafka_connect_ip}:${kafka_connect_port}" -k)
+else
+  OUTPUT=$(curl "$protocol://${kafka_connect_ip}:${kafka_connect_port}")
+fi
+
+CRC=$?
+if [ $CRC -ne 0 ]; then
+    echo "kafka-connect didn't respond - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+else
+    echo "kafka-connect responded - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+    RC=$EXIT_SUCCESS
+fi
+[ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+exit $RC
