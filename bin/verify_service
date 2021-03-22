@@ -5,6 +5,7 @@ KAFKA_HOME="${KAFKA_HOME:-__INSTALL__}"
 KAFKA_CONNECT_CONF_FILE="${KAFKA_CONNECT_CONF_FILE:-${KAFKA_HOME}/config/connect-distributed.properties}"
 LOGFILE_BASE=${LOGFILE_BASE:-${KAFKA_HOME}/var/log/kafka-connect/verify_service}
 PID_FILE=${MAPR_HOME}/pid/kafka-connect.pid
+KAFKA_CONNECT_PORT=8083
 
 EXIT_SUCCESS=0
 EXIT_NOT_RUNNING=1
@@ -55,18 +56,16 @@ fi
 
 # Check if the process is responding
 echo "checking to see if kafka-connect pid $kafka_connect_pid is responsive" >> $LOGFILE_BASE.$NOW
-listeners=$(grep listeners "$KAFKA_CONNECT_CONF_FILE" | cut -d'=' -f 2 | sed -e 's/ //g')
-protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
-kafka_connect_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
 kafka_connect_ip=$(hostname -i | head -n 1 | cut -d' ' -f1)
-if [ "$protocol" == "https" ]; then
+secure=$(head -1 "${MAPR_HOME}"/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
+if [ "$secure" == "true" ]; then
   # Getting MAPRSASL token
-  token=$(java -cp `mapr classpath` com.mapr.security.client.examples.MapRClient gettoken -url "$protocol://${kafka_connect_ip}:${kafka_connect_port}" 2> /dev/null \
+  token=$(java -cp `mapr classpath` com.mapr.security.client.examples.MapRClient gettoken -url "https://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}" 2> /dev/null \
   |  grep 'Obtained challenge string' \
   |  sed -E 's/Obtained challenge string (.*)/\1/')
-  OUTPUT=$(curl -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" -umapr:mapr "$protocol://${kafka_connect_ip}:${kafka_connect_port}")
+  OUTPUT=$(curl -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" -umapr:mapr "https://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
 else
-  OUTPUT=$(curl -s --write-out '%{http_code}' "$protocol://${kafka_connect_ip}:${kafka_connect_port}")
+  OUTPUT=$(curl -s --write-out '%{http_code}' "http://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
 fi
 
 CRC=$?
