@@ -1593,6 +1593,7 @@ project(':connect:runtime') {
     compile libs.slf4jApi
     compile libs.commonsIo
     compile libs.restutils
+    compile libs.guava
     compileOnly (libs.hadoopCommon) {
         transitive = false
     }
