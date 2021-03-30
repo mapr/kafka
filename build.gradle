@@ -1561,6 +1561,7 @@ project(':connect:runtime') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
       exclude group: 'log4j', module: 'log4j'
     }
+    compile libs.guava
     compileOnly (libs.hadoopCommon) {
         transitive = false
     }
