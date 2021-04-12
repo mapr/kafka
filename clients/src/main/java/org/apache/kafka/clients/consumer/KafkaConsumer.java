@@ -3027,10 +3027,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private boolean isTopicPartitionAssignedOrSubscribed(TopicPartition topicPartition) {
       String topic = topicPartition.topic();
+      // For isStream both subscriptions and consumerDriver should be checked to
+      // to handle both /mapr/cluster/stream:topic and /stream:topic topic names
       return this.subscriptions.isAssigned(topicPartition)
           || this.subscriptions.subscription().contains(topic)
           || Optional.ofNullable(this.subscriptions.subscribedPattern())
-              .map(pattern -> pattern.matcher(topic).matches()).orElse(false);
+              .map(pattern -> pattern.matcher(topic).matches()).orElse(false)
+          || (isStreams && (consumerDriver.assignment().contains(topicPartition)
+              || consumerDriver.subscription().contains(topic)
+          ));
     }
 
     // Visible for testing
