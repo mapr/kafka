@@ -64,6 +64,9 @@ CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
 CLASSPATH=$CLASSPATH:$(get_logger_jars) # function in mapr-config.sh
 # Add 3rd party jars
 CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
+# Add hadoop-mapreduce-client-core jar
+CLASSPATH=$CLASSPATH:$(get_files_in_folder $HADOOP_HOME/share/hadoop/mapreduce\
+    "hadoop-mapreduce-client-core-*.jar") # function in mapr-config.sh
 
 base_dir=$(dirname $0)/..
 # classpath addition for release
