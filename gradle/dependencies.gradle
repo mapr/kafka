@@ -58,7 +58,7 @@ versions += [
   jersey: "2.27",
   jmh: "1.21",
   guava: "30.1.1-jre",
-  hadoop: "2.7.5.0-mapr-710-SNAPSHOT",
+  hadoop: "2.7.5.0-mapr-710",
   hamcrest: "1.3",
   log4j: "2.13.1",
   scalaLogging: "3.9.0",
