@@ -45,7 +45,7 @@ allprojects {
       url "http://maven.corp.maprtech.com/nexus/content/repositories/mapr-public/"
     }
     maven {
-      url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
+      url "http://dfaf.mip.storage.hpecorp.net/artifactory/maven-mapr-central/"
     }
   }
 
