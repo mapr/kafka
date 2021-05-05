@@ -42,7 +42,7 @@ allprojects {
       url "http://packages.confluent.io/maven/"
     }
     maven {
-      url "http://maven.corp.maprtech.com/nexus/content/repositories/mapr-public/"
+      url "http://maven.corp.maprtech.com/nexus/content/repositories/public/"
     }
     maven {
       url "http://dfaf.mip.storage.hpecorp.net/artifactory/maven-mapr-central/"
