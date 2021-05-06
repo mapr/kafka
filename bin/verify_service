@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MAPR_HOME=${MAPR_HOME:-/opt/mapr}
+export MAPR_TICKETFILE_LOCATION=${MAPR_TICKETFILE_LOCATION:-"${MAPR_HOME}/conf/mapruserticket"}
 KAFKA_VERSION=`cat "${MAPR_HOME}/kafka/kafkaversion"`
 KAFKA_HOME=${KAFKA_HOME:-${MAPR_HOME}/kafka/kafka-${KAFKA_VERSION}}
 NOW=`date "+%Y%m%d_%H%M%S"`
