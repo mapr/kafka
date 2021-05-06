@@ -58,8 +58,10 @@ allprojects {
       url "http://packages.confluent.io/maven/"
     }
     maven {
+      url "https://repository.mapr.com/nexus/content/groups/mapr-public/"
+    }
+    maven {
       url "$maprMavenRepo"
-      // url "http://repository.mapr.com/nexus/content/groups/mapr-public/"
     }
     maven {
       url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
