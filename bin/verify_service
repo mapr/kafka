@@ -61,9 +61,9 @@ if [ "$secure" == "true" ]; then
   token=$(java -cp `mapr classpath` com.mapr.security.client.examples.MapRClient gettoken -url "https://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}" 2> /dev/null \
   |  grep 'Obtained challenge string' \
   |  sed -E 's/Obtained challenge string (.*)/\1/')
-  OUTPUT=$(curl -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" -umapr:mapr "https://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
+  OUTPUT=$(curl --noproxy '*' -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" -umapr:mapr "https://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
 else
-  OUTPUT=$(curl -s --write-out '%{http_code}' "http://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
+  OUTPUT=$(curl --noproxy '*' -s --write-out '%{http_code}' "http://${kafka_connect_ip}:${KAFKA_CONNECT_PORT}")
 fi
 
 CRC=$?
