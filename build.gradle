@@ -64,7 +64,7 @@ allprojects {
       url "$maprMavenRepo"
     }
     maven {
-      url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
+      url "http://df-mvn-dev.mip.storage.hpecorp.net/nexus/content/repositories/snapshots/"
     }
   }
   
