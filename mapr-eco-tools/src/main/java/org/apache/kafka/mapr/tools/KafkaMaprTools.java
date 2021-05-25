@@ -1,8 +1,8 @@
 package org.apache.kafka.mapr.tools;
 
 import com.mapr.fs.MapRFileSystem;
-import com.mapr.streams.Admin;
-import com.mapr.streams.Streams;
+import com.mapr.kafka.eventstreams.Admin;
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.security.UserGroupInformation;

@@ -762,16 +762,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 // Load the MarlinClient and associated jni classes first.
                 try {
-                    Class.forName("com.mapr.streams.impl.MarlinClient");
+                    Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
                 } catch (Throwable e) {
-                    throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.streams.impl.MarlinClient. " + e.getMessage()), e);
+                    throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.kafka.eventstreams.impl.MarlinClient. " + e.getMessage()), e);
                 }
 
                 Consumer<K,V> ac;
                 GenericHFactory<Consumer<K, V>> consumerFactory = new GenericHFactory<Consumer<K, V>>();
 
                 ac =
-                    consumerFactory.getImplementorInstance("com.mapr.streams.impl.listener.MarlinListenerV10",
+                    consumerFactory.getImplementorInstance("com.mapr.kafka.eventstreams.impl.listener.MarlinListenerV10",
                                         new Object [] {this.config,
                                                                            this.keyDeserializer,
                                                                 this.valueDeserializer,

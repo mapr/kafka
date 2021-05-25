@@ -16,9 +16,9 @@
  */
 package kafka.tools;
 
-import com.mapr.streams.Streams;
-import com.mapr.streams.impl.admin.AssignInfo;
-import com.mapr.streams.impl.admin.MarlinAdminImpl;
+import com.mapr.kafka.eventstreams.Streams;
+import com.mapr.kafka.eventstreams.impl.admin.AssignInfo;
+import com.mapr.kafka.eventstreams.impl.admin.MarlinAdminImpl;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -432,7 +432,7 @@ public class StreamsResetter {
 
         int expectedPartitionsCount = 0;
 
-        try (com.mapr.streams.Admin admin = Streams.newAdmin(new Configuration())) {
+        try (com.mapr.kafka.eventstreams.Admin admin = Streams.newAdmin(new Configuration())) {
             for (Map.Entry<String, Set<String>> streamWithTopics : MapRTopicUtils.groupTopicsByStreamName(inputTopics)
                     .entrySet()) {
                 maybeDeleteActiveConsumers(streamWithTopics.getKey(), groupId, streamWithTopics.getValue());
@@ -748,7 +748,7 @@ public class StreamsResetter {
 
         try (
                 final FileSystem fs = FileSystem.get(conf);
-                final com.mapr.streams.Admin admin = Streams.newAdmin(conf)
+                final com.mapr.kafka.eventstreams.Admin admin = Streams.newAdmin(conf)
         ) {
             if(admin.streamExists(internalStream)){
                 admin.deleteStream(internalStream);

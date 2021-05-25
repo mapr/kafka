@@ -94,7 +94,7 @@ public class WorkerGroupMember {
                 GenericHFactory<GenericWorkerCoordinator> coordFactory =
                         new GenericHFactory<GenericWorkerCoordinator>();
                 this.coordinator = coordFactory.getImplementorInstance(
-                        "com.mapr.streams.impl.MarlinWorkerCoordinatorV10",
+                        "com.mapr.kafka.eventstreams.impl.MarlinWorkerCoordinatorV10",
                         new Object [] {config,
                                 config.getString(DistributedConfig.GROUP_ID_CONFIG),
                                 restUrl,

@@ -1,7 +1,7 @@
 package org.apache.kafka.mapr.tools;
 
-import com.mapr.streams.Admin;
-import com.mapr.streams.StreamDescriptor;
+import com.mapr.kafka.eventstreams.Admin;
+import com.mapr.kafka.eventstreams.StreamDescriptor;
 import org.apache.kafka.common.KafkaException;
 import org.easymock.Capture;
 import org.easymock.EasyMockSupport;

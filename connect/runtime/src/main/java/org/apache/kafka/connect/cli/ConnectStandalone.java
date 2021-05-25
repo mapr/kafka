@@ -77,7 +77,7 @@ public class ConnectStandalone {
 
             // Load the MarlinClient and associated jni classes first.
             log.info("Loading MarlinClient");
-            Class.forName("com.mapr.streams.impl.MarlinClient");
+            Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
 
             log.info("Scanning for plugin classes. This might take a moment ...");
             Plugins plugins = new Plugins(workerProps);

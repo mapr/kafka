@@ -18,7 +18,7 @@ import org.ajoberstar.grgit.Grgit
 import java.nio.charset.StandardCharsets
 
 def maprMavenRepo = System.getenv("MAPR_MAVEN_REPO") ?:
-        "http://maven.corp.maprtech.com/nexus/content/groups/public/"
+        "https://repository.mapr.com/nexus/content/groups/mapr-public/"
 
 buildscript {
   repositories {
@@ -741,7 +741,7 @@ project(':core') {
   dependencies {
     compile project(':clients')
 
-    compileOnly (libs.maprStreams) {
+    compileOnly (libs.kafkaEventstreams) {
       exclude group: 'xerces', module: 'xercesImpl'
       exclude module: 'connect-runtime'
     }
@@ -1253,7 +1253,7 @@ project(':streams') {
 
     compile libs.slf4jApi
     compile libs.rocksDBJni
-    compile (libs.maprStreams){
+    compile (libs.kafkaEventstreams){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
       transitive = false
@@ -2218,7 +2218,7 @@ project(':mapr-eco-tools') {
   dependencies {
     compile project(':clients')
 
-    compile (libs.maprStreams){
+    compile (libs.kafkaEventstreams){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
       transitive = false
@@ -2228,7 +2228,7 @@ project(':mapr-eco-tools') {
       exclude group: 'xerces', module: 'xercesImpl'
     }
 
-    testCompile (libs.maprStreams) {
+    testCompile (libs.kafkaEventstreams) {
       exclude group: 'xerces', module: 'xercesImpl'
     }
     testCompile (libs.maprFs) {

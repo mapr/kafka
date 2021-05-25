@@ -121,7 +121,8 @@ versions += [
   zstd: "1.4.4-7",
   restutils: "6.0.0.0-mapr-SNAPSHOT",
   commonsIo: "2.6",
-  xerces: "2.12.0"
+  xerces: "2.12.0",
+  kafkaeventstreams: "0.1.0-SNAPSHOT"
 ]
 libs += [
   activation: "javax.activation:activation:$versions.activation",
@@ -198,7 +199,7 @@ libs += [
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   zstd: "com.github.luben:zstd-jni:$versions.zstd",
   httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient",
-  maprStreams: "com.mapr.streams:mapr-streams:$maprVersion",
+  kafkaEventstreams: "com.mapr.kafka:kafka-eventstreams:$versions.kafkaeventstreams",
   maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
   restutils: "io.confluent:rest-utils:$versions.restutils",
   commonsIo: "commons-io:commons-io:$versions.commonsIo",

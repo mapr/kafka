@@ -239,7 +239,7 @@ public class AdminClientConfig extends AbstractConfig {
                                         STREAMS_ADMIN_DEFAULT_STREAM_DOC)
                                 .define(ADMINCLIENT_CLASS_CONFIG,
                                         Type.STRING,
-                                        "com.mapr.streams.impl.admin.MarlinAdminClientImpl",
+                                        "com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl",
                                         Importance.MEDIUM,
                                         ADMINCLIENT_CLASS_DOC);
     }

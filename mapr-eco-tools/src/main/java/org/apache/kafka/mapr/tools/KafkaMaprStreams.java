@@ -1,8 +1,8 @@
 package org.apache.kafka.mapr.tools;
 
-import com.mapr.streams.Admin;
-import com.mapr.streams.StreamDescriptor;
-import com.mapr.streams.Streams;
+import com.mapr.kafka.eventstreams.Admin;
+import com.mapr.kafka.eventstreams.StreamDescriptor;
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.common.KafkaException;
 

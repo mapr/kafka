@@ -413,15 +413,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
                 // Load the MarlinClient and associated jni classes first.
                 try {
-                    Class.forName("com.mapr.streams.impl.MarlinClient");
+                    Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
                 } catch (Throwable e) {
-                    throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.streams.impl.MarlinClient. " + e.getMessage()), e);
+                    throw new RuntimeException(String.format("Error occurred while instantiating class, com.mapr.kafka.eventstreams.impl.MarlinClient. " + e.getMessage()), e);
                 }
 
                 Producer<K, V> ap;
                 GenericHFactory<Producer<K, V>> producerFactory = new GenericHFactory<Producer<K, V>>();
                 ap =
-                        producerFactory.getImplementorInstance("com.mapr.streams.impl.producer.MarlinProducerV10",
+                        producerFactory.getImplementorInstance("com.mapr.kafka.eventstreams.impl.producer.MarlinProducerV10",
                                 new Object[]{this.config,
                                         this.keySerializer,
                                         this.valueSerializer},

@@ -93,7 +93,7 @@ public class ConnectDistributed {
         if (configTopic.startsWith("/") == true || configTopic.contains(":") == true) {
             // Load the MarlinClient and associated jni classes first.
             log.info("Loading MarlinClient");
-            Class.forName("com.mapr.streams.impl.MarlinClient");
+            Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
         }
         Plugins plugins = new Plugins(workerProps);
         plugins.compareAndSwapWithDelegatingLoader();
