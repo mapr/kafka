@@ -880,7 +880,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                                 metricGrpPrefix,
                                 this.time,
                                 enableAutoCommit,
-                                config.getInt(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
+                                config.getLong(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG),
                                 this.interceptors,
                                 config.getBoolean(ConsumerConfig.THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED));
                     this.fetcher = new Fetcher<>(
