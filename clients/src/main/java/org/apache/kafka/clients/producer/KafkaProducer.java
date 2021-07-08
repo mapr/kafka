@@ -1093,7 +1093,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         log.trace("Retrying append due to new batch creation for topic {} partition {}. The old partition was {}", record.topic(), partition, prevPartition);
                     }
                     // producer callback will make sure to call both 'callback' and interceptor callback
-                    interceptCallback = new InterceptorCallback<>(callback, this.interceptors, tp);
+                    interceptCallback = this.interceptors == null ? callback :
+                            new InterceptorCallback<>(callback, this.interceptors, tp);
 
                     result = accumulator.append(tp, timestamp, serializedKey,
                         serializedValue, headers, interceptCallback, remainingWaitMs, false, nowMs);
