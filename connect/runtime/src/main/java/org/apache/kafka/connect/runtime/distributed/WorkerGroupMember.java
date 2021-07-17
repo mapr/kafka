@@ -84,7 +84,6 @@ public class WorkerGroupMember {
                              LogContext logContext) {
         try {
             this.time = time;
-            //String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
             this.clientId = clientId;
             this.log = logContext.logger(WorkerGroupMember.class);
 

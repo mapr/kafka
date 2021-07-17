@@ -665,6 +665,7 @@ public class Worker {
                                                String clusterId) {
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Utils.join(config.getList(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG), ","));
+        producerProps.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, config.originals().get(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG));
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
         // These settings will execute infinite retries on retriable exceptions. They *may* be overridden via configs passed to the worker,

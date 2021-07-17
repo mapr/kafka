@@ -62,7 +62,7 @@ public interface Admin extends AutoCloseable {
      */
     static Admin create(Properties props) {
         GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
-        AdminClientConfig adminConf = new AdminClientConfig(props);
+        AdminClientConfig adminConf = new AdminClientConfig(props, true);
         String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
 
         return adminFactory.runMethod(adminClientClass,
@@ -79,7 +79,7 @@ public interface Admin extends AutoCloseable {
      */
     static Admin create(Map<String, Object> conf) {
         GenericHFactory<AdminClient> adminFactory = new GenericHFactory<AdminClient>();
-        AdminClientConfig adminConf = new AdminClientConfig(conf);
+        AdminClientConfig adminConf = new AdminClientConfig(conf, true);
         String adminClientClass = adminConf.getString(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
 
         return adminFactory.runMethod(adminClientClass,

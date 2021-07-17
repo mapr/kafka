@@ -46,7 +46,8 @@ public class DefaultReplicationPolicy implements ReplicationPolicy, Configurable
     }
 
     @Override
-    public String formatRemoteTopic(String sourceClusterAlias, String topic) {
+    public String formatRemoteTopic(String sourceClusterAlias, String fullTopic) {
+        String topic = fullTopic.startsWith("/") ? fullTopic.split(":")[1] : fullTopic;
         return sourceClusterAlias + separator + topic;
     }
 

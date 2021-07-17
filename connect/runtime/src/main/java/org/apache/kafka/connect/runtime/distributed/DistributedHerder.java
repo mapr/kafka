@@ -1258,10 +1258,12 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
 
     private boolean startTask(ConnectorTaskId taskId) {
         log.info("Starting task {}", taskId);
+        Map<String, String> configProps = configState.connectorConfig(taskId.connector());
+        setTaskUser(configProps);
         return worker.startTask(
                 taskId,
                 configState,
-                configState.connectorConfig(taskId.connector()),
+                configProps,
                 configState.taskConfig(taskId),
                 this,
                 configState.targetState(taskId.connector())
@@ -1335,12 +1337,17 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
     private void setTaskUserIfNull(Map<String, String> configProps) {
         // If no task.user in config then authentication.method=NONE and task.user should be set to the current user
         if (configProps.containsKey(TaskConfig.TASK_USER_CONFIG) && configProps.get(TaskConfig.TASK_USER_CONFIG) == null) {
-            try {
-                configProps.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+            setTaskUser(configProps);
+        }
+    }
 
-            } catch (IOException e) {
-                log.error("Can not get the current user: " +  e);
-            }
+    private void setTaskUser(Map<String, String> configProps) {
+        // task.user should be set to the current user
+        try {
+            configProps.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+
+        } catch (IOException e) {
+            log.error("Can not get the current user: " +  e);
         }
     }
 

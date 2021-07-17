@@ -16,6 +16,9 @@
  */
 package org.apache.kafka.connect.mirror;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -115,6 +118,18 @@ public class MirrorMakerConfig extends AbstractConfig {
 
         props.putAll(stringsWithPrefixStripped(cluster + "."));
 
+        if (props.containsKey("stream")) {
+            props.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+            props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+            props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+        } else {
+            props.put(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG,
+                    "org.apache.kafka.clients.admin.KafkaAdminClient");
+        }
+
         for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
             String v = props.get(k);
             if (v != null) {
@@ -160,12 +175,22 @@ public class MirrorMakerConfig extends AbstractConfig {
 
         // fill in reasonable defaults
         props.putIfAbsent(GROUP_ID_CONFIG, sourceAndTarget.source() + "-mm2");
-        props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
-                + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
-                + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, "mm2-configs."
-                + sourceAndTarget.source() + ".internal");
+        String stream = props.get("stream");
+        if (stream != null) {
+            props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, stream
+                    + ":mm2-offsets." + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, stream
+                    + ":mm2-status." + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, stream
+                    + ":mm2-configs." + sourceAndTarget.source() + ".internal");
+        } else {
+            props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
+                    + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
+                    + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, "mm2-configs."
+                    + sourceAndTarget.source() + ".internal");
+        }
         props.putIfAbsent(KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
         props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
         props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);

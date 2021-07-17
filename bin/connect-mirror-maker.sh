@@ -42,4 +42,7 @@ case $COMMAND in
     ;;
 esac
 
+MIRROR_MAKER_OPTS='-Dmapr.library.flatclass'
+export MIRROR_MAKER_OPTS
+
 exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.mirror.MirrorMaker "$@"
