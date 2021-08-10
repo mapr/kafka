@@ -63,9 +63,6 @@ allprojects {
     maven {
       url "$maprMavenRepo"
     }
-    maven {
-      url "http://artifactory.devops.lab/artifactory/maven-mapr-central/"
-    }
   }
 
   apply plugin: 'idea'
