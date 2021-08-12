@@ -74,6 +74,7 @@ pipeline {
                   -e BUILD_NUMBER=${ID}.${BUILD_NUMBER} \
                   -e MAPR_RELEASES_REPO=${MAPR_RELEASES_REPO} \
                   -e MAPR_SNAPSHOTS_REPO=${MAPR_SNAPSHOTS_REPO} \
+                  -v /root/.m2:/root/.m2:rw \
                   -v /root/yum-proxy.conf:/etc/yum.conf:ro \
                   -v /etc/hosts:/etc/hosts:ro \
                   -v /root/apt-proxy.conf:/etc/apt/apt.conf.d/proxy.conf:ro \
@@ -136,6 +137,7 @@ pipeline {
                     -e MAPR_MAVEN_USER=${user} \
                     -e MAPR_MAVEN_PASS=${pass} \
                     -e JAVA_TOOL_OPTIONS=\"-DproxyHost=${HPE_PROXY_HOST} -DproxyPort=${HPE_PROXY_PORT} -DnonProxyHosts=${HPE_PROXY_EXCEPTIONS}\" \
+                    -v /root/.m2:/root/.m2:rw \
                     -v /root/yum-proxy.conf:/etc/yum.conf:ro \
                     -v /etc/hosts:/etc/hosts:ro \
                     -v /root/apt-proxy.conf:/etc/apt/apt.conf.d/proxy.conf:ro \
@@ -199,7 +201,7 @@ pipeline {
                       -v /etc/profile.d/proxy.sh:/etc/profile.d/proxy.sh:ro \
                       -v /root/.ssh:/root/.ssh:rw \
                       -v ${WORKSPACE}/settings.xml:/root/.m2/settings.xml:ro \
-                      ") {
+                      -v /root/.m2/repository:/root/.m2/repository:rw") {
                         sh """
                         cd devops/whitesource/ ; \
                         curl -LJO https://github.com/whitesource/unified-agent-distribution/releases/latest/download/wss-unified-agent.jar ; \
