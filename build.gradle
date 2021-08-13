@@ -20,6 +20,9 @@ import java.nio.charset.StandardCharsets
 def maprMavenRepo = System.getenv("MAPR_MAVEN_REPO") ?:
         "https://repository.mapr.com/nexus/content/groups/mapr-public/"
 
+def mavenCentralRepo = System.getenv("MAVEN_CENTRAL") ?:
+        "https://repository.mapr.com/nexus/content/groups/mapr-public/"
+
 buildscript {
   repositories {
     mavenCentral()
@@ -59,6 +62,9 @@ allprojects {
     mavenCentral()
     maven {
       url "http://packages.confluent.io/maven/"
+    }
+    maven {
+      url "$mavenCentralRepo"
     }
     maven {
       url "$maprMavenRepo"
