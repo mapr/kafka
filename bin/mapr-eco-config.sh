@@ -40,6 +40,10 @@ get_kafka_external_jars() {
   get_files_in_folder $MAPR_LIB\
     "kafka-connect-avro-converter*.jar"\
     "kafka-avro-serializer*.jar"\
+    "kafka-connect-protobuf-converter*.jar"\
+    "kafka-protobuf-serializer*.jar"\
+    "kafka-connect-json-schema-converter*.jar"\
+    "kafka-json-schema-serializer*.jar"\
     "kafka-schema-registry-client*.jar"
 }
 
