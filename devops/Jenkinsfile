@@ -33,7 +33,7 @@ pipeline {
   }
   parameters {
     choice(name: 'BUILD_TYPE', choices: ['Dev','EBF','Release'], description: 'default - Dev. EBF and Release args you can use only in release branches')
-    string(name: 'MAKEFILE_ENV_VARS', defaultValue: 'KAFKA_ARTIFACT_VERSION=2.6.1.0-mapr-SNAPSHOT MAPR_JAR_VERSION=6.2.0.0-mapr-SNAPSHOT', description: 'Variables you can pass to makefile (command will be: make {THIS VAR} {project-name}). Please DO NOT put component_branch_name')
+    string(name: 'MAKEFILE_ENV_VARS', defaultValue: 'KAFKA_ARTIFACT_VERSION=2.6.1.0-eep-SNAPSHOT MAPR_JAR_VERSION=6.2.0.0-mapr-SNAPSHOT', description: 'Variables you can pass to makefile (command will be: make {THIS VAR} {project-name}). Please DO NOT put component_branch_name')
   }
   stages {
     stage("Setup settings and variables") {
