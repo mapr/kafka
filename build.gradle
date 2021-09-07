@@ -1954,7 +1954,7 @@ project(':connect:runtime') {
     compile libs.jettyServlets
     compile libs.jettyClient
     compile libs.jpam
-    compile (libs.maprSecurityWeb) {
+    compileOnly (libs.maprSecurityWeb) {
         transitive = false
     }
 
