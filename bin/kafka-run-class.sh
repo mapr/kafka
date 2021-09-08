@@ -56,6 +56,8 @@ CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
 CLASSPATH=$CLASSPATH:$CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
 # Add 3rd party jars
 CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
+# Add mapr-security-web.jar
+CLASSPATH=$CLASSPATH:$CLASSPATH:$(find ${BASEMAPR:-/opt/mapr}/lib -name "mapr-security-web-*.jar" ! -name "mapr-security-web-*-tests.jar")
 
 base_dir=$(dirname $0)/..
 
