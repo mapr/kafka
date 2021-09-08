@@ -56,7 +56,11 @@ CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
 CLASSPATH=$CLASSPATH:$CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
 # Add 3rd party jars
 CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
-
+# Add mapr-security-web.jar
+for file in "${BASEMAPR:-/opt/mapr}"/lib/mapr-security-web-*.jar
+do
+  CLASSPATH="$CLASSPATH":"$file"
+done
 base_dir=$(dirname $0)/..
 
 if [ -z "$SCALA_VERSION" ]; then
