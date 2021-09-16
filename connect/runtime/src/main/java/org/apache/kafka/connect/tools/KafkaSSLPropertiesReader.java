@@ -18,26 +18,24 @@ public class KafkaSSLPropertiesReader {
   }
 
   /**
-   * Reads client keystore password value.
-   * @return client keystore password value as string
+   * Reads server keystore password value.
+   * @return server keystore password value as string
    */
 
-  public static String getClientKeystorePassword() {
-    try (SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfig.SslConfigScope.SCOPE_CLIENT_ONLY)) {
-      return new String(sslConfig.getClientKeystorePassword());
-
+  public static String getServerKeystorePassword() {
+    try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+      return new String(sslConfig.getServerKeystorePassword());
     }
   }
 
   /**
-   * Reads client key password value.
-   * @return client key password value as string
+   * Reads server key password value.
+   * @return server key password value as string
    */
 
-  public static String getClientKeyPassword() {
-    try (SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfig.SslConfigScope.SCOPE_CLIENT_ONLY)) {
-      return new String(sslConfig.getClientKeyPassword());
-
+  public static String getServerKeyPassword() {
+    try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+      return new String(sslConfig.getServerKeyPassword());
     }
   }
 }

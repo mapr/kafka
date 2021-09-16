@@ -114,7 +114,7 @@ public class SSLUtils {
                 !Objects.equals(sslKeystorePassword.value(), ""))
             ssl.setKeyStorePassword(sslKeystorePassword.value());
         else {
-            String tmpSslKeystorePassword = KafkaSSLPropertiesReader.getClientKeystorePassword();
+            String tmpSslKeystorePassword = KafkaSSLPropertiesReader.getServerKeystorePassword();
             if (Objects.equals(tmpSslKeystorePassword, ""))
                 throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
             ssl.setKeyStorePassword(tmpSslKeystorePassword);
@@ -125,7 +125,7 @@ public class SSLUtils {
                 !Objects.equals(sslKeyPassword.value(), ""))
             ssl.setKeyManagerPassword(sslKeyPassword.value());
         else {
-            String tmpSslKeyPassword = KafkaSSLPropertiesReader.getClientKeyPassword();
+            String tmpSslKeyPassword = KafkaSSLPropertiesReader.getServerKeyPassword();
             if (Objects.equals(tmpSslKeyPassword, ""))
                 throw new SSLConfigException(SslConfigs.SSL_KEY_PASSWORD_CONFIG);
             ssl.setKeyManagerPassword(tmpSslKeyPassword);
