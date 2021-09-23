@@ -378,7 +378,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         defaultStream = null;
         try {
             defaultStream = config.getString(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG);
-            if (defaultStream.equals("")) defaultStream = null;
+            if ("".equals(defaultStream)) defaultStream = null;
         } catch (Exception e) {}
 
         if (defaultStream != null) {
@@ -1127,8 +1127,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.interceptors.onSendError(record, tp, e);
                 throw e;
             } catch (Exception e) {
-                // we notify interceptor about all exceptions, since onSend is called before anything else in this method
-                this.interceptors.onSendError(record, tp, e);
+                if (this.interceptors != null) {
+                    // we notify interceptor about all exceptions, since onSend is called before anything else in this method
+                    this.interceptors.onSendError(record, tp, e);
+                }
                 throw e;
             }
         }

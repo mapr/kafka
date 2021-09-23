@@ -89,7 +89,7 @@ public class KafkaBasedLog<K, V> {
     private static int EOF_OFFSET = 0;
     private Time time;
     private final String topic;
-    private int partitionCount;
+    private List<TopicPartition> partitions;
     private final Map<String, Object> producerConfigs;
     private final Map<String, Object> consumerConfigs;
     private final Callback<ConsumerRecord<K, V>> consumedCallback;
@@ -169,7 +169,7 @@ public class KafkaBasedLog<K, V> {
 
         for (PartitionInfo partition : partitionInfos)
             partitions.add(new TopicPartition(partition.topic(), partition.partition()));
-        partitionCount = partitions.size();
+        this.partitions = partitions;
         consumer.assign(partitions);
 
         // Always consume from the beginning of all partitions. Necessary to ensure that we don't use committed offsets
@@ -272,7 +272,7 @@ public class KafkaBasedLog<K, V> {
     }
 
     public int partitionCount() {
-        return partitionCount;
+        return partitions.size();
     }
 
     private Producer<K, V> createProducer() {
@@ -384,6 +384,10 @@ public class KafkaBasedLog<K, V> {
     }
 
     private void readToMapRStreamsLogEnd() {
+        // Always consume from the beginning of all partitions. Necessary to ensure that we don't use committed offsets
+        // when a 'group.id' is specified (if offsets happen to have been committed unexpectedly).
+        consumer.seekToBeginning(partitions);
+
         Set<TopicPartition> assignment = consumer.assignment();
 
         int numPartitions = assignment.size();
