@@ -69,6 +69,10 @@ allprojects {
     maven {
       url "$maprMavenRepo"
     }
+    //some dependencies still have versions containing -SNAPSHOT
+    maven {
+      url "http://df-mvn-dev.mip.storage.hpecorp.net/nexus/content/groups/public/"
+    }
   }
 
   apply plugin: 'idea'
