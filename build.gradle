@@ -76,6 +76,9 @@ allprojects {
     maven {
       url "$mavenSnapshotsRepo"
     }
+    maven {
+      url "http://df-mvn-dev.mip.storage.hpecorp.net/nexus/content/groups/public/"
+    }
   }
 
   apply plugin: 'idea'
