@@ -1259,7 +1259,9 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
     private boolean startTask(ConnectorTaskId taskId) {
         log.info("Starting task {}", taskId);
         Map<String, String> configProps = configState.connectorConfig(taskId.connector());
-        setTaskUser(configProps);
+        if (!configProps.containsKey(TaskConfig.TASK_USER_CONFIG)) {
+            setTaskUser(configProps);
+        }
         return worker.startTask(
                 taskId,
                 configState,
