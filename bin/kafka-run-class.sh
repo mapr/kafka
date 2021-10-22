@@ -466,6 +466,11 @@ fi
 (( CYGWIN )) && CLASSPATH=$(cygpath --path --mixed "${CLASSPATH}")
 export MAPR_IMPERSONATION_ENABLED=true
 
+# if FIPS mode is enabled, add security java options
+env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
+[ -f "${env}" ] && . "${env}"
+KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS}"
+
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   nohup "$JAVA" $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS $MIRROR_MAKER_OPTS -cp "$CLASSPATH" $KAFKA_OPTS "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &

@@ -7,13 +7,24 @@ import com.mapr.web.security.WebSecurityManager;
 public class KafkaSSLPropertiesReader {
 
   /**
-   * Reads client keystore location.
-   * @return client keystore location as string
+   * Reads server keystore type.
+   * @return server keystore type as string
    */
 
-  public static String getClientKeystoreLocation() {
-    try (SslConfig sslConfig = WebSecurityManager.getSslConfig(SslConfig.SslConfigScope.SCOPE_CLIENT_ONLY)) {
-      return sslConfig.getClientKeystoreLocation();
+  public static String getServerKeystoreType() {
+    try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+      return sslConfig.getServerKeystoreType();
+    }
+  }
+
+  /**
+   * Reads server keystore location.
+   * @return server keystore location as string
+   */
+
+  public static String getServerKeystoreLocation() {
+    try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+      return sslConfig.getServerKeystoreLocation();
     }
   }
 

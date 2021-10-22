@@ -22,9 +22,13 @@ import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.rest.errors.SSLConfigException;
 import org.apache.kafka.connect.tools.KafkaSSLPropertiesReader;
+import org.apache.zookeeper.common.KeyStoreFileType;
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import javax.net.ssl.X509ExtendedKeyManager;
+import java.security.Security;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -95,20 +99,31 @@ public class SSLUtils {
      * Configures KeyStore related settings in SslContextFactory
      */
     private static void configureSslContextFactoryKeyStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
-        ssl.setKeyStoreType((String) getOrDefault(
-                sslConfigValues,
-                SslConfigs.SSL_KEYSTORE_TYPE_CONFIG,
-                SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
+        String sslKeystoreType = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
+        if (sslKeystoreType != null)
+            ssl.setKeyStorePath(sslKeystoreType);
+        else {
+            sslKeystoreType = KafkaSSLPropertiesReader.getServerKeystoreType();
+            if (sslKeystoreType == null)
+                throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
+            ssl.setKeyStorePath(sslKeystoreType);
+            if (sslKeystoreType.equalsIgnoreCase(KeyStoreFileType.BCFKS.getPropertyValue())) {
+                Security.addProvider(new BouncyCastleFipsProvider());
+                Security.addProvider(new BouncyCastleJsseProvider());
+                ssl.setProvider(BouncyCastleJsseProvider.PROVIDER_NAME);
+            }
+        }
 
         String sslKeystoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
         if (sslKeystoreLocation != null)
             ssl.setKeyStorePath(sslKeystoreLocation);
         else {
-            sslKeystoreLocation = KafkaSSLPropertiesReader.getClientKeystoreLocation();
+            sslKeystoreLocation = KafkaSSLPropertiesReader.getServerKeystoreLocation();
             if (sslKeystoreLocation == null)
                 throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
             ssl.setKeyStorePath(sslKeystoreLocation);
         }
+
         Password sslKeystorePassword = (Password) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
         if (sslKeystorePassword != null &&
                 !Objects.equals(sslKeystorePassword.value(), ""))
