@@ -2549,7 +2549,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Map<MetricName, ? extends Metric> metrics() {
         if (consumerDriver == null) {
             log.info("consumed not initialized, cannot get metrics");
-            return null;
+            return Collections.EMPTY_MAP;
         }
 
         if (isStreams) {
