@@ -1315,8 +1315,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
         if (producerDriver == null) {
-            log.info("producer not initialized, cannot get metrics");
-            return null;
+            log.info("producer not initialized, cannot get metrics, returning empty result");
+            return Collections.EMPTY_MAP;
         }
 
         if (isStreams) {
