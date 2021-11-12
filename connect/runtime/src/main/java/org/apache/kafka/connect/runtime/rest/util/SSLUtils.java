@@ -100,13 +100,13 @@ public class SSLUtils {
      */
     private static void configureSslContextFactoryKeyStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
         String sslKeystoreType = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
-        if (sslKeystoreType != null)
-            ssl.setKeyStorePath(sslKeystoreType);
+        if (sslKeystoreType != null && !sslKeystoreType.isEmpty())
+            ssl.setKeyStoreType(sslKeystoreType);
         else {
             sslKeystoreType = KafkaSSLPropertiesReader.getServerKeystoreType();
             if (sslKeystoreType == null)
                 throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
-            ssl.setKeyStorePath(sslKeystoreType);
+            ssl.setKeyStoreType(sslKeystoreType);
             if (sslKeystoreType.equalsIgnoreCase(KeyStoreFileType.BCFKS.getPropertyValue())) {
                 Security.addProvider(new BouncyCastleFipsProvider());
                 Security.addProvider(new BouncyCastleJsseProvider());
@@ -158,7 +158,15 @@ public class SSLUtils {
      * Configures TrustStore related settings in SslContextFactory
      */
     protected static void configureSslContextFactoryTrustStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
-        ssl.setTrustStoreType((String) getOrDefault(sslConfigValues, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE));
+        String sslTruststoreType = (String) sslConfigValues.get(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
+        if (sslTruststoreType != null && !sslTruststoreType.isEmpty())
+            ssl.setTrustStoreType(sslTruststoreType);
+        else {
+            sslTruststoreType = KafkaSSLPropertiesReader.getServerKeystoreType();
+            if (sslTruststoreType == null)
+                throw new SSLConfigException(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
+            ssl.setTrustStoreType(sslTruststoreType);
+        }
 
         String sslTruststoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
         if (sslTruststoreLocation != null)

@@ -98,7 +98,7 @@ public class SslConfigs {
     public static final String SSL_KEYSTORE_TYPE_CONFIG = "ssl.keystore.type";
     public static final String SSL_KEYSTORE_TYPE_DOC = "The file format of the key store file. "
             + "This is optional for client.";
-    public static final String DEFAULT_SSL_KEYSTORE_TYPE = "JKS";
+    public static final String DEFAULT_SSL_KEYSTORE_TYPE = "";
 
     public static final String SSL_KEYSTORE_LOCATION_CONFIG = "ssl.keystore.location";
     public static final String SSL_KEYSTORE_LOCATION_DOC = "The location of the key store file. "
@@ -114,7 +114,7 @@ public class SslConfigs {
 
     public static final String SSL_TRUSTSTORE_TYPE_CONFIG = "ssl.truststore.type";
     public static final String SSL_TRUSTSTORE_TYPE_DOC = "The file format of the trust store file.";
-    public static final String DEFAULT_SSL_TRUSTSTORE_TYPE = "JKS";
+    public static final String DEFAULT_SSL_TRUSTSTORE_TYPE = "";
 
     public static final String SSL_TRUSTSTORE_LOCATION_CONFIG = "ssl.truststore.location";
     public static final String SSL_TRUSTSTORE_LOCATION_DOC = "The location of the trust store file. ";
