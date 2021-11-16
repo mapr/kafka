@@ -49,4 +49,15 @@ public class KafkaSSLPropertiesReader {
       return new String(sslConfig.getServerKeyPassword());
     }
   }
+
+  /**
+   * Reads server truststore type.
+   * @return server truststore type as string
+   */
+
+  public static String getServerTruststoreType() {
+    try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+      return sslConfig.getServerTruststoreType();
+    }
+  }
 }

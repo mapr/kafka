@@ -22,7 +22,6 @@ import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.rest.errors.SSLConfigException;
 import org.apache.kafka.connect.tools.KafkaSSLPropertiesReader;
-import org.apache.zookeeper.common.KeyStoreFileType;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
@@ -107,7 +106,7 @@ public class SSLUtils {
             if (sslKeystoreType == null)
                 throw new SSLConfigException(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
             ssl.setKeyStoreType(sslKeystoreType);
-            if (sslKeystoreType.equalsIgnoreCase(KeyStoreFileType.BCFKS.getPropertyValue())) {
+            if (sslKeystoreType.equalsIgnoreCase("BCFKS")) {
                 Security.addProvider(new BouncyCastleFipsProvider());
                 Security.addProvider(new BouncyCastleJsseProvider());
                 ssl.setProvider(BouncyCastleJsseProvider.PROVIDER_NAME);
@@ -162,7 +161,7 @@ public class SSLUtils {
         if (sslTruststoreType != null && !sslTruststoreType.isEmpty())
             ssl.setTrustStoreType(sslTruststoreType);
         else {
-            sslTruststoreType = KafkaSSLPropertiesReader.getServerKeystoreType();
+            sslTruststoreType = KafkaSSLPropertiesReader.getServerTruststoreType();
             if (sslTruststoreType == null)
                 throw new SSLConfigException(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
             ssl.setTrustStoreType(sslTruststoreType);
