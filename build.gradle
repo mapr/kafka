@@ -1473,6 +1473,21 @@ project(':streams:test-utils') {
     dependsOn 'copyDependantLibs'
   }
 
+  publishing {
+    publications {
+      kafkaStreamsTestUtils(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-streams-test-utils"
+        from components.java
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
 }
 
 project(':streams:examples') {
@@ -2316,6 +2331,7 @@ task maprPublicPublish() {
     ":connect:transforms:uploadArchives",
     ":log4j-appender:uploadArchives",
     ":streams:publishKafkaStreamsPublicationToTargetrepoRepository",
+    ":streams:test-utils:publishKafkaStreamsTestUtilsPublicationToTargetrepoRepository",
     ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
     ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
     "uploadCoreArchives_2_12",
