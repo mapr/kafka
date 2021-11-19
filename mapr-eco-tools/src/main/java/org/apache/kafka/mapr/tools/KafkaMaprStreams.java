@@ -8,24 +8,27 @@ import org.apache.kafka.common.KafkaException;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Objects;
 
 public class KafkaMaprStreams implements Closeable {
     private final Admin admin;
+    public static final String PUBLIC_PERMISSIONS = "p";
 
     KafkaMaprStreams(Admin admin) {
         this.admin = admin;
     }
 
     public void createStreamForClusterAdmin(String streamName) {
-        createStreamWithPerms(streamName, null);
+        createStreamWithPerms(streamName, null, null);
     }
 
     public void createStreamForCurrentUser(String streamName) {
-        createStreamWithPerms(streamName, buildPermsForCurrentUser());
+        String currentUserPerms = buildPermsForCurrentUser();
+        createStreamWithPerms(streamName, currentUserPerms, currentUserPerms);
     }
 
     public void createStreamForAllUsers(String streamName) {
-        createStreamWithPerms(streamName, "p");
+        createStreamWithPerms(streamName, PUBLIC_PERMISSIONS, PUBLIC_PERMISSIONS);
     }
 
     private String buildPermsForCurrentUser() {
@@ -38,18 +41,44 @@ public class KafkaMaprStreams implements Closeable {
         }
     }
 
-    private void createStreamWithPerms(String streamName, String perms) {
+    private StreamDescriptor createDescriptorWithPerms(String producerPerms, String consumerPerms){
+        StreamDescriptor streamDescriptor = Streams.newStreamDescriptor();
+        if (producerPerms != null) {
+            streamDescriptor.setProducePerms(producerPerms);
+        }
+        if (consumerPerms != null) {
+            streamDescriptor.setConsumePerms(consumerPerms);
+        }
+        return streamDescriptor;
+    }
+
+    public void setStreamPerms(String streamName, String producerPerms, String consumerPerms) {
         try {
-            StreamDescriptor desc = Streams.newStreamDescriptor();
-            if (perms != null) {
-                desc.setConsumePerms(perms);
-                desc.setProducePerms(perms);
-            }
+            StreamDescriptor desc = createDescriptorWithPerms(producerPerms, consumerPerms);
+            admin.editStream(streamName, desc);
+        } catch (IOException e) {
+            throw new KafkaException(e);
+        }
+    }
+
+    public void createStreamWithPerms(String streamName, String producerPerms, String consumerPerms) {
+        try {
+            StreamDescriptor desc = createDescriptorWithPerms(producerPerms, consumerPerms);
             admin.createStream(streamName, desc);
         } catch (Exception e) {
             if (!streamExists(streamName)) {
                 throw new KafkaException(e);
             }
+        }
+    }
+
+    public boolean streamHasPerms(String streamName, String producerPerm, String consumerPerm) {
+        try {
+            StreamDescriptor desc = admin.getStreamDescriptor(streamName);
+            return (Objects.equals(producerPerm, desc.getProducePerms())
+                && Objects.equals(consumerPerm, desc.getConsumePerms()));
+        } catch (IOException e) {
+            throw new KafkaException(e);
         }
     }
 
