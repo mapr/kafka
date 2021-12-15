@@ -73,7 +73,7 @@ versions += [
   jmh: "1.23",
   hadoop: "2.7.6.200-eep-810-SNAPSHOT",
   hamcrest: "2.2",
-  log4j: "1.2.17",
+  log4j: "1.3.0-mapr",
   scalaLogging: "3.9.2",
   jaxb: "2.3.0",
   jaxrs: "2.1.1",
