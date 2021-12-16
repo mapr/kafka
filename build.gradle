@@ -107,7 +107,9 @@ allprojects {
             // be explicit about the Netty dependency version instead of relying on the version
             // set by ZooKeeper (potentially older and containing CVEs)
             libs.nettyHandler,
-            libs.nettyTransportNativeEpoll
+            libs.nettyTransportNativeEpoll,
+            // sure we have log4j from mapr
+            libs.log4j
           )
         }
       }
