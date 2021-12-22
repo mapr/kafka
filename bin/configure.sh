@@ -158,6 +158,26 @@ function stopService(){
 	logInfo "Stopping Kafka Connect..."
 	${KAFKA_HOME}/bin/connect-distributed-stop 2>/dev/null
 }
+createRestartFile(){
+  if ! [ -d ${MAPR_CONF_DIR}/restart ]; then
+    mkdir -p ${MAPR_CONF_DIR}/restart
+  fi
+
+  cat > "${KAFKA_CONNECT_RESTART_SRC}" <<'EOF'
+  #!/bin/bash
+  isSecured="false"
+  if [ -f "${MAPR_HOME}/conf/mapr-clusters.conf" ]; then
+    isSecured=$(head -1 ${MAPR_HOME}/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
+  fi
+  if [ "${isSecured}" = "true" ] && [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
+    export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+    fi
+  maprcli node services -action restart -name kafka-connect -nodes $(hostname)
+EOF
+
+  chmod +x "${KAFKA_CONNECT_RESTART_SRC}"
+  chown -R $MAPR_USER:$MAPR_GROUP "${KAFKA_CONNECT_RESTART_SRC}"
+}
 
 # Parse options
 
@@ -208,6 +228,13 @@ for i in "$@" ; do
   esac
 done
 
+if  [ -e $KAFKA_CONNECT_JDBC_HOME -a ! -f "$KAFKA_CONNECT_JDBC_HOME/conf/.not_configured_yet" ] ; then
+	createRestartFile
+fi
+
+if [ -e $KAFKA_CONNECT_HDFS_HOME -a  ! -f "$KAFKA_CONNECT_HDFS_HOME/conf/.not_configured_yet" ]  ; then
+	createRestartFile
+fi
 
 # remove state file
 if  [ -f "$KAFKA_CONNECT_JDBC_HOME/conf/.not_configured_yet" ] ; then
