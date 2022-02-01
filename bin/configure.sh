@@ -113,7 +113,7 @@ function configure_secure_mode() {
 function create_properties_file_with_ssl_config() {
 
         cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
-		listeners=https://0.0.0.0:${KAFKA_CONNECT_PORT}
+		listeners=https://$(hostname -f):${KAFKA_CONNECT_PORT}
 		EOL
 }
 
