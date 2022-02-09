@@ -23,6 +23,9 @@ def maprMavenRepo = System.getenv("MAPR_MAVEN_REPO") ?:
 def mavenCentralRepo = System.getenv("MAVEN_CENTRAL") ?:
         "https://repository.mapr.com/nexus/content/groups/mapr-public/"
 
+def mavenSnapshotsRepo = System.getenv("MAVEN_SNAPSHOTS_REPO") ?:
+        "https://repository.mapr.com/nexus/content/groups/mapr-public/"
+
 buildscript {
   repositories {
     mavenCentral()
@@ -68,6 +71,13 @@ allprojects {
     }
     maven {
       url "$maprMavenRepo"
+    }
+    //some dependencies still have versions containing -SNAPSHOT
+    maven {
+      url "$mavenSnapshotsRepo"
+    }
+    maven {
+      url "http://df-mvn-dev.mip.storage.hpecorp.net/nexus/content/groups/public/"
     }
   }
 
