@@ -74,6 +74,7 @@ pipeline {
                   -e BUILD_NUMBER=${ID}.${BUILD_NUMBER} \
                   -e MAPR_RELEASES_REPO=${MAPR_RELEASES_REPO} \
                   -e MAPR_SNAPSHOTS_REPO=${MAPR_SNAPSHOTS_REPO} \
+                  -e JAVA_TOOL_OPTIONS=\"-DproxyHost=${HPE_PROXY_HOST} -DproxyPort=${HPE_PROXY_PORT} -DnonProxyHosts=${HPE_PROXY_EXCEPTIONS}\" \
                   -v /root/.m2:/root/.m2:rw \
                   -v /root/yum-proxy.conf:/etc/yum.conf:ro \
                   -v /etc/hosts:/etc/hosts:ro \
