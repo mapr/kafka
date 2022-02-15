@@ -1961,6 +1961,8 @@ project(':connect:runtime') {
     compileOnly (libs.hadoopAuth) {
       transitive = false
     }
+    compile libs.bcFips
+    compile libs.bctlsFips
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet
     compile libs.jerseyHk2
