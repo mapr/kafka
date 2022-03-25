@@ -179,13 +179,16 @@ public final class DefaultSslEngineFactory implements SslEngineFactory {
     private SSLEngine createSslEngine(Mode mode, String peerHost, int peerPort, String endpointIdentification) {
         SSLEngine sslEngine = sslContext.createSSLEngine(peerHost, peerPort);
 
-        Set<String> suites = new HashSet<>(Arrays.asList(cipherSuites));
-        suites.removeAll(Arrays.asList(disabledcipherSuites));
-        if (cipherSuites != null) sslEngine.setEnabledCipherSuites(suites.toArray(new String[suites.size()]));
-
-        Set<String> protocols = new HashSet<>(Arrays.asList(enabledProtocols));
-        protocols.removeAll(Arrays.asList(disabledProtocols));
-        if (enabledProtocols != null) sslEngine.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
+        if (cipherSuites != null) {
+            Set<String> suites = new HashSet<>(Arrays.asList(cipherSuites));
+            suites.removeAll(Arrays.asList(disabledcipherSuites));
+            sslEngine.setEnabledCipherSuites(suites.toArray(new String[suites.size()]));
+        }
+        if(enabledProtocols != null) {
+            Set<String> protocols = new HashSet<>(Arrays.asList(enabledProtocols));
+            protocols.removeAll(Arrays.asList(disabledProtocols));
+            sslEngine.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
+        }
 
         if (mode == Mode.SERVER) {
             sslEngine.setUseClientMode(false);
