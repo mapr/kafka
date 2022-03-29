@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -63,6 +64,7 @@ import org.powermock.api.easymock.PowerMock;
 import org.powermock.api.easymock.annotation.Mock;
 import org.powermock.api.easymock.annotation.MockStrict;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
@@ -88,13 +90,15 @@ import static org.apache.kafka.connect.runtime.ConnectorConfig.KEY_CONVERTER_CLA
 import static org.apache.kafka.connect.runtime.ConnectorConfig.TASKS_MAX_CONFIG;
 import static org.apache.kafka.connect.runtime.ConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG;
 import static org.apache.kafka.connect.runtime.WorkerConfig.TOPIC_CREATION_ENABLE_CONFIG;
+import static org.easymock.EasyMock.mock;
+import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-@PowerMockIgnore({"javax.management.*",
-                  "org.apache.log4j.*"})
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest(UserGroupInformation.class)
 @RunWith(PowerMockRunner.class)
 public class WorkerSourceTaskTest extends ThreadedTest {
     private static final String TOPIC = "topic";
@@ -132,12 +136,14 @@ public class WorkerSourceTaskTest extends ThreadedTest {
     @Mock private Future<RecordMetadata> sendFuture;
     @MockStrict private TaskStatus.Listener statusListener;
     @Mock private StatusBackingStore statusBackingStore;
+    private static String TASK_USER = "testuser1";
 
     private Capture<org.apache.kafka.clients.producer.Callback> producerCallbacks;
 
     private static final Map<String, String> TASK_PROPS = new HashMap<>();
     static {
         TASK_PROPS.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        TASK_PROPS.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
     }
     private static final TaskConfig TASK_CONFIG = new TaskConfig(TASK_PROPS);
 
@@ -494,6 +500,34 @@ public class WorkerSourceTaskTest extends ThreadedTest {
         assertPollMetrics(1);
 
         PowerMock.verifyAll();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testImpersonationOnSend() throws Exception {
+        List<SourceRecord> records = new ArrayList<>();
+        records.add(new SourceRecord(PARTITION, OFFSET, "topic", null, KEY_SCHEMA, KEY, RECORD_SCHEMA, RECORD));
+        Capture<ProducerRecord<byte[], byte[]>> sent = expectSendRecordAnyTimes();
+        expectTopicCreation(TOPIC);
+
+        final UserGroupInformation[] sendUser = new UserGroupInformation[1];
+        Map<String, String> impersonationConfig = config.originalsStrings();
+        impersonationConfig.put(WorkerConfig.ENABLE_IMPERSONATION_CONFIG, Boolean.TRUE.toString());
+        config = new StandaloneConfig(impersonationConfig);
+        expectImpersonation();
+        EasyMock.expect(producer.send((ProducerRecord<byte[], byte[]>) EasyMock.anyObject(ProducerRecord.class),
+                EasyMock.anyObject(org.apache.kafka.clients.producer.Callback.class))).andAnswer(()->{
+            sendUser[0] = UserGroupInformation.getCurrentUser();
+            return null;
+        });
+        createWorkerTask();
+        PowerMock.replayAll();
+
+        workerTask.initialize(TASK_CONFIG);
+        Whitebox.setInternalState(workerTask, "toSend", records);
+        Whitebox.invokeMethod(workerTask, "sendRecords");
+
+        assertEquals(TASK_USER, sendUser[0].getShortUserName());
     }
 
     @Test
@@ -1157,5 +1191,13 @@ public class WorkerSourceTaskTest extends ThreadedTest {
             Capture<NewTopic> newTopicCapture = EasyMock.newCapture();
             EasyMock.expect(admin.createTopic(EasyMock.capture(newTopicCapture))).andReturn(true);
         }
+    }
+
+    protected void expectImpersonation() throws Exception{
+        PowerMock.mockStaticPartial(UserGroupInformation.class, "getLoginUser");
+        UserGroupInformation loginUserMock = mock(UserGroupInformation.class);
+        EasyMock.expect(UserGroupInformation.getLoginUser()).andReturn(loginUserMock).anyTimes();
+        EasyMock.expect(loginUserMock.getShortUserName()).andReturn("loginUser").anyTimes();
+        replay(loginUserMock);
     }
 }

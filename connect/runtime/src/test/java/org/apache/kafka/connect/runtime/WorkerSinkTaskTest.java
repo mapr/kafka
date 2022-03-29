@@ -18,6 +18,7 @@ package org.apache.kafka.connect.runtime;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -96,8 +97,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(WorkerSinkTask.class)
-@PowerMockIgnore("javax.management.*")
+@PrepareForTest({WorkerSinkTask.class, UserGroupInformation.class})
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 public class WorkerSinkTaskTest {
     // These are fixed to keep this code simpler. In this example we assume byte[] raw values
     // with mix of integer/string in Connect
@@ -118,9 +119,11 @@ public class WorkerSinkTaskTest {
     private static final TopicPartition TOPIC_PARTITION3 = new TopicPartition(TOPIC, PARTITION3);
 
     private static final Map<String, String> TASK_PROPS = new HashMap<>();
+    private static final String TASK_USER = "testuser1";
     static {
         TASK_PROPS.put(SinkConnector.TOPICS_CONFIG, TOPIC);
         TASK_PROPS.put(TaskConfig.TASK_CLASS_CONFIG, TestSinkTask.class.getName());
+        TASK_PROPS.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
     }
     private static final TaskConfig TASK_CONFIG = new TaskConfig(TASK_PROPS);
 
@@ -1428,6 +1431,35 @@ public class WorkerSinkTaskTest {
     }
 
     @Test
+    public void testImpersonationOnPoll() throws Exception {
+        final UserGroupInformation[] pollUser = new UserGroupInformation[1];
+        Map<String, String> impersonationConfig = workerConfig.originalsStrings();
+        impersonationConfig.put(WorkerConfig.ENABLE_IMPERSONATION_CONFIG, Boolean.TRUE.toString());
+        workerConfig = new StandaloneConfig(impersonationConfig);
+        expectImpersonation();
+        EasyMock.expect(consumer.poll(EasyMock.anyObject())).andAnswer(()->{
+            pollUser[0] = UserGroupInformation.getCurrentUser();
+            return new ConsumerRecords<>(Collections.emptyMap());
+        }).anyTimes();
+
+        createTask(initialState);
+        expectInitializeTask();
+        expectTaskGetTopic(true);
+
+        PowerMock.replayAll();
+
+        workerTask.initialize(TASK_CONFIG);
+        try {
+            workerTask.execute();
+        }
+        catch (Exception ignored){
+
+        }
+
+        assertEquals(TASK_USER, pollUser[0].getShortUserName());
+    }
+
+    @Test
     public void testHeaders() throws Exception {
         Headers headers = new RecordHeaders();
         headers.add("header_key", "header_value".getBytes());
@@ -1778,5 +1810,13 @@ public class WorkerSinkTaskTest {
     }
 
     private abstract static class TestSinkTask extends SinkTask  {
+    }
+
+    protected void expectImpersonation() throws Exception{
+        PowerMock.mockStaticPartial(UserGroupInformation.class, "getLoginUser");
+        UserGroupInformation loginUserMock = EasyMock.mock(UserGroupInformation.class);
+        EasyMock.expect(UserGroupInformation.getLoginUser()).andReturn(loginUserMock).anyTimes();
+        EasyMock.expect(loginUserMock.getShortUserName()).andReturn("loginUser").anyTimes();
+        EasyMock.replay(loginUserMock);
     }
 }

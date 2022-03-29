@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -25,9 +26,9 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.provider.MockFileConfigProvider;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.common.metrics.stats.Avg;
-import org.apache.kafka.common.config.provider.MockFileConfigProvider;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.connector.ConnectorContext;
@@ -102,6 +103,8 @@ import static org.apache.kafka.connect.runtime.errors.RetryWithToleranceOperator
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.mock;
+import static org.easymock.EasyMock.replay;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -111,50 +114,51 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({Worker.class, Plugins.class, ConnectUtils.class})
-@PowerMockIgnore("javax.management.*")
+@PrepareForTest({Worker.class, Plugins.class, ConnectUtils.class, UserGroupInformation.class})
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 public class WorkerTest extends ThreadedTest {
 
     private static final String CONNECTOR_ID = "test-connector";
-    private static final ConnectorTaskId TASK_ID = new ConnectorTaskId("job", 0);
-    private static final String WORKER_ID = "localhost:8083";
+    protected static final ConnectorTaskId TASK_ID = new ConnectorTaskId("job", 0);
+    protected static final String WORKER_ID = "localhost:8083";
     private static final String CLUSTER_ID = "test-cluster";
-    private final ConnectorClientConfigOverridePolicy noneConnectorClientConfigOverridePolicy = new NoneConnectorClientConfigOverridePolicy();
+    protected static final String TASK_USER = "testuser1";
+    protected final ConnectorClientConfigOverridePolicy noneConnectorClientConfigOverridePolicy = new NoneConnectorClientConfigOverridePolicy();
     private final ConnectorClientConfigOverridePolicy allConnectorClientConfigOverridePolicy = new AllConnectorClientConfigOverridePolicy();
 
     private Map<String, String> workerProps = new HashMap<>();
-    private WorkerConfig config;
-    private Worker worker;
+    protected WorkerConfig config;
+    protected Worker worker;
 
     private Map<String, String> defaultProducerConfigs = new HashMap<>();
     private Map<String, String> defaultConsumerConfigs = new HashMap<>();
 
     @Mock
-    private Plugins plugins;
+    protected Plugins plugins;
     @Mock
-    private PluginClassLoader pluginLoader;
+    protected PluginClassLoader pluginLoader;
     @Mock
-    private DelegatingClassLoader delegatingLoader;
+    protected DelegatingClassLoader delegatingLoader;
     @Mock
-    private OffsetBackingStore offsetBackingStore;
+    protected OffsetBackingStore offsetBackingStore;
     @MockStrict
-    private TaskStatus.Listener taskStatusListener;
+    protected TaskStatus.Listener taskStatusListener;
     @MockStrict
     private ConnectorStatus.Listener connectorStatusListener;
 
-    @Mock private Herder herder;
+    @Mock protected Herder herder;
     @Mock private StatusBackingStore statusBackingStore;
     @Mock private SourceConnector sourceConnector;
     @Mock private SinkConnector sinkConnector;
     @Mock private CloseableConnectorContext ctx;
-    @Mock private TestSourceTask task;
-    @Mock private WorkerSourceTask workerTask;
+    @Mock protected TestSourceTask task;
+    @Mock protected WorkerSourceTask workerTask;
     @Mock private Converter keyConverter;
     @Mock private Converter valueConverter;
-    @Mock private Converter taskKeyConverter;
-    @Mock private Converter taskValueConverter;
-    @Mock private HeaderConverter taskHeaderConverter;
-    @Mock private ExecutorService executorService;
+    @Mock protected Converter taskKeyConverter;
+    @Mock protected Converter taskValueConverter;
+    @Mock protected HeaderConverter taskHeaderConverter;
+    @Mock protected ExecutorService executorService;
     @MockNice private ConnectorConfig connectorConfig;
     private String mockFileProviderTestId;
     private Map<String, String> connectorProps;
@@ -186,6 +190,7 @@ public class WorkerTest extends ThreadedTest {
         defaultProducerConfigs.put(ProducerConfig.ACKS_CONFIG, "all");
         defaultProducerConfigs.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1");
         defaultProducerConfigs.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+        defaultProducerConfigs.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, null);
 
         defaultConsumerConfigs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         defaultConsumerConfigs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
@@ -284,7 +289,7 @@ public class WorkerTest extends ThreadedTest {
         MockFileConfigProvider.assertClosed(mockFileProviderTestId);
     }
 
-    private void expectFileConfigProvider() {
+    protected void expectFileConfigProvider() {
         EasyMock.expect(plugins.newConfigProvider(EasyMock.anyObject(),
                     EasyMock.eq("config.providers.file"), EasyMock.anyObject()))
                 .andAnswer(() -> {
@@ -617,6 +622,7 @@ public class WorkerTest extends ThreadedTest {
         expectConverters();
         expectStartStorage();
         expectFileConfigProvider();
+        expectImpersonation();
 
         EasyMock.expect(workerTask.id()).andStubReturn(TASK_ID);
 
@@ -624,6 +630,7 @@ public class WorkerTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -699,6 +706,7 @@ public class WorkerTest extends ThreadedTest {
         expectConverters();
         expectStartStorage();
         expectFileConfigProvider();
+        expectImpersonation();
 
         EasyMock.expect(workerTask.id()).andStubReturn(TASK_ID);
 
@@ -706,6 +714,7 @@ public class WorkerTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -905,6 +914,7 @@ public class WorkerTest extends ThreadedTest {
         expectConverters();
         expectStartStorage();
         expectFileConfigProvider();
+        expectImpersonation();
 
         EasyMock.expect(workerTask.id()).andStubReturn(TASK_ID);
 
@@ -912,6 +922,7 @@ public class WorkerTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -983,6 +994,7 @@ public class WorkerTest extends ThreadedTest {
         expectConverters();
         expectStartStorage();
         expectFileConfigProvider();
+        expectImpersonation();
 
         EasyMock.expect(workerTask.id()).andStubReturn(TASK_ID);
 
@@ -990,6 +1002,7 @@ public class WorkerTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, TASK_USER);
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -1363,7 +1376,7 @@ public class WorkerTest extends ThreadedTest {
         assertEquals(taskStartupFailurePct, MockConnectMetrics.currentMetricValueAsDouble(worker.metrics(), workerMetrics, "task-startup-failure-percentage"), 0.0001d);
     }
 
-    private void expectStartStorage() {
+    protected void expectStartStorage() {
         offsetBackingStore.configure(anyObject(WorkerConfig.class));
         EasyMock.expectLastCall();
         offsetBackingStore.start();
@@ -1372,12 +1385,12 @@ public class WorkerTest extends ThreadedTest {
                 .andReturn(statusBackingStore).anyTimes();
     }
 
-    private void expectStopStorage() {
+    protected void expectStopStorage() {
         offsetBackingStore.stop();
         EasyMock.expectLastCall();
     }
 
-    private void expectConverters() {
+    protected void expectConverters() {
         expectConverters(JsonConverter.class, false);
     }
 
@@ -1420,7 +1433,7 @@ public class WorkerTest extends ThreadedTest {
         EasyMock.expectLastCall();
     }
 
-    private void expectTaskKeyConverters(ClassLoaderUsage classLoaderUsage, Converter returning) {
+    protected void expectTaskKeyConverters(ClassLoaderUsage classLoaderUsage, Converter returning) {
         EasyMock.expect(
                 plugins.newConverter(
                         anyObject(AbstractConfig.class),
@@ -1429,7 +1442,7 @@ public class WorkerTest extends ThreadedTest {
                 .andReturn(returning);
     }
 
-    private void expectTaskValueConverters(ClassLoaderUsage classLoaderUsage, Converter returning) {
+    protected void expectTaskValueConverters(ClassLoaderUsage classLoaderUsage, Converter returning) {
         EasyMock.expect(
                 plugins.newConverter(
                         anyObject(AbstractConfig.class),
@@ -1438,7 +1451,7 @@ public class WorkerTest extends ThreadedTest {
                 .andReturn(returning);
     }
 
-    private void expectTaskHeaderConverter(ClassLoaderUsage classLoaderUsage, HeaderConverter returning) {
+    protected void expectTaskHeaderConverter(ClassLoaderUsage classLoaderUsage, HeaderConverter returning) {
         EasyMock.expect(
                 plugins.newHeaderConverter(
                         anyObject(AbstractConfig.class),
@@ -1447,7 +1460,7 @@ public class WorkerTest extends ThreadedTest {
                 .andReturn(returning);
     }
 
-    private Map<String, String> anyConnectorConfigMap() {
+    protected Map<String, String> anyConnectorConfigMap() {
         Map<String, String> props = new HashMap<>();
         props.put(ConnectorConfig.NAME_CONFIG, CONNECTOR_ID);
         props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, WorkerTestConnector.class.getName());
@@ -1455,12 +1468,20 @@ public class WorkerTest extends ThreadedTest {
         return props;
     }
 
-    private void expectClusterId() {
+    protected void expectClusterId() {
         PowerMock.mockStaticPartial(ConnectUtils.class, "lookupKafkaClusterId");
         EasyMock.expect(ConnectUtils.lookupKafkaClusterId(EasyMock.anyObject())).andReturn("test-cluster").anyTimes();
     }
 
-    private void expectNewWorkerTask() throws Exception {
+    protected void expectImpersonation() throws Exception{
+        PowerMock.mockStaticPartial(UserGroupInformation.class, "getLoginUser");
+        UserGroupInformation loginUserMock = mock(UserGroupInformation.class);
+        EasyMock.expect(UserGroupInformation.getLoginUser()).andReturn(loginUserMock).anyTimes();
+        EasyMock.expect(loginUserMock.getShortUserName()).andReturn("loginUser").anyTimes();
+        replay(loginUserMock);
+    }
+
+    protected void expectNewWorkerTask() throws Exception {
         PowerMock.expectNew(
                 WorkerSourceTask.class, EasyMock.eq(TASK_ID),
                 EasyMock.eq(task),
@@ -1521,7 +1542,7 @@ public class WorkerTest extends ThreadedTest {
         }
     }
 
-    private static class TestSourceTask extends SourceTask {
+    protected static class TestSourceTask extends SourceTask {
         public TestSourceTask() {
         }
 

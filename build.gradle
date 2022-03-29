@@ -1987,6 +1987,7 @@ project(':connect:runtime') {
     testCompile libs.powermockEasymock
     testCompile libs.mockitoCore
     testCompile libs.httpclient
+    testCompile libs.hadoopCommon
 
     testCompile project(':clients').sourceSets.test.output
     testCompile project(':core')

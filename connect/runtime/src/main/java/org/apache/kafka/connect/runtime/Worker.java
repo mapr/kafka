@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -67,6 +68,7 @@ import org.apache.kafka.connect.util.TopicCreationGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -561,8 +563,16 @@ public class Worker {
                     log.info("Set up the header converter {} for task {} using the connector config", headerConverter.getClass(), id);
                 }
 
-                workerTask = buildWorkerTask(configState, connConfig, id, task, statusListener, initialState, keyConverter, valueConverter,
-                                             headerConverter, connectorLoader);
+                final Converter finalKeyConverter = keyConverter;
+                final Converter finalValueConverter = valueConverter;
+                final HeaderConverter finalHeaderConverter = headerConverter;
+
+                UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                        taskConfig.getString(TaskConfig.TASK_USER_CONFIG),
+                        UserGroupInformation.getCurrentUser());
+                workerTask = ugi.doAs((PrivilegedExceptionAction<WorkerTask>) () -> buildWorkerTask(configState,
+                        connConfig, id, task, statusListener, initialState, finalKeyConverter, finalValueConverter,
+                        finalHeaderConverter, connectorLoader));
                 workerTask.initialize(taskConfig);
                 Plugins.compareAndSwapLoaders(savedLoader);
             } catch (Throwable t) {
