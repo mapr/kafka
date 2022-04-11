@@ -766,7 +766,7 @@ public class Sender implements Runnable {
     /**
      * A collection of sensors for the sender
      */
-    private static class SenderMetrics {
+    public static class SenderMetrics {
         public final Sensor retrySensor;
         public final Sensor errorSensor;
         public final Sensor queueTimeSensor;
@@ -776,7 +776,7 @@ public class Sender implements Runnable {
         public final Sensor compressionRateSensor;
         public final Sensor maxRecordSizeSensor;
         public final Sensor batchSplitSensor;
-        private final SenderMetricsRegistry metrics;
+        public final SenderMetricsRegistry metrics;
         private final Time time;
 
         public SenderMetrics(SenderMetricsRegistry metrics, Metadata metadata, KafkaClient client, Time time) {
@@ -812,15 +812,17 @@ public class Sender implements Runnable {
             this.maxRecordSizeSensor.add(metrics.recordSizeMax, new Max());
             this.maxRecordSizeSensor.add(metrics.recordSizeAvg, new Avg());
 
-            this.metrics.addMetric(metrics.requestsInFlight, (config, now) -> client.inFlightRequestCount());
-            this.metrics.addMetric(metrics.metadataAge,
-                (config, now) -> (now - metadata.lastSuccessfulUpdate()) / 1000.0);
+            if (client != null)
+                this.metrics.addMetric(metrics.requestsInFlight, (config, now) -> client.inFlightRequestCount());
+            if (metadata != null)
+                this.metrics.addMetric(metrics.metadataAge,
+                    (config, now) -> (now - metadata.lastSuccessfulUpdate()) / 1000.0);
 
             this.batchSplitSensor = metrics.sensor("batch-split-rate");
             this.batchSplitSensor.add(new Meter(metrics.batchSplitRate, metrics.batchSplitTotal));
         }
 
-        private void maybeRegisterTopicMetrics(String topic) {
+        public void maybeRegisterTopicMetrics(String topic) {
             // if one sensor of the metrics has been registered for the topic,
             // then all other sensors should have been registered; and vice versa
             String topicRecordsCountName = "topic." + topic + ".records-per-batch";

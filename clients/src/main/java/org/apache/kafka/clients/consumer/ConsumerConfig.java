@@ -195,6 +195,10 @@ public class ConsumerConfig extends AbstractConfig {
      */
     public static final String RETRY_BACKOFF_MS_CONFIG = CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG;
 
+    /** <code>metrics.enabled</code> */
+    public static final String METRICS_ENABLED_CONFIG = "metrics.enabled";
+    private static final String METRICS_ENABLED_DOC = "Whether to collect metrics or not.";
+
     /**
      * <code>metrics.sample.window.ms</code>
      */
@@ -475,6 +479,7 @@ public class ConsumerConfig extends AbstractConfig {
                                         true,
                                         Importance.LOW,
                                         CHECK_CRCS_DOC)
+                                .define(METRICS_ENABLED_CONFIG, Type.BOOLEAN, false, Importance.LOW, METRICS_ENABLED_DOC)
                                 .define(METRICS_SAMPLE_WINDOW_MS_CONFIG,
                                         Type.LONG,
                                         30000,

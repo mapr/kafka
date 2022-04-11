@@ -1717,19 +1717,19 @@ public class Fetcher<K, V> implements Closeable {
         }
     }
 
-    private static class FetchManagerMetrics {
-        private final Metrics metrics;
+    public static class FetchManagerMetrics {
+        public final Metrics metrics;
         private FetcherMetricsRegistry metricsRegistry;
-        private final Sensor bytesFetched;
-        private final Sensor recordsFetched;
-        private final Sensor fetchLatency;
-        private final Sensor recordsFetchLag;
-        private final Sensor recordsFetchLead;
+        public final Sensor bytesFetched;
+        public final Sensor recordsFetched;
+        public final Sensor fetchLatency;
+        public final Sensor recordsFetchLag;
+        public final Sensor recordsFetchLead;
 
         private int assignmentId = 0;
         private Set<TopicPartition> assignedPartitions = Collections.emptySet();
 
-        private FetchManagerMetrics(Metrics metrics, FetcherMetricsRegistry metricsRegistry) {
+        public FetchManagerMetrics(Metrics metrics, FetcherMetricsRegistry metricsRegistry) {
             this.metrics = metrics;
             this.metricsRegistry = metricsRegistry;
 

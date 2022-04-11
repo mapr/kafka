@@ -178,6 +178,10 @@ public class ProducerConfig extends AbstractConfig {
                                                        + " values are <code>none</code>, <code>gzip</code>, <code>snappy</code>, <code>lz4</code>, or <code>zstd</code>. "
                                                        + "Compression is of full batches of data, so the efficacy of batching will also impact the compression ratio (more batching means better compression).";
 
+    /** <code>metrics.enabled</code> */
+    public static final String METRICS_ENABLED_CONFIG = "metrics.enabled";
+    private static final String METRICS_ENABLED_DOC = "Whether to collect metrics or not.";
+
     /** <code>metrics.sample.window.ms</code> */
     public static final String METRICS_SAMPLE_WINDOW_MS_CONFIG = CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG;
 
@@ -358,6 +362,7 @@ public class ProducerConfig extends AbstractConfig {
                                         atLeast(5000),
                                         Importance.LOW,
                                         METADATA_MAX_IDLE_DOC)
+                                .define(METRICS_ENABLED_CONFIG, Type.BOOLEAN, false, Importance.LOW, METRICS_ENABLED_DOC)
                                 .define(METRICS_SAMPLE_WINDOW_MS_CONFIG,
                                         Type.LONG,
                                         30000,
