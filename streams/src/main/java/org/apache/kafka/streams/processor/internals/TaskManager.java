@@ -423,7 +423,10 @@ public class TaskManager {
         final List<Task> activeTasks = new LinkedList<>();
         for (final Task task : tasks.values()) {
             try {
-                task.initializeIfNeeded();
+                synchronized (task) {
+                    task.initializeIfNeeded();
+                    task.notifyAll();
+                }
             } catch (final LockException | TimeoutException e) {
                 // it is possible that if there are multiple threads within the instance that one thread
                 // trying to grab the task from the other, while the other has not released the lock since
@@ -487,8 +490,17 @@ public class TaskManager {
         for (final Task task : activeTaskIterable()) {
             if (remainingRevokedPartitions.containsAll(task.inputPartitions())) {
                 try {
-                    task.suspend();
-                    revokedTasks.add(task);
+                    synchronized (task) {
+                        if (task.state() == State.CREATED) {
+                            try {
+                                task.wait();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        task.suspend();
+                        revokedTasks.add(task);
+                    }
                 } catch (final RuntimeException e) {
                     log.error("Caught the following exception while trying to suspend revoked task " + task.id(), e);
                     firstException.compareAndSet(null, new StreamsException("Failed to suspend " + task.id(), e));
