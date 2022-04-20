@@ -62,7 +62,7 @@ public class RestClient {
      */
     public static <T> HttpResponse<T> httpRequest(String url, String method, HttpHeaders headers, Object requestBodyData,
                                                   TypeReference<T> responseFormat, WorkerConfig config) {
-        return httpRequest(url, method, headers, requestBodyData, responseFormat, config, null, null);
+        return httpRequest(url, method, headers, requestBodyData, responseFormat, config, null, null, null);
     }
 
     /**
@@ -82,7 +82,7 @@ public class RestClient {
      */
     public static <T> HttpResponse<T> httpRequest(String url, String method, HttpHeaders headers, Object requestBodyData,
                                                   TypeReference<T> responseFormat, WorkerConfig config,
-                                                  SecretKey sessionKey, String requestSignatureAlgorithm) {
+                                                  SecretKey sessionKey, String requestSignatureAlgorithm, String authHeader) {
         HttpClient client;
 
         if (url.startsWith("https://")) {
@@ -108,6 +108,9 @@ public class RestClient {
             req.method(method);
             req.accept("application/json");
             req.agent("kafka-connect");
+            if (authHeader != null) {
+                req.header(HttpHeaders.AUTHORIZATION, authHeader);
+            }
             addHeadersToRequest(headers, req);
 
             if (serializedBody != null) {

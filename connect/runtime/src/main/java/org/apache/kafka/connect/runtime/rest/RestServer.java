@@ -373,27 +373,6 @@ public class RestServer {
         return jettyServer.getURI();
     }
 
-    static ConstraintSecurityHandler createSecurityHandler(String realm, List<String> roles) {
-        final ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
-        Constraint constraint = new Constraint();
-        constraint.setAuthenticate(true);
-        constraint.setRoles(new String[]{"**"});
-        ConstraintMapping constraintMapping = new ConstraintMapping();
-        constraintMapping.setConstraint(constraint);
-        constraintMapping.setMethod("*");
-        constraintMapping.setPathSpec("/*");
-
-        securityHandler.addConstraintMapping(constraintMapping);
-        securityHandler.setAuthenticator(new BasicAuthenticator());
-        securityHandler.setLoginService(new JAASLoginService(realm));
-        securityHandler.setIdentityService(new DefaultIdentityService());
-        securityHandler.setRealmName(realm);
-        securityHandler.setDenyUncoveredHttpMethods(false);
-        securityHandler.addRole("*");
-
-        return securityHandler;
-    }
-
     public void stop() {
         log.info("Stopping REST server");
 

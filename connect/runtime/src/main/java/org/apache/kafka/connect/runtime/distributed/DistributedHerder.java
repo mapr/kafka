@@ -16,8 +16,12 @@
  */
 package org.apache.kafka.connect.runtime.distributed;
 
+import com.mapr.security.client.ClientSecurity;
+import com.mapr.security.client.MapRClientSecurityException;
+
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.errors.WakeupException;
@@ -93,6 +97,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.kafka.connect.runtime.WorkerConfig.AUTHENTICATION_ENABLE_CONFIG;
 import static org.apache.kafka.connect.runtime.WorkerConfig.TOPIC_TRACKING_ENABLE_CONFIG;
 import static org.apache.kafka.connect.runtime.distributed.ConnectProtocol.CONNECT_PROTOCOL_V0;
 import static org.apache.kafka.connect.runtime.distributed.ConnectProtocolCompatibility.EAGER;
@@ -185,6 +190,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
     private volatile long keyExpiration;
     private short currentProtocolVersion;
     private short backoffRetries;
+    private String authHeader;
 
     private final DistributedConfig config;
 
@@ -260,6 +266,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         keyExpiration = Long.MAX_VALUE;
         sessionKey = null;
         backoffRetries = BACKOFF_RETRIES;
+        authHeader = readChallengeString();
 
         currentProtocolVersion = ConnectProtocolCompatibility.compatibility(
             config.getString(DistributedConfig.CONNECT_PROTOCOL_CONFIG)
@@ -1485,7 +1492,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                             }
                             String reconfigUrl = RestServer.urlJoin(leaderUrl, "/connectors/" + connName + "/tasks");
                             log.trace("Forwarding task configurations for connector {} to leader", connName);
-                            RestClient.httpRequest(reconfigUrl, "POST", null, rawTaskProps, null, config, sessionKey, requestSignatureAlgorithm);
+                            RestClient.httpRequest(reconfigUrl, "POST", null, rawTaskProps, null, config, sessionKey, requestSignatureAlgorithm, authHeader);
                             cb.onCompletion(null, null);
                         } catch (ConnectException e) {
                             log.error("Request to leader to reconfigure connector tasks failed", e);
@@ -1496,6 +1503,20 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
             }
         } catch (Throwable t) {
             cb.onCompletion(t, null);
+        }
+    }
+
+    private String readChallengeString() {
+        if (config.getBoolean(AUTHENTICATION_ENABLE_CONFIG)) {
+            ClientSecurity cs = new ClientSecurity();
+            try {
+                String challengeString = cs.generateChallenge();
+                return String.format("MAPR-Negotiate %s", challengeString);
+            } catch (MapRClientSecurityException e) {
+                throw new KafkaException("Cannot read challenge string", e);
+            }
+        } else {
+            return null;
         }
     }
 
