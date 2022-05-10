@@ -1510,7 +1510,12 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         if (config.getBoolean(AUTHENTICATION_ENABLE_CONFIG)) {
             ClientSecurity cs = new ClientSecurity();
             try {
+                log.info("Generating challenge string. It may take up to few minutes to" +
+                        " generate random sequence from /dev/random...");
+                long start = System.currentTimeMillis();
                 String challengeString = cs.generateChallenge();
+                log.info("Challenge generation was successfully completed and took " +
+                        (System.currentTimeMillis() - start) + " ms");
                 return String.format("MAPR-Negotiate %s", challengeString);
             } catch (MapRClientSecurityException e) {
                 throw new KafkaException("Cannot read challenge string", e);
