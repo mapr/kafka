@@ -1956,7 +1956,6 @@ project(':connect:runtime') {
 
     compile libs.slf4jApi
     compile libs.commonsIo
-    compile libs.restutils
     compileOnly (libs.maprFs)
     compileOnly (libs.hadoopCommon)
     compileOnly (libs.hadoopAuth) {

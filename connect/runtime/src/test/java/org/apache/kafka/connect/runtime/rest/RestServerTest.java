@@ -35,6 +35,7 @@ import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.tools.KafkaSSLPropertiesReader;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
@@ -43,6 +44,7 @@ import org.junit.runner.RunWith;
 import org.powermock.api.easymock.PowerMock;
 import org.powermock.api.easymock.annotation.MockStrict;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +65,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"javax.net.ssl.*", "javax.security.*", "javax.crypto.*"})
+@PrepareForTest(KafkaSSLPropertiesReader.class)
+@PowerMockIgnore({"javax.net.ssl.*", "javax.security.*", "javax.crypto.*", "javax.xml.*"})
 public class RestServerTest {
     @MockStrict
     private Herder herder;
@@ -110,6 +113,8 @@ public class RestServerTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testParseListeners() {
+        expectWebSecurity();
+
         // Use listeners field
         Map<String, String> configMap = new HashMap<>(baseWorkerProps());
         configMap.put(WorkerConfig.LISTENERS_CONFIG, "http://localhost:8080,https://localhost:8443");
@@ -131,6 +136,8 @@ public class RestServerTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testAdvertisedUri() {
+        expectWebSecurity();
+
         // Advertised URI from listeners without protocol
         Map<String, String> configMap = new HashMap<>(baseWorkerProps());
         configMap.put(WorkerConfig.LISTENERS_CONFIG, "http://localhost:8080,https://localhost:8443");
@@ -484,5 +491,17 @@ public class RestServerTest {
     private static String prettyPrint(Map<String, ?> map) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(map);
+    }
+
+    private void expectWebSecurity(){
+        PowerMock.mockStatic(KafkaSSLPropertiesReader.class);
+        KafkaSSLPropertiesReader.getServerKeystoreType();
+        PowerMock.expectLastCall().andReturn("JKS").anyTimes();
+        EasyMock.expect(KafkaSSLPropertiesReader.getServerKeystoreLocation()).andReturn("/path/to/keystore").anyTimes();
+        EasyMock.expect(KafkaSSLPropertiesReader.getServerKeyPassword()).andReturn("key_password").anyTimes();
+        EasyMock.expect(KafkaSSLPropertiesReader.getServerKeystorePassword()).andReturn("keystore_password").anyTimes();
+        KafkaSSLPropertiesReader.getServerTruststoreType();
+        PowerMock.expectLastCall().andReturn("JKS").anyTimes();
+        PowerMock.replayAll();
     }
 }
