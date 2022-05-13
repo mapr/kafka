@@ -567,12 +567,19 @@ public class Worker {
                 final Converter finalValueConverter = valueConverter;
                 final HeaderConverter finalHeaderConverter = headerConverter;
 
-                UserGroupInformation ugi = UserGroupInformation.createProxyUser(
-                        taskConfig.getString(TaskConfig.TASK_USER_CONFIG),
-                        UserGroupInformation.getCurrentUser());
-                workerTask = ugi.doAs((PrivilegedExceptionAction<WorkerTask>) () -> buildWorkerTask(configState,
-                        connConfig, id, task, statusListener, initialState, finalKeyConverter, finalValueConverter,
-                        finalHeaderConverter, connectorLoader));
+                if (config.getBoolean(WorkerConfig.ENABLE_IMPERSONATION_CONFIG)) {
+                    UserGroupInformation ugi = UserGroupInformation.createProxyUser(
+                            taskConfig.getString(TaskConfig.TASK_USER_CONFIG),
+                            UserGroupInformation.getCurrentUser());
+                    workerTask = ugi.doAs((PrivilegedExceptionAction<WorkerTask>) () -> buildWorkerTask(configState,
+                            connConfig, id, task, statusListener, initialState, finalKeyConverter, finalValueConverter,
+                            finalHeaderConverter, connectorLoader));
+                }
+                else {
+                    workerTask = buildWorkerTask(configState,
+                            connConfig, id, task, statusListener, initialState, finalKeyConverter, finalValueConverter,
+                            finalHeaderConverter, connectorLoader);
+                }
                 workerTask.initialize(taskConfig);
                 Plugins.compareAndSwapLoaders(savedLoader);
             } catch (Throwable t) {

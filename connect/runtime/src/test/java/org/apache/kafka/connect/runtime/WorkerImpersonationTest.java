@@ -10,6 +10,7 @@ import org.apache.kafka.connect.runtime.distributed.ClusterConfigState;
 import org.apache.kafka.connect.runtime.errors.RetryWithToleranceOperator;
 import org.apache.kafka.connect.runtime.errors.WorkerErrantRecordReporter;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.storage.Converter;
@@ -40,6 +41,14 @@ import static org.junit.Assert.assertTrue;
 @PrepareForTest({Worker.class, Plugins.class, ConnectUtils.class, UserGroupInformation.class})
 @PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 public class WorkerImpersonationTest extends WorkerTest {
+    @Override
+    public void setup() {
+        super.setup();
+        workerProps.put(WorkerConfig.AUTHENTICATION_ENABLE_CONFIG, Boolean.toString(true));
+        workerProps.put(WorkerConfig.ENABLE_IMPERSONATION_CONFIG, Boolean.toString(true));
+        config = new StandaloneConfig(workerProps);
+    }
+
     @Test
     public void testImpersonationWhenInitializingKafkaProducer() throws Exception {
         expectConverters();
@@ -52,8 +61,6 @@ public class WorkerImpersonationTest extends WorkerTest {
         expectNewKafkaProducer(producerInitUser);
 
         PowerMock.replayAll();
-
-        UserGroupInformation actualUser = UserGroupInformation.getCurrentUser();
 
         worker = new Worker(WORKER_ID, new MockTime(), plugins, config, offsetBackingStore, executorService,
                 noneConnectorClientConfigOverridePolicy);
@@ -84,8 +91,6 @@ public class WorkerImpersonationTest extends WorkerTest {
         expectNewKafkaConsumer(consumerInitUser);
 
         PowerMock.replayAll();
-
-        UserGroupInformation actualUser = UserGroupInformation.getCurrentUser();
 
         worker = new Worker(WORKER_ID, new MockTime(), plugins, config, offsetBackingStore, executorService,
                 noneConnectorClientConfigOverridePolicy);

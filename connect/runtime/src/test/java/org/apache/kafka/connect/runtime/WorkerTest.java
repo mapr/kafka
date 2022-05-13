@@ -126,7 +126,7 @@ public class WorkerTest extends ThreadedTest {
     protected final ConnectorClientConfigOverridePolicy noneConnectorClientConfigOverridePolicy = new NoneConnectorClientConfigOverridePolicy();
     private final ConnectorClientConfigOverridePolicy allConnectorClientConfigOverridePolicy = new AllConnectorClientConfigOverridePolicy();
 
-    private Map<String, String> workerProps = new HashMap<>();
+    protected Map<String, String> workerProps = new HashMap<>();
     protected WorkerConfig config;
     protected Worker worker;
 
