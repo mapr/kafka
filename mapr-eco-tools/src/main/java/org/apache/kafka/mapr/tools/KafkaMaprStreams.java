@@ -91,7 +91,7 @@ public class KafkaMaprStreams implements Closeable {
     }
 
     public static String getShortTopicNameFromFullTopicName(final String fullTopicName) {
-        return StringUtils.substringAfter(fullTopicName, ":");
+        return fullTopicName.contains(":") ? StringUtils.substringAfter(fullTopicName, ":") : fullTopicName;
     }
 
     /**

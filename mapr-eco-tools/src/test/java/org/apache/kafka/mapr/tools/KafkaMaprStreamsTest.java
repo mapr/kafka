@@ -115,9 +115,11 @@ public class KafkaMaprStreamsTest extends EasyMockSupport {
 
     @Test
     public void getsShortTopicNameFromFullTopicName() {
-        String value = KafkaMaprStreams.getShortTopicNameFromFullTopicName("/ss:topic");
+        String fromFullName = KafkaMaprStreams.getShortTopicNameFromFullTopicName("/ss:topic");
+        String fromShortName = KafkaMaprStreams.getShortTopicNameFromFullTopicName("topic");
 
-        assertEquals("topic", value);
+        assertEquals("topic", fromFullName);
+        assertEquals("topic", fromShortName);
     }
 
     @Test
