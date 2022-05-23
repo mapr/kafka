@@ -1978,8 +1978,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, OffsetCommitCallback callback) {
+        maybeThrowInvalidGroupIdException();
         if (offsets.size() == 0) {
             log.debug("commitAsync with no offsets");
+            if (callback != null)
             callback.onComplete(offsets, null /*exception*/);
             return;
         }
@@ -2002,7 +2004,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } else {
             acquireAndEnsureOpen();
             try {
-                maybeThrowInvalidGroupIdException();
                 log.debug("Committing offsets: {}", offsets);
                 offsets.forEach(this::updateLastSeenEpochIfNewer);
                 coordinator.commitOffsetsAsync(new HashMap<>(offsets), callback);
