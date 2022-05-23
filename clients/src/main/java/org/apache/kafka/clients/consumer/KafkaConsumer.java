@@ -1163,9 +1163,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Collection<String> topics, ConsumerRebalanceListener listener) {
-        if (topics.size() == 0) {
-            // Since there aren't any topics in this case, we can ignore the ConsumerRebalanceListener
-            log.debug("Subscribing to empty topics list");
+        if (topics == null)
+            throw new IllegalArgumentException("Topic collection to subscribe to cannot be null");
+        if (topics.isEmpty()) {
+            // treat subscribing to empty topic list as the same as unsubscribing
+            this.unsubscribe();
             return;
         }
 
@@ -1196,17 +1198,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             acquireAndEnsureOpen();
             try {
                 maybeThrowInvalidGroupIdException();
-                if (topics == null)
-                    throw new IllegalArgumentException("Topic collection to subscribe to cannot be null");
                 if (!this.subscriptions.assignedPartitions().isEmpty()) {
                     log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
                     throw new IllegalStateException("Subscription to topics and assigning to partitions " +
                             "and pattern are mutually exclusive");
                 }
-                if (topics.isEmpty()) {
-                    // treat subscribing to empty topic list as the same as unsubscribing
-                    this.unsubscribe();
-                } else {
                     for (String topic : topics) {
                         if (topic == null || topic.trim().isEmpty())
                             throw new IllegalArgumentException("Topic collection to subscribe to cannot contain null or empty topic");
@@ -1217,7 +1213,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     log.info("Subscribed to topic(s): {}", Utils.join(topics, ", "));
                     if (this.subscriptions.subscribe(new HashSet<>(topics), listener))
                         metadata.requestUpdateForNewTopics();
-                }
             } finally {
                 release();
             }
@@ -1414,8 +1409,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void assign(Collection<TopicPartition> partitions) {
-        if (partitions.size() == 0) {
-            log.debug("assigning empty partitions list");
+        if (partitions == null)
+            throw new IllegalArgumentException("Topic partition collection to assign to cannot be null");
+        if (partitions.isEmpty()) {
+            // treat assigning to empty partition list as the same as unsubscribing
+            this.unsubscribe();
             return;
         }
 
@@ -1445,16 +1443,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } else {
             acquireAndEnsureOpen();
             try {
-                if (partitions == null) {
-                    throw new IllegalArgumentException("Topic partition collection to assign to cannot be null");
-                } else if (this.subscriptions.hasPatternSubscription() || !this.subscriptions.subscription().isEmpty()) {
-                log.error("Consumer was not unsubscribed before assign");
-                throw new IllegalStateException("Subscription to topics and assigning to partitions " +
-                                                "and pattern are mutually exclusive");
-                } else if (partitions.isEmpty()) {
-                    this.unsubscribe();
-                } else {
-                    for (TopicPartition tp : partitions) {
+                if (this.subscriptions.hasPatternSubscription() || !this.subscriptions.subscription().isEmpty()) {
+                    log.error("Consumer was not unsubscribed before assign");
+                    throw new IllegalStateException("Subscription to topics and assigning to partitions " +
+                            "and pattern are mutually exclusive");
+                }
+                for (TopicPartition tp : partitions) {
                         String topic = (tp != null) ? tp.topic() : null;
                         if (topic == null || topic.trim().isEmpty())
                             throw new IllegalArgumentException("Topic partitions to assign to cannot have null or empty topic");
@@ -1469,7 +1463,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     log.info("Subscribed to partition(s): {}", Utils.join(partitions, ", "));
                     if (this.subscriptions.assignFromUser(new HashSet<>(partitions)))
                         metadata.requestUpdateForNewTopics();
-                }
             } finally {
                 release();
             }
