@@ -790,11 +790,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 isStreams = false;
                 consumerDriver = this;
 
-                List<InetSocketAddress> kafkaaddresses = ClientUtils.parseAndValidateAddresses(config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG),
-                    config.getString(ConsumerConfig.CLIENT_DNS_LOOKUP_CONFIG));
-                if (kafkaaddresses.size() == 0 || kafkaaddresses.get(0).equals("")) {
-                    throw new KafkaException("Bootstrap servers not specified in configuration");
-                }
 
                 try {
                     boolean enableAutoCommit = config.maybeOverrideEnableAutoCommit();

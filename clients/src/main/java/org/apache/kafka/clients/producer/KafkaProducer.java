@@ -435,12 +435,6 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 producerDriver = this;    // Set it to this, which is a kafka producer
                 isStreams = false;
 
-                List<InetSocketAddress> kafkaaddresses =
-                        ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
-                                config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG));
-                if (kafkaaddresses.size() == 0 || kafkaaddresses.get(0).equals("")) {
-                    throw new KafkaException("Bootstrap servers not specified in configuration");
-                }
 
                 try {
                     this.time = Time.SYSTEM;
