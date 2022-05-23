@@ -3243,21 +3243,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void close() {
+        if (isStreams) {
         Consumer<K, V> consumerDriverToDelete = null;
 
-        synchronized(this) {
-            if (isStreamsClosed) {
-                return;
+            synchronized(this) {
+                if (isStreamsClosed) {
+                    return;
+                }
+                isStreamsClosed = true;
+                if (consumerDriver == null) {
+                    return;
+                }
+                consumerDriverToDelete = consumerDriver;
+                consumerDriver = null;
             }
-            isStreamsClosed = true;
-            if (consumerDriver == null) {
-                return;
-            }
-            consumerDriverToDelete = consumerDriver;
-            consumerDriver = null;
-        }
-
-        if (isStreams) {
             consumerDriverToDelete.close();
         } else {
             close(Duration.ofMillis(DEFAULT_CLOSE_TIMEOUT_MS));
@@ -3288,21 +3287,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             throw new IllegalArgumentException("The timeout cannot be negative.");
         }
 
-        Consumer<K, V> consumerDriverToDelete = null;
-        synchronized (this) {
-            if (isStreamsClosed) {
-                return;
-            }
-            isStreamsClosed = true;
-            if (consumerDriver == null) {
-                return;
-            }
-
-            consumerDriverToDelete = consumerDriver;
-            consumerDriver = null;
-        }
-
         if (isStreams) {
+            Consumer<K, V> consumerDriverToDelete = null;
+            synchronized (this) {
+                if (isStreamsClosed) {
+                    return;
+                }
+                isStreamsClosed = true;
+                if (consumerDriver == null) {
+                    return;
+                }
+
+                consumerDriverToDelete = consumerDriver;
+                consumerDriver = null;
+            }
             consumerDriverToDelete.close(timeout, timeUnit);
         } else {
             close(Duration.ofMillis(timeUnit.toMillis(timeout)));
@@ -3330,21 +3328,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             throw new IllegalArgumentException("The timeout cannot be negative.");
         }
 
-        Consumer<K, V> consumerDriverToDelete = null;
-        synchronized (this) {
-            if (isStreamsClosed) {
-                return;
-            }
-            isStreamsClosed = true;
-            if (consumerDriver == null) {
-                return;
-            }
-
-            consumerDriverToDelete = consumerDriver;
-            consumerDriver = null;
-        }
-
         if (isStreams) {
+            Consumer<K, V> consumerDriverToDelete = null;
+            synchronized (this) {
+                if (isStreamsClosed) {
+                    return;
+                }
+                isStreamsClosed = true;
+                if (consumerDriver == null) {
+                    return;
+                }
+
+                consumerDriverToDelete = consumerDriver;
+                consumerDriver = null;
+            }
             consumerDriverToDelete.close(timeout);
         } else {
             acquire();
