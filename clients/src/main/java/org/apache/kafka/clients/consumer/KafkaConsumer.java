@@ -1198,11 +1198,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             acquireAndEnsureOpen();
             try {
                 maybeThrowInvalidGroupIdException();
-                if (!this.subscriptions.assignedPartitions().isEmpty()) {
-                    log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
-                    throw new IllegalStateException("Subscription to topics and assigning to partitions " +
-                            "and pattern are mutually exclusive");
-                }
                     for (String topic : topics) {
                         if (topic == null || topic.trim().isEmpty())
                             throw new IllegalArgumentException("Topic collection to subscribe to cannot contain null or empty topic");
@@ -1316,11 +1311,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             acquireAndEnsureOpen();
             try {
                 throwIfNoAssignorsConfigured();
-                if (!this.subscriptions.assignedPartitions().isEmpty()) {
-                    log.error("Consumer was not unsubscribed from assigned patitions before subscribe");
-                    throw new IllegalStateException("Subscription to topics and assigning to partitions " +
-                            "and pattern are mutually exclusive");
-                }
                 log.info("Subscribed to pattern: '{}'", pattern);
                 this.subscriptions.subscribe(pattern, listener);
                 this.coordinator.updatePatternSubscription(metadata.fetch());
@@ -1443,11 +1433,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         } else {
             acquireAndEnsureOpen();
             try {
-                if (this.subscriptions.hasPatternSubscription() || !this.subscriptions.subscription().isEmpty()) {
-                    log.error("Consumer was not unsubscribed before assign");
-                    throw new IllegalStateException("Subscription to topics and assigning to partitions " +
-                            "and pattern are mutually exclusive");
-                }
                 for (TopicPartition tp : partitions) {
                         String topic = (tp != null) ? tp.topic() : null;
                         if (topic == null || topic.trim().isEmpty())
