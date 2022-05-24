@@ -371,6 +371,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             this.valueSerializer = valueSerializer;
         }
 
+        this.metadata = metadata;
+        this.interceptors = interceptors;
+        this.time = time == null ? Time.SYSTEM : time;
+
         defaultStream = null;
         try {
             defaultStream = config.getString(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG);
@@ -403,7 +407,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             userProvidedConfigs.put(ProducerConfig.CLIENT_ID_CONFIG, clientId);
             List<ProducerInterceptor<K, V>> interceptorList = (List) (new ProducerConfig(userProvidedConfigs, false)).getConfiguredInstances(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,
                     ProducerInterceptor.class);
-            this.interceptors = new ProducerInterceptors<>(interceptorList);
+            if (this.interceptors == null)
+                this.interceptors = new ProducerInterceptors<>(interceptorList);
 
             if (topic.startsWith("/") || topic.contains(":")) {
 
@@ -433,7 +438,6 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
 
                 try {
-                    this.time = Time.SYSTEM;
                     Map<String, String> metricTags = Collections.singletonMap("client-id", clientId);
                     MetricConfig metricConfig = new MetricConfig().samples(config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG))
                             .timeWindow(config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS)
