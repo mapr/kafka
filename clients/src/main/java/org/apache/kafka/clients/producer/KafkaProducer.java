@@ -355,24 +355,20 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         this.config = config;
         this.closed = false;
         if (keySerializer == null) {
-            this.keySerializer = org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper
-                    .ensureExtended(config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                                                                Serializer.class));
+            this.keySerializer = config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                                                                Serializer.class);
             this.keySerializer.configure(config.originals(), true);
         } else {
             config.ignore(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG);
-            this.keySerializer = org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper
-                    .ensureExtended(keySerializer);
+            this.keySerializer = keySerializer;
         }
         if (valueSerializer == null) {
-            this.valueSerializer = org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper
-                    .ensureExtended(config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                                                                Serializer.class));
+            this.valueSerializer = config.getConfiguredInstance(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                                                                Serializer.class);
             this.valueSerializer.configure(config.originals(), false);
         } else {
             config.ignore(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG);
-            this.valueSerializer = org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper
-                    .ensureExtended(valueSerializer);
+            this.valueSerializer = valueSerializer;
         }
 
         defaultStream = null;
