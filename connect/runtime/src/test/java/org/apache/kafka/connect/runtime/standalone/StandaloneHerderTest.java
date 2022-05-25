@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime.standalone;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -65,6 +66,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.easymock.PowerMock;
 import org.powermock.api.easymock.annotation.Mock;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -92,7 +94,8 @@ import static org.junit.Assert.fail;
 
 @RunWith(PowerMockRunner.class)
 @SuppressWarnings("unchecked")
-@PrepareForTest({StandaloneHerder.class, Plugins.class, WorkerConnector.class})
+@PrepareForTest({StandaloneHerder.class, Plugins.class, WorkerConnector.class, UserGroupInformation.class})
+@PowerMockIgnore({"javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 public class StandaloneHerderTest {
     private static final String CONNECTOR_NAME = "test";
     private static final List<String> TOPICS_LIST = Arrays.asList("topic1", "topic2");
@@ -123,7 +126,12 @@ public class StandaloneHerderTest {
 
 
     @Before
-    public void setup() {
+    public void setup() throws Exception {
+        PowerMock.mockStatic(UserGroupInformation.class);
+        UserGroupInformation ugi = PowerMock.createMock(UserGroupInformation.class);
+        EasyMock.expect(UserGroupInformation.getCurrentUser()).andReturn(ugi).anyTimes();
+        EasyMock.expect(ugi.getShortUserName()).andReturn("testuser").anyTimes();
+        PowerMock.replay(UserGroupInformation.class);
         worker = PowerMock.createMock(Worker.class);
         herder = PowerMock.createPartialMock(StandaloneHerder.class, new String[]{"connectorTypeForClass"/*, "validateConnectorConfig"*/},
             worker, WORKER_ID, KAFKA_CLUSTER_ID, statusBackingStore, new MemoryConfigBackingStore(transformer), noneConnectorClientConfigOverridePolicy);
@@ -737,6 +745,7 @@ public class StandaloneHerderTest {
         Class<? extends Connector> connectorClass = sourceSink == SourceSink.SINK ? BogusSinkConnector.class : BogusSourceConnector.class;
         props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, connectorClass.getName());
         props.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.put(TaskConfig.TASK_USER_CONFIG, "testuser");
         if (sourceSink == SourceSink.SINK) {
             props.put(SinkTask.TOPICS_CONFIG, TOPICS_LIST_STR);
         } else {

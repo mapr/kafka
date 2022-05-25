@@ -392,6 +392,7 @@ public class TopologyTestDriver implements Closeable {
     private void setupTopology(final InternalTopologyBuilder builder,
                                final StreamsConfig streamsConfig) {
         internalTopologyBuilder = builder;
+        internalTopologyBuilder.rewriteTopology(streamsConfig);
         KafkaStreamsInternalStorageInitializer.createAppDirAndInternalStreams(streamsConfig);
         internalTopologyBuilder.setApplicationIdAndInternalStream(streamsConfig.getString(StreamsConfig.APPLICATION_ID_CONFIG),
                 streamsConfig.getStreamsInternalStreamNotcompacted(),

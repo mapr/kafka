@@ -64,7 +64,7 @@ public class StreamTableJoinIntegrationTest extends AbstractJoinIntegrationTest 
     @Test
     public void testShouldAutoShutdownOnIncompleteMetadata() throws InterruptedException {
         STREAMS_CONFIG.put(StreamsConfig.APPLICATION_ID_CONFIG, appID + "-incomplete");
-        STREAMS_CONFIG.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers());
+        STREAMS_CONFIG.put("bootstrap.servers", CLUSTER.bootstrapServers());
 
         final KStream<Long, String> notExistStream = builder.stream(INPUT_TOPIC_LEFT + "-not-existed");
 
@@ -89,7 +89,7 @@ public class StreamTableJoinIntegrationTest extends AbstractJoinIntegrationTest 
     @Test
     public void testInner() {
         STREAMS_CONFIG.put(StreamsConfig.APPLICATION_ID_CONFIG, appID + "-inner");
-        STREAMS_CONFIG.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "topology_driver:0000");
+        STREAMS_CONFIG.put("bootstrap.servers", "topology_driver:0000");
 
         final List<List<TestRecord<Long, String>>> expectedResult = Arrays.asList(
             null,
@@ -116,7 +116,7 @@ public class StreamTableJoinIntegrationTest extends AbstractJoinIntegrationTest 
     @Test
     public void testLeft() {
         STREAMS_CONFIG.put(StreamsConfig.APPLICATION_ID_CONFIG, appID + "-left");
-        STREAMS_CONFIG.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "topology_driver:0000");
+        STREAMS_CONFIG.put("bootstrap.servers", "topology_driver:0000");
 
         final List<List<TestRecord<Long, String>>> expectedResult = Arrays.asList(
             null,

@@ -18,30 +18,35 @@
  */
 package org.apache.kafka.streams.scala.kstream
 
+import com.mapr.kafka.eventstreams.Streams
+import org.apache.kafka.mapr.tools.KafkaMaprTools
+
 import java.time.Duration.ofSeconds
 import java.time.Instant
-
 import org.apache.kafka.streams.KeyValue
-import org.apache.kafka.streams.kstream.{
-  JoinWindows,
-  Transformer,
-  ValueTransformer,
-  ValueTransformerSupplier,
-  ValueTransformerWithKey,
-  ValueTransformerWithKeySupplier
-}
+import org.apache.kafka.streams.kstream.{JoinWindows, Transformer, ValueTransformer, ValueTransformerSupplier, ValueTransformerWithKey, ValueTransformerWithKeySupplier}
 import org.apache.kafka.streams.processor.ProcessorContext
 import org.apache.kafka.streams.scala.ImplicitConversions._
 import org.apache.kafka.streams.scala.Serdes._
 import org.apache.kafka.streams.scala.StreamsBuilder
 import org.apache.kafka.streams.scala.utils.TestDriver
+import org.apache.kafka.streams.utils.MaprEnvUtil
+import org.junit.Before
 import org.junit.runner.RunWith
+import org.powermock.core.classloader.annotations.{PowerMockIgnore, PrepareForTest, SuppressStaticInitializationFor}
+import org.powermock.modules.junit4.PowerMockRunner
 import org.scalatest.{FlatSpec, Matchers}
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
+@SuppressStaticInitializationFor(Array("com.mapr.kafka.eventstreams.Streams"))
+@RunWith(classOf[PowerMockRunner])
+@PowerMockIgnore(Array("javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"))
+@PrepareForTest(Array(classOf[KafkaMaprTools], classOf[Streams]))
 class KStreamTest extends FlatSpec with Matchers with TestDriver {
 
+  @Before
+  def before(): Unit = {
+   MaprEnvUtil.setUp();
+  }
   "filter a KStream" should "filter records satisfying the predicate" in {
     val builder = new StreamsBuilder()
     val sourceTopic = "source"

@@ -113,6 +113,7 @@ public class ErrorHandlingTaskWithTopicCreationTest {
     static {
         TASK_PROPS.put(SinkConnector.TOPICS_CONFIG, TOPIC);
         TASK_PROPS.put(TaskConfig.TASK_CLASS_CONFIG, TestSinkTask.class.getName());
+        TASK_PROPS.put(TaskConfig.TASK_USER_CONFIG, "testuser");
     }
 
     public static final long OPERATOR_RETRY_TIMEOUT_MILLIS = 60000;

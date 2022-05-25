@@ -18,10 +18,13 @@ package org.apache.kafka.common.security.authenticator;
 
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.TestMaprProducerInitializer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -115,6 +118,7 @@ public class ClientAuthenticationFailureTest {
     public void testAdminClientWithInvalidCredentials() {
         Map<String, Object> props = new HashMap<>(saslClientConfigs);
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + server.port());
+        props.put(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG, KafkaAdminClient.class.getName());
         try (Admin client = Admin.create(props)) {
             KafkaFuture<Map<String, TopicDescription>> future = client.describeTopics(Collections.singleton("test")).all();
             TestUtils.assertFutureThrows(future, SaslAuthenticationException.class);
@@ -129,7 +133,7 @@ public class ClientAuthenticationFailureTest {
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
         StringSerializer serializer = new StringSerializer();
 
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props, serializer, serializer)) {
+        try (KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(props, serializer, serializer)) {
             assertThrows(SaslAuthenticationException.class, producer::initTransactions);
         }
     }

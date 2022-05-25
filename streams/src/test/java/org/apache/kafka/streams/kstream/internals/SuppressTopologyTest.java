@@ -16,9 +16,11 @@
  */
 package org.apache.kafka.streams.kstream.internals;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
@@ -28,7 +30,14 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.SessionWindows;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.state.SessionStore;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.time.Duration;
 
@@ -39,7 +48,15 @@ import static org.apache.kafka.streams.kstream.Suppressed.untilWindowCloses;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class SuppressTopologyTest {
+    @Before
+    public void setUp() throws Exception {
+        MaprEnvUtil.setUp();
+    }
     private static final Serde<String> STRING_SERDE = Serdes.String();
 
     private static final String NAMED_FINAL_TOPOLOGY = "Topologies:\n" +

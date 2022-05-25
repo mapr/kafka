@@ -34,6 +34,7 @@ import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor;
 import org.apache.kafka.streams.processor.internals.testutil.LogCaptureAppender;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -76,7 +77,7 @@ public class StreamsConfigTest {
     @Before
     public void setUp() {
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-config-test");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put("bootstrap.servers", "localhost:9092");
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put("key.deserializer.encoding", "UTF8");
@@ -116,8 +117,9 @@ public class StreamsConfigTest {
     }
 
     @Test(expected = ConfigException.class)
+    @Ignore // bootstrap.servers config was removed from StreamsConfig in MS-178
     public void shouldThrowExceptionIfBootstrapServersIsNotSet() {
-        props.remove(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+        props.remove("bootstrap.servers");
         new StreamsConfig(props);
     }
 
@@ -247,15 +249,16 @@ public class StreamsConfigTest {
     }
 
     @Test
+    @Ignore // bootstrap.servers config was removed from StreamsConfig in MS-178
     public void shouldSupportMultipleBootstrapServers() {
         final List<String> expectedBootstrapServers = Arrays.asList("broker1:9092", "broker2:9092");
         final String bootstrapServersString = Utils.join(expectedBootstrapServers, ",");
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "irrelevant");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
+        props.put("bootstrap.servers", bootstrapServersString);
         final StreamsConfig config = new StreamsConfig(props);
 
-        final List<String> actualBootstrapServers = config.getList(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+        final List<String> actualBootstrapServers = config.getList("bootstrap.servers");
         assertEquals(expectedBootstrapServers, actualBootstrapServers);
     }
 

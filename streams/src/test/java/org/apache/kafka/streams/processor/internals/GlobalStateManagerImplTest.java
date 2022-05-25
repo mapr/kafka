@@ -122,7 +122,7 @@ public class GlobalStateManagerImplTest {
         streamsConfig = new StreamsConfig(new Properties() {
             {
                 put(StreamsConfig.APPLICATION_ID_CONFIG, "appId");
-                put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
+                put("bootstrap.servers", "dummy:1234");
                 put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath());
             }
         });
@@ -610,7 +610,7 @@ public class GlobalStateManagerImplTest {
         streamsConfig = new StreamsConfig(new Properties() {
             {
                 put(StreamsConfig.APPLICATION_ID_CONFIG, "appId");
-                put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
+                put("bootstrap.servers", "dummy:1234");
                 put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath());
                 put(StreamsConfig.RETRIES_CONFIG, retries);
             }
@@ -643,7 +643,7 @@ public class GlobalStateManagerImplTest {
         streamsConfig = new StreamsConfig(new Properties() {
             {
                 put(StreamsConfig.APPLICATION_ID_CONFIG, "appId");
-                put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
+                put("bootstrap.servers", "dummy:1234");
                 put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath());
                 put(StreamsConfig.RETRIES_CONFIG, retries);
             }

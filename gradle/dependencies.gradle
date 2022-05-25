@@ -139,6 +139,7 @@ libs += [
   apachedsJdbmPartition: "org.apache.directory.server:apacheds-jdbm-partition:$versions.apacheds",
   argparse4j: "net.sourceforge.argparse4j:argparse4j:$versions.argparse4j",
   bcpkix: "org.bouncycastle:bcpkix-jdk15on:$versions.bcpkix",
+  bcprov: "org.bouncycastle:bcprov-jdk15on:$versions.bcpkix",
   bcFips: "org.bouncycastle:bc-fips:$versions.bcFips",
   bctlsFips: "org.bouncycastle:bctls-fips:$versions.bctlsFips",
   commonsCli: "commons-cli:commons-cli:$versions.commonsCli",

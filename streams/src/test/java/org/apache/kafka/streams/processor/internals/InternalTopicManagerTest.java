@@ -79,7 +79,7 @@ public class InternalTopicManagerTest {
     private final Map<String, Object> config = new HashMap<String, Object>() {
         {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "app-id");
-            put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, broker1.host() + ":" + broker1.port());
+            put("bootstrap.servers", broker1.host() + ":" + broker1.port());
             put(StreamsConfig.REPLICATION_FACTOR_CONFIG, 1);
             put(StreamsConfig.adminClientPrefix(StreamsConfig.RETRIES_CONFIG), 1);
             put(StreamsConfig.producerPrefix(ProducerConfig.BATCH_SIZE_CONFIG), 16384);

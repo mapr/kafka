@@ -17,7 +17,6 @@
 package org.apache.kafka.streams.integration;
 
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.integration.utils.EmbeddedKafkaCluster;
 import org.apache.kafka.streams.integration.utils.IntegrationTestUtils;
 import org.apache.kafka.streams.tests.StreamsUpgradeTest;
@@ -55,17 +54,17 @@ public class StreamsUpgradeTestIntegrationTest {
     public void testVersionProbingUpgrade() throws InterruptedException {
         final KafkaStreams kafkaStreams1 = StreamsUpgradeTest.buildStreams(mkProperties(
             mkMap(
-                mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers())
+                mkEntry("bootstrap.servers", CLUSTER.bootstrapServers())
             )
         ));
         final KafkaStreams kafkaStreams2 = StreamsUpgradeTest.buildStreams(mkProperties(
             mkMap(
-                mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers())
+                mkEntry("bootstrap.servers", CLUSTER.bootstrapServers())
             )
         ));
         final KafkaStreams kafkaStreams3 = StreamsUpgradeTest.buildStreams(mkProperties(
             mkMap(
-                mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers())
+                mkEntry("bootstrap.servers", CLUSTER.bootstrapServers())
             )
         ));
         startSync(kafkaStreams1, kafkaStreams2, kafkaStreams3);
@@ -103,7 +102,7 @@ public class StreamsUpgradeTestIntegrationTest {
 
     private static KafkaStreams buildFutureStreams(final AtomicInteger usedVersion4) {
         final Properties properties = new Properties();
-        properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers());
+        properties.put("bootstrap.servers", CLUSTER.bootstrapServers());
         properties.put("test.future.metadata", usedVersion4);
         return StreamsUpgradeTest.buildStreams(properties);
     }

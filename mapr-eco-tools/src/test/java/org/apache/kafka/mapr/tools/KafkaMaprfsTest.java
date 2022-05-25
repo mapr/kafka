@@ -9,6 +9,9 @@ import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,6 +25,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@RunWith(PowerMockRunner.class)
+@SuppressStaticInitializationFor("com.mapr.fs.MapRFileSystem")
 public class KafkaMaprfsTest extends EasyMockSupport {
     private static final String FILE = "/user/mapr/file";
     private static final Path FOLDER_PATH = new Path(FILE);

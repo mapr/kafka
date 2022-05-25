@@ -124,6 +124,7 @@ public class MeteredKeyValueStoreTest {
             Serdes.String()
         );
         metrics.config().recordLevel(Sensor.RecordingLevel.DEBUG);
+        expect(context.applicationInternalStream()).andReturn("/path/to/internal/stream").anyTimes();
         expect(context.metrics())
             .andReturn(new StreamsMetricsImpl(metrics, "test", builtInMetricsVersion)).anyTimes();
         expect(context.taskId()).andReturn(taskId).anyTimes();

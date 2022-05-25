@@ -44,7 +44,7 @@ public class ShutdownDeadlockTest {
         final String topic = "source";
         final Properties props = new Properties();
         props.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "shouldNotDeadlock");
-        props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka);
+        props.setProperty("bootstrap.servers", kafka);
         final StreamsBuilder builder = new StreamsBuilder();
         final KStream<String, String> source = builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()));
 

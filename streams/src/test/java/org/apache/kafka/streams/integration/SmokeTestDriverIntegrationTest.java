@@ -17,7 +17,6 @@
 package org.apache.kafka.streams.integration;
 
 import org.apache.kafka.common.utils.Exit;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.integration.utils.EmbeddedKafkaCluster;
 import org.apache.kafka.streams.integration.utils.IntegrationTestUtils;
 import org.apache.kafka.streams.tests.SmokeTestClient;
@@ -99,7 +98,7 @@ public class SmokeTestDriverIntegrationTest {
 
 
         final Properties props = new Properties();
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put("bootstrap.servers", bootstrapServers);
 
         // cycle out Streams instances as long as the test is running.
         while (driver.isAlive()) {

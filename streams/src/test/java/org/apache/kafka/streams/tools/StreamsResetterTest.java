@@ -28,6 +28,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.text.ParseException;
@@ -233,12 +234,13 @@ public class StreamsResetterTest {
     }
 
     @Test
+    @Ignore //StreamsResetter#doDelete was removed in MS-423
     public void shouldDeleteTopic() throws InterruptedException, ExecutionException {
         final Cluster cluster = createCluster(1);
         try (final MockAdminClient adminClient = new MockAdminClient(cluster.nodes(), cluster.nodeById(0))) {
             final TopicPartitionInfo topicPartitionInfo = new TopicPartitionInfo(0, cluster.nodeById(0), cluster.nodes(), Collections.<Node>emptyList());
             adminClient.addTopic(false, TOPIC, Collections.singletonList(topicPartitionInfo), null);
-            streamsResetter.doDelete(Collections.singletonList(TOPIC), adminClient);
+//            streamsResetter.doDelete(Collections.singletonList(TOPIC), adminClient);
             assertEquals(Collections.emptySet(), adminClient.listTopics().names().get());
         }
     }

@@ -49,11 +49,11 @@ public class StreamsSmokeTest {
         final boolean disableAutoTerminate = args.length > 2;
 
         final Properties streamsProperties = Utils.loadProps(propFileName);
-        final String kafka = streamsProperties.getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+        final String kafka = streamsProperties.getProperty("bootstrap.servers");
         final String processingGuarantee = streamsProperties.getProperty(StreamsConfig.PROCESSING_GUARANTEE_CONFIG);
 
         if (kafka == null) {
-            System.err.println("No bootstrap kafka servers specified in " + StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+            System.err.println("No bootstrap kafka servers specified in " + "bootstrap.servers");
             Exit.exit(1);
         }
 

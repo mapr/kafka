@@ -16,11 +16,13 @@
  */
 package org.apache.kafka.streams;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.common.utils.Utils;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.errors.TopologyException;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.ForeachAction;
@@ -41,12 +43,19 @@ import org.apache.kafka.streams.processor.internals.InternalTopologyBuilder;
 import org.apache.kafka.streams.processor.internals.ProcessorNode;
 import org.apache.kafka.streams.processor.internals.ProcessorTopology;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.apache.kafka.test.MockMapper;
 import org.apache.kafka.test.MockPredicate;
 import org.apache.kafka.test.MockProcessorSupplier;
 import org.apache.kafka.test.MockValueJoiner;
 import org.apache.kafka.test.StreamsTestUtils;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -63,8 +72,16 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class StreamsBuilderTest {
 
+    @Before
+    public void setUp() throws Exception {
+        MaprEnvUtil.setUp();
+    }
     private static final String STREAM_TOPIC     = "stream-topic";
 
     private static final String STREAM_OPERATION_NAME = "stream-operation";
@@ -423,11 +440,11 @@ public class StreamsBuilderTest {
         builder.table(topic, Materialized.<Long, String, KeyValueStore<Bytes, byte[]>>as("store"));
 
         final InternalTopologyBuilder internalTopologyBuilder = TopologyWrapper.getInternalTopologyBuilder(builder.build());
-        internalTopologyBuilder.setApplicationId("appId");
+        internalTopologyBuilder.setApplicationIdAndInternalStream("appId", "/s", "/s");
 
         assertThat(
             internalTopologyBuilder.buildTopology().storeToChangelogTopic(),
-            equalTo(Collections.singletonMap("store", "appId-store-changelog")));
+            equalTo(Collections.singletonMap("store", "/s:appId-store-changelog")));
         assertThat(
             internalTopologyBuilder.stateStores().keySet(),
             equalTo(Collections.singleton("store")));
@@ -436,7 +453,7 @@ public class StreamsBuilderTest {
             equalTo(true));
         assertThat(
             internalTopologyBuilder.topicGroups().get(0).stateChangelogTopics.keySet(),
-            equalTo(Collections.singleton("appId-store-changelog")));
+            equalTo(Collections.singleton("/s:appId-store-changelog")));
     }
     
     @Test(expected = TopologyException.class)

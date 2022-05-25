@@ -130,6 +130,7 @@ public class DistributedHerderTest {
         CONN1_CONFIG.put(ConnectorConfig.TASKS_MAX_CONFIG, MAX_TASKS.toString());
         CONN1_CONFIG.put(SinkConnectorConfig.TOPICS_CONFIG, String.join(",", FOO_TOPIC, BAR_TOPIC));
         CONN1_CONFIG.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, BogusSourceConnector.class.getName());
+        CONN1_CONFIG.put(TaskConfig.TASK_USER_CONFIG, "testuser");
     }
     private static final Map<String, String> CONN1_CONFIG_UPDATED = new HashMap<>(CONN1_CONFIG);
     static {
@@ -151,6 +152,7 @@ public class DistributedHerderTest {
     private static final Map<String, String> TASK_CONFIG = new HashMap<>();
     static {
         TASK_CONFIG.put(TaskConfig.TASK_CLASS_CONFIG, BogusSourceTask.class.getName());
+        TASK_CONFIG.put(TaskConfig.TASK_USER_CONFIG, "testuser");
     }
     private static final List<Map<String, String>> TASK_CONFIGS = new ArrayList<>();
     static {

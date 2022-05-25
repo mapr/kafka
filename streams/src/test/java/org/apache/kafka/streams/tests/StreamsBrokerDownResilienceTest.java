@@ -57,10 +57,10 @@ public class StreamsBrokerDownResilienceTest {
         final String additionalConfigs = args[1];
 
         final Properties streamsProperties = Utils.loadProps(propFileName);
-        final String kafka = streamsProperties.getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+        final String kafka = streamsProperties.getProperty("bootstrap.servers");
 
         if (kafka == null) {
-            System.err.println("No bootstrap kafka servers specified in " + StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+            System.err.println("No bootstrap kafka servers specified in " + "bootstrap.servers");
             Exit.exit(1);
         }
 

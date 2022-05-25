@@ -312,9 +312,10 @@ public class RecordQueueTest {
             StreamsException.class,
             () -> queue.addRawRecords(records)
         );
+        //producer field was added in MAPR-20370
         assertThat(exception.getMessage(), equalTo("Input record ConsumerRecord(topic = topic, partition = 1, " +
             "leaderEpoch = null, offset = 1, CreateTime = -1, serialized key size = 0, serialized value size = 0, " +
-            "headers = RecordHeaders(headers = [], isReadOnly = false), key = 1, value = 10) has invalid (negative) " +
+            "headers = RecordHeaders(headers = [], isReadOnly = false), producer = null, key = 1, value = 10) has invalid (negative) " +
             "timestamp. Possibly because a pre-0.10 producer client was used to write this record to Kafka without " +
             "embedding a timestamp, or because the input topic was created before upgrading the Kafka cluster to 0.10+. " +
             "Use a different TimestampExtractor to process this data."));

@@ -16,12 +16,14 @@
  */
 package org.apache.kafka.streams.kstream.internals;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
@@ -33,11 +35,18 @@ import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.apache.kafka.streams.utils.UniqueTopicSerdeScope;
 import org.apache.kafka.test.TestUtils;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collections;
 import java.util.Map;
@@ -51,8 +60,16 @@ import static org.apache.kafka.streams.integration.utils.IntegrationTestUtils.sa
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class KTableKTableForeignKeyJoinScenarioTest {
 
+    @Before
+    public void setUp() throws Exception {
+        MaprEnvUtil.setUp();
+    }
     private static final String LEFT_TABLE = "left_table";
     private static final String RIGHT_TABLE = "right_table";
     private static final String OUTPUT = "output-topic";
@@ -183,7 +200,7 @@ public class KTableKTableForeignKeyJoinScenarioTest {
         final String applicationId = "ktable-ktable-joinOnForeignKey";
         final Properties streamsConfig = mkProperties(mkMap(
             mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, applicationId),
-            mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "asdf:0000"),
+            mkEntry("bootstrap.servers", "asdf:0000"),
             mkEntry(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath())
         ));
 
@@ -220,22 +237,24 @@ public class KTableKTableForeignKeyJoinScenarioTest {
         }
         // verifying primarily that no extra pseudo-topics were used, but it's nice to also verify the rest of the
         // topics our serdes serialize data for
+        String stream = "/apps/kafka-streams/" + applicationId + "/kafka-internal-stream";
+        String streamCompacted = stream + "-compacted";
         assertThat(serdeScope.registeredTopics(), is(mkSet(
-            // expected pseudo-topics
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-fk--key",
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-pk--key",
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-vh--value",
-            // internal topics
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic--key",
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-RESPONSE-0000000014-topic--key",
-            applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-RESPONSE-0000000014-topic--value",
-            applicationId + "-left_table-STATE-STORE-0000000000-changelog--key",
-            applicationId + "-left_table-STATE-STORE-0000000000-changelog--value",
-            applicationId + "-right_table-STATE-STORE-0000000003-changelog--key",
-            applicationId + "-right_table-STATE-STORE-0000000003-changelog--value",
-            // output topics
-            "output-topic--key",
-            "output-topic--value"
+                // expected pseudo-topics
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-fk--key",
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-pk--key",
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic-vh--value",
+                // internal topics
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-REGISTRATION-0000000006-topic--key",
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-RESPONSE-0000000014-topic--key",
+                stream + ":" + applicationId + "-KTABLE-FK-JOIN-SUBSCRIPTION-RESPONSE-0000000014-topic--value",
+                streamCompacted + ":" + applicationId + "-left_table-STATE-STORE-0000000000-changelog--key",
+                streamCompacted + ":" + applicationId + "-left_table-STATE-STORE-0000000000-changelog--value",
+                streamCompacted + ":" + applicationId + "-right_table-STATE-STORE-0000000003-changelog--key",
+                streamCompacted + ":" + applicationId + "-right_table-STATE-STORE-0000000003-changelog--value",
+                // output topics
+                "output-topic--key",
+                "output-topic--value"
         )));
     }
 
@@ -243,7 +262,7 @@ public class KTableKTableForeignKeyJoinScenarioTest {
         final Properties config = new Properties();
         final String safeTestName = safeUniqueTestName(getClass(), testName);
         config.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "dummy-" + safeTestName);
-        config.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy");
+        config.setProperty("bootstrap.servers", "dummy");
         config.setProperty(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.IntegerSerde.class.getName());
         config.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.StringSerde.class.getName());
         config.setProperty(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getAbsolutePath());

@@ -86,11 +86,11 @@ public class RecordCollectorTest {
     private final StreamsMetricsImpl streamsMetrics = new MockStreamsMetrics(new Metrics());
     private final StreamsConfig config = new StreamsConfig(mkMap(
         mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, "appId"),
-        mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234")
+        mkEntry("bootstrap.servers", "dummy:1234")
     ));
     private final StreamsConfig eosConfig = new StreamsConfig(mkMap(
         mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, "appId"),
-        mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234"),
+        mkEntry("bootstrap.servers", "dummy:1234"),
         mkEntry(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE)
     ));
 

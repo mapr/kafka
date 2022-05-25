@@ -631,6 +631,8 @@ public class StoreChangelogReaderTest extends EasyMockSupport {
                 throw kaboom;
             }
         };
+        // after MS-270 unsubscribe is performed only when consumer have any subscription
+        consumer.subscribe(Collections.singleton("/s:t"));
         final StoreChangelogReader changelogReader =
             new StoreChangelogReader(time, config, logContext, adminClient, consumer, callback);
 

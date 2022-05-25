@@ -17,6 +17,8 @@
 package org.apache.kafka.connect.runtime;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -166,6 +168,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         workerProps.put("config.providers.file.class", MockFileConfigProvider.class.getName());
         mockFileProviderTestId = UUID.randomUUID().toString();
         workerProps.put("config.providers.file.param.testId", mockFileProviderTestId);
+        workerProps.put("admin." + AdminClientConfig.ADMINCLIENT_CLASS_CONFIG, KafkaAdminClient.class.getName());
         workerProps.put(TOPIC_CREATION_ENABLE_CONFIG, String.valueOf(enableTopicCreation));
         config = new StandaloneConfig(workerProps);
 
@@ -615,6 +618,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, "testuser");
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -697,6 +701,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, "testuser");
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -900,6 +905,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, "testuser");
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -978,6 +984,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectNewWorkerTask();
         Map<String, String> origProps = new HashMap<>();
         origProps.put(TaskConfig.TASK_CLASS_CONFIG, TestSourceTask.class.getName());
+        origProps.put(TaskConfig.TASK_USER_CONFIG, "testuser");
 
         TaskConfig taskConfig = new TaskConfig(origProps);
         // We should expect this call, but the pluginLoader being swapped in is only mocked.
@@ -1064,6 +1071,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         Map<String, String> expectedConfigs = new HashMap<>(defaultProducerConfigs);
         expectedConfigs.put("client.id", "connector-producer-job-0");
         expectedConfigs.put("metrics.context.connect.kafka.cluster.id", "test-cluster");
+        expectedConfigs.put("streams.producer.default.stream", null);
         assertEquals(expectedConfigs,
                      Worker.producerConfigs(TASK_ID, "connector-producer-" + TASK_ID, config, connectorConfig, null, noneConnectorClientConfigOverridePolicy, CLUSTER_ID));
     }
@@ -1081,6 +1089,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectedConfigs.put("linger.ms", "1000");
         expectedConfigs.put("client.id", "producer-test-id");
         expectedConfigs.put("metrics.context.connect.kafka.cluster.id", "test-cluster");
+        expectedConfigs.put("streams.producer.default.stream", null);
         EasyMock.expect(connectorConfig.originalsWithPrefix(ConnectorConfig.CONNECTOR_CLIENT_PRODUCER_OVERRIDES_PREFIX)).andReturn(
             new HashMap<String, Object>());
         PowerMock.replayAll();
@@ -1102,6 +1111,7 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
         expectedConfigs.put("batch.size", "1000");
         expectedConfigs.put("client.id", "producer-test-id");
         expectedConfigs.put("metrics.context.connect.kafka.cluster.id", "test-cluster");
+        expectedConfigs.put("streams.producer.default.stream", null);
         Map<String, Object> connConfig = new HashMap<String, Object>();
         connConfig.put("linger.ms", "5000");
         connConfig.put("batch.size", "1000");
@@ -1200,16 +1210,20 @@ public class WorkerWithTopicCreationTest extends ThreadedTest {
 
         Map<String, String> expectedConfigs = new HashMap<>(workerProps);
 
+        expectedConfigs.remove("admin." + AdminClientConfig.ADMINCLIENT_CLASS_CONFIG);
+
         expectedConfigs.put("bootstrap.servers", "localhost:9092");
         expectedConfigs.put("client.id", "testid");
         expectedConfigs.put("metadata.max.age.ms", "10000");
         expectedConfigs.put("metrics.context.connect.kafka.cluster.id", "test-cluster");
+        expectedConfigs.put("org.apache.kafka.clients.admin", KafkaAdminClient.class.getName());
 
         EasyMock.expect(connectorConfig.originalsWithPrefix(ConnectorConfig.CONNECTOR_CLIENT_ADMIN_OVERRIDES_PREFIX))
             .andReturn(connConfig);
         PowerMock.replayAll();
-        assertEquals(expectedConfigs, Worker.adminConfigs(new ConnectorTaskId("test", 1), "", configWithOverrides, connectorConfig,
-                                                             null, allConnectorClientConfigOverridePolicy, CLUSTER_ID));
+        Map<String, Object> actual = Worker.adminConfigs(new ConnectorTaskId("test", 1), "", configWithOverrides, connectorConfig,
+                null, allConnectorClientConfigOverridePolicy, CLUSTER_ID);
+        assertEquals(expectedConfigs, actual);
     }
 
     @Test(expected = ConnectException.class)

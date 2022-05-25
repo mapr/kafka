@@ -274,7 +274,8 @@ public class KafkaOffsetBackingStoreTest {
         storeLog.send(EasyMock.isNull(byte[].class), EasyMock.aryEq(TP0_VALUE.array()), EasyMock.capture(callback0));
         PowerMock.expectLastCall();
         Capture<org.apache.kafka.clients.producer.Callback> callback1 = EasyMock.newCapture();
-        storeLog.send(EasyMock.aryEq(TP1_KEY.array()), EasyMock.isNull(byte[].class), EasyMock.capture(callback1));
+        //MAPR-26608 value is assigned to key if null
+        storeLog.send(EasyMock.aryEq(TP1_KEY.array()), EasyMock.aryEq(TP1_KEY.array()), EasyMock.capture(callback1));
         PowerMock.expectLastCall();
 
         // Second get() should get the produced data and return the new values

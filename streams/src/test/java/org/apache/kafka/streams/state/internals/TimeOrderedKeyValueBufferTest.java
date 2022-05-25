@@ -40,6 +40,7 @@ import org.apache.kafka.test.TestUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -63,7 +64,9 @@ import static org.junit.Assert.fail;
 @RunWith(Parameterized.class)
 public class TimeOrderedKeyValueBufferTest<B extends TimeOrderedKeyValueBuffer<String, String>> {
 
-    private static final String APP_ID = "test-app";
+    private static final String INTERNAL_STREAM = "/apps/kafka-streams/test-app/kafka-internal-stream-compacted";
+    private static final String APPLICATION_ID = "test-app";
+    private static final String TOPIC_PREFIX = INTERNAL_STREAM + ":" + APPLICATION_ID;
     private final Function<String, B> bufferSupplier;
     private final String testName;
 
@@ -98,8 +101,8 @@ public class TimeOrderedKeyValueBufferTest<B extends TimeOrderedKeyValueBuffer<S
 
     private static MockInternalProcessorContext makeContext() {
         final Properties properties = new Properties();
-        properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, APP_ID);
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "");
+        properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
+        properties.setProperty("bootstrap.servers", "");
 
         final TaskId taskId = new TaskId(0, 0);
 
@@ -333,21 +336,21 @@ public class TimeOrderedKeyValueBufferTest<B extends TimeOrderedKeyValueBuffer<S
                 .collect(Collectors.toList());
 
         assertThat(collected, is(asList(
-            new ProducerRecord<>(APP_ID + "-" + testName + "-changelog",
+            new ProducerRecord<>(TOPIC_PREFIX + "-" + testName + "-changelog",
                                  0,   // Producer will assign
                                  null,
                                  "deleteme",
                                  null,
                                  new RecordHeaders()
             ),
-            new ProducerRecord<>(APP_ID + "-" + testName + "-changelog",
+            new ProducerRecord<>(TOPIC_PREFIX + "-" + testName + "-changelog",
                                  0,
                                  null,
                                  "zxcv",
                                  new KeyValue<>(1L, getBufferValue("3gon4i", 1)),
                                  CHANGELOG_HEADERS
             ),
-            new ProducerRecord<>(APP_ID + "-" + testName + "-changelog",
+            new ProducerRecord<>(TOPIC_PREFIX + "-" + testName + "-changelog",
                                  0,
                                  null,
                                  "asdf",

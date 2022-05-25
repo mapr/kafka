@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.streams;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -23,14 +24,21 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.errors.StreamsException;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.test.TestRecord;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +64,12 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertThrows;
 
-public class TestTopicsTest {
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
+class TestTopicsTest {
+    public TestTopicsTest(){}
     private static final Logger log = LoggerFactory.getLogger(TestTopicsTest.class);
 
     private final static String INPUT_TOPIC = "input";
@@ -70,12 +83,13 @@ public class TestTopicsTest {
 
     private final Properties config = mkProperties(mkMap(
             mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, "TestTopicsTest"),
-            mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234")
+            mkEntry("bootstrap.servers", "dummy:1234")
     ));
     private final Instant testBaseTime = Instant.parse("2019-06-01T10:00:00Z");
 
     @Before
-    public void setup() {
+    public void setup() throws Exception{
+        MaprEnvUtil.setUp();
         final StreamsBuilder builder = new StreamsBuilder();
         //Create Actual Stream Processing pipeline
         builder.stream(INPUT_TOPIC).to(OUTPUT_TOPIC);

@@ -100,7 +100,7 @@ public class GlobalStreamThreadTest {
 
         baseDirectoryName = TestUtils.tempDirectory().getAbsolutePath();
         final HashMap<String, Object> properties = new HashMap<>();
-        properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "blah");
+        properties.put("bootstrap.servers", "blah");
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "testAppId");
         properties.put(StreamsConfig.STATE_DIR_CONFIG, baseDirectoryName);
         config = new StreamsConfig(properties);

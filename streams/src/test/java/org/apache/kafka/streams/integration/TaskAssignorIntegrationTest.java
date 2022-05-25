@@ -92,7 +92,7 @@ public class TaskAssignorIntegrationTest {
 
         final Properties properties = mkObjectProperties(
             mkMap(
-                mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers()),
+                mkEntry("bootstrap.servers", CLUSTER.bootstrapServers()),
                 mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, appId),
                 mkEntry(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath()),
                 mkEntry(StreamsConfig.NUM_STANDBY_REPLICAS_CONFIG, "5"),

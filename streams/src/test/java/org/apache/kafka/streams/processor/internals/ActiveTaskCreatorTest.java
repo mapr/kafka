@@ -72,7 +72,7 @@ public class ActiveTaskCreatorTest {
     private final StreamsMetricsImpl streamsMetrics = new StreamsMetricsImpl(new Metrics(), "clientId", StreamsConfig.METRICS_LATEST);
     private final Map<String, Object> properties = mkMap(
         mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, "appId"),
-        mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234")
+        mkEntry("bootstrap.servers", "dummy:1234")
     );
     final UUID uuid = UUID.randomUUID();
 

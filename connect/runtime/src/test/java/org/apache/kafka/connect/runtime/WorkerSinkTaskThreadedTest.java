@@ -100,6 +100,7 @@ public class WorkerSinkTaskThreadedTest extends ThreadedTest {
     static {
         TASK_PROPS.put(SinkConnector.TOPICS_CONFIG, TOPIC);
         TASK_PROPS.put(TaskConfig.TASK_CLASS_CONFIG, TestSinkTask.class.getName());
+        TASK_PROPS.put(TaskConfig.TASK_USER_CONFIG, "testuser");
     }
     private static final TaskConfig TASK_CONFIG = new TaskConfig(TASK_PROPS);
 

@@ -130,7 +130,7 @@ public class ProcessorStateManagerTest {
         stateDirectory = new StateDirectory(new StreamsConfig(new Properties() {
             {
                 put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
-                put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
+                put("bootstrap.servers", "dummy:1234");
                 put(StreamsConfig.STATE_DIR_CONFIG, baseDir.getPath());
             }
         }), new MockTime(), true);

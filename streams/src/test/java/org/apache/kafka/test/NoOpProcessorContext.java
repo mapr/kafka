@@ -51,7 +51,7 @@ public class NoOpProcessorContext extends AbstractProcessorContext {
     private static StreamsConfig streamsConfig() {
         final Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "appId");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "boot");
+        props.put("bootstrap.servers", "boot");
         return new StreamsConfig(props);
     }
 

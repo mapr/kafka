@@ -54,6 +54,7 @@ import static org.junit.Assert.assertTrue;
 @SuppressWarnings("unchecked")
 public class InternalStreamsBuilderTest {
 
+    private static final String INTERNAL_STREAM = "/apps/kafka-streams/app-id/kafka-internal-stream";
     private static final String APP_ID = "app-id";
 
     private final InternalStreamsBuilder builder = new InternalStreamsBuilder(new InternalTopologyBuilder());
@@ -241,7 +242,7 @@ public class InternalStreamsBuilderTest {
         builder.buildAndOptimizeTopology();
         builder.internalTopologyBuilder.rewriteTopology(new StreamsConfig(StreamsTestUtils.getStreamsConfig(APP_ID)));
         assertEquals(Collections.singletonList("table-topic"), builder.internalTopologyBuilder.sourceTopicsForStore("table-store"));
-        assertEquals(Collections.singletonList(APP_ID + "-KSTREAM-MAP-0000000003-repartition"), builder.internalTopologyBuilder.sourceTopicsForStore("count"));
+        assertEquals(Collections.singletonList(INTERNAL_STREAM + ":" + APP_ID + "-KSTREAM-MAP-0000000003-repartition"), builder.internalTopologyBuilder.sourceTopicsForStore("count"));
     }
 
     @Test

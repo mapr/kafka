@@ -19,13 +19,16 @@ package org.apache.kafka.connect.runtime.rest.resources;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import javax.crypto.Mac;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.HttpHeaders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.connect.errors.AlreadyExistsException;
 import org.apache.kafka.connect.errors.NotFoundException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.Herder;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.NotAssignedException;
 import org.apache.kafka.connect.runtime.distributed.NotLeaderException;
@@ -79,8 +82,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(RestClient.class)
-@PowerMockIgnore({"javax.management.*", "javax.crypto.*"})
+@PrepareForTest({RestClient.class, UserGroupInformation.class})
+@PowerMockIgnore({"javax.management.*", "javax.crypto.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 @SuppressWarnings("unchecked")
 public class ConnectorsResourceTest {
     // Note trailing / and that we do *not* use LEADER_URL to construct our reference values. This checks that we handle
@@ -104,6 +107,8 @@ public class ConnectorsResourceTest {
     static {
         CONNECTOR_CONFIG.put("name", CONNECTOR_NAME);
         CONNECTOR_CONFIG.put("sample_config", "test_config");
+        CONNECTOR_CONFIG.put(TaskConfig.TASK_USER_CONFIG, "testuser");
+        CONNECTOR_CONFIG.put(ConnectorConfig.AUTHENTICATION_ENABLE_CONFIG, Boolean.toString(false));
     }
 
     private static final Map<String, String> CONNECTOR_CONFIG_CONTROL_SEQUENCES = new HashMap<>();
@@ -122,6 +127,8 @@ public class ConnectorsResourceTest {
     static {
         CONNECTOR_CONFIG_WITH_EMPTY_NAME.put(ConnectorConfig.NAME_CONFIG, "");
         CONNECTOR_CONFIG_WITH_EMPTY_NAME.put("sample_config", "test_config");
+        CONNECTOR_CONFIG_WITH_EMPTY_NAME.put(TaskConfig.TASK_USER_CONFIG, "testuser");
+        CONNECTOR_CONFIG_WITH_EMPTY_NAME.put(ConnectorConfig.AUTHENTICATION_ENABLE_CONFIG, Boolean.toString(false));
     }
     private static final List<ConnectorTaskId> CONNECTOR_TASK_NAMES = Arrays.asList(
             new ConnectorTaskId(CONNECTOR_NAME, 0),
@@ -149,6 +156,9 @@ public class ConnectorsResourceTest {
     private UriInfo forward;
     @Mock
     private WorkerConfig workerConfig;
+    @Mock
+    private HttpServletRequest request;
+    private Map connectorRequestConfig;
 
     @Before
     public void setUp() throws NoSuchMethodException {
@@ -163,6 +173,14 @@ public class ConnectorsResourceTest {
         queryParams.putSingle("forward", "true");
         EasyMock.expect(forward.getQueryParameters()).andReturn(queryParams).anyTimes();
         EasyMock.replay(forward);
+        EasyMock.expect(request.getRemoteUser()).andReturn("testuser").anyTimes();
+        PowerMock.replay(request);
+
+        connectorRequestConfig = new HashMap<>();
+        connectorRequestConfig.put(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME);
+
+        PowerMock.mockStaticPartial(UserGroupInformation.class, "isSecurityEnabled");
+        EasyMock.expect(UserGroupInformation.isSecurityEnabled()).andReturn(false).anyTimes();
     }
 
     private static final Map<String, String> getConnectorConfig(Map<String, String> mapToClone) {
@@ -288,7 +306,7 @@ public class ConnectorsResourceTest {
 
     @Test
     public void testCreateConnector() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME));
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, connectorRequestConfig);
 
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         herder.putConnectorConfig(EasyMock.eq(CONNECTOR_NAME), EasyMock.eq(body.config()), EasyMock.eq(false), EasyMock.capture(cb));
@@ -297,14 +315,14 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, body);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, body);
 
         PowerMock.verifyAll();
     }
 
     @Test
     public void testCreateConnectorNotLeader() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME));
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, connectorRequestConfig);
 
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         herder.putConnectorConfig(EasyMock.eq(CONNECTOR_NAME), EasyMock.eq(body.config()), EasyMock.eq(false), EasyMock.capture(cb));
@@ -316,7 +334,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, body);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, body);
 
         PowerMock.verifyAll();
 
@@ -325,7 +343,7 @@ public class ConnectorsResourceTest {
 
     @Test
     public void testCreateConnectorWithHeaderAuthorization() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME));
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, connectorRequestConfig);
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         HttpHeaders httpHeaders = EasyMock.mock(HttpHeaders.class);
         EasyMock.expect(httpHeaders.getHeaderString("Authorization")).andReturn("Basic YWxhZGRpbjpvcGVuc2VzYW1l").times(1);
@@ -336,7 +354,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, httpHeaders, body);
+        connectorsResource.createConnector(request, FORWARD, httpHeaders, body);
 
         PowerMock.verifyAll();
     }
@@ -345,7 +363,7 @@ public class ConnectorsResourceTest {
 
     @Test
     public void testCreateConnectorWithoutHeaderAuthorization() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME));
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, connectorRequestConfig);
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         HttpHeaders httpHeaders = EasyMock.mock(HttpHeaders.class);
         EasyMock.expect(httpHeaders.getHeaderString("Authorization")).andReturn(null).times(1);
@@ -356,14 +374,14 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, httpHeaders, body);
+        connectorsResource.createConnector(request, FORWARD, httpHeaders, body);
 
         PowerMock.verifyAll();
     }
 
     @Test(expected = AlreadyExistsException.class)
     public void testCreateConnectorExists() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME));
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME, connectorRequestConfig);
 
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         herder.putConnectorConfig(EasyMock.eq(CONNECTOR_NAME), EasyMock.eq(body.config()), EasyMock.eq(false), EasyMock.capture(cb));
@@ -371,7 +389,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, body);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, body);
 
         PowerMock.verifyAll();
     }
@@ -390,7 +408,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, bodyIn);
 
         PowerMock.verifyAll();
     }
@@ -409,7 +427,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, bodyIn);
 
         PowerMock.verifyAll();
     }
@@ -428,7 +446,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, bodyIn);
 
         PowerMock.verifyAll();
     }
@@ -528,14 +546,15 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        connectorsResource.putConnectorConfig(null, CONNECTOR_NAME, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG);
+        connectorsResource.putConnectorConfig(request, CONNECTOR_NAME, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG);
 
         PowerMock.verifyAll();
     }
 
     @Test
     public void testCreateConnectorWithSpecialCharsInName() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME_SPECIAL_CHARS, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME_SPECIAL_CHARS));
+        connectorRequestConfig.put(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME_SPECIAL_CHARS);
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME_SPECIAL_CHARS, connectorRequestConfig);
 
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         herder.putConnectorConfig(EasyMock.eq(CONNECTOR_NAME_SPECIAL_CHARS), EasyMock.eq(body.config()), EasyMock.eq(false), EasyMock.capture(cb));
@@ -544,7 +563,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        String rspLocation = connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, body).getLocation().toString();
+        String rspLocation = connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, body).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_SPECIAL_CHARS, decoded);
 
@@ -553,7 +572,8 @@ public class ConnectorsResourceTest {
 
     @Test
     public void testCreateConnectorWithControlSequenceInName() throws Throwable {
-        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME_CONTROL_SEQUENCES1, Collections.singletonMap(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME_CONTROL_SEQUENCES1));
+        connectorRequestConfig.put(ConnectorConfig.NAME_CONFIG, CONNECTOR_NAME_CONTROL_SEQUENCES1);
+        CreateConnectorRequest body = new CreateConnectorRequest(CONNECTOR_NAME_CONTROL_SEQUENCES1, connectorRequestConfig);
 
         final Capture<Callback<Herder.Created<ConnectorInfo>>> cb = Capture.newInstance();
         herder.putConnectorConfig(EasyMock.eq(CONNECTOR_NAME_CONTROL_SEQUENCES1), EasyMock.eq(body.config()), EasyMock.eq(false), EasyMock.capture(cb));
@@ -562,7 +582,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        String rspLocation = connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, body).getLocation().toString();
+        String rspLocation = connectorsResource.createConnector(request, FORWARD, NULL_HEADERS, body).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_CONTROL_SEQUENCES1, decoded);
 
@@ -579,7 +599,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        String rspLocation = connectorsResource.putConnectorConfig(null, CONNECTOR_NAME_SPECIAL_CHARS, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_SPECIAL_CHARS).getLocation().toString();
+        String rspLocation = connectorsResource.putConnectorConfig(request, CONNECTOR_NAME_SPECIAL_CHARS, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_SPECIAL_CHARS).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_SPECIAL_CHARS, decoded);
 
@@ -596,7 +616,7 @@ public class ConnectorsResourceTest {
 
         PowerMock.replayAll();
 
-        String rspLocation = connectorsResource.putConnectorConfig(null, CONNECTOR_NAME_CONTROL_SEQUENCES1, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_CONTROL_SEQUENCES).getLocation().toString();
+        String rspLocation = connectorsResource.putConnectorConfig(request, CONNECTOR_NAME_CONTROL_SEQUENCES1, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_CONTROL_SEQUENCES).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_CONTROL_SEQUENCES1, decoded);
 
@@ -607,7 +627,7 @@ public class ConnectorsResourceTest {
     public void testPutConnectorConfigNameMismatch() throws Throwable {
         Map<String, String> connConfig = new HashMap<>(CONNECTOR_CONFIG);
         connConfig.put(ConnectorConfig.NAME_CONFIG, "mismatched-name");
-        connectorsResource.putConnectorConfig(null, CONNECTOR_NAME, NULL_HEADERS, FORWARD, connConfig);
+        connectorsResource.putConnectorConfig(request, CONNECTOR_NAME, NULL_HEADERS, FORWARD, connConfig);
     }
 
     @Test(expected = BadRequestException.class)
@@ -615,7 +635,7 @@ public class ConnectorsResourceTest {
         Map<String, String> connConfig = new HashMap<>();
         connConfig.put(ConnectorConfig.NAME_CONFIG, "mismatched-name");
         CreateConnectorRequest request = new CreateConnectorRequest(CONNECTOR_NAME, connConfig);
-        connectorsResource.createConnector(null, FORWARD, NULL_HEADERS, request);
+        connectorsResource.createConnector(this.request, FORWARD, NULL_HEADERS, request);
     }
 
     @Test
@@ -755,7 +775,7 @@ public class ConnectorsResourceTest {
         final Capture<Callback<Void>> cb = Capture.newInstance();
         herder.restartConnector(EasyMock.eq(CONNECTOR_NAME), EasyMock.capture(cb));
         String ownerUrl = "http://owner:8083";
-        expectAndCallbackException(null, null);
+        expectAndCallbackException(cb, new NotAssignedException("not owner test", ownerUrl));
 
         EasyMock.expect(RestClient.httpRequest(EasyMock.eq("http://owner:8083/connectors/" + CONNECTOR_NAME + "/restart?forward=false"),
                 EasyMock.eq("POST"), EasyMock.isNull(), EasyMock.isNull(), EasyMock.<TypeReference>anyObject(), EasyMock.anyObject(WorkerConfig.class)))
@@ -808,7 +828,7 @@ public class ConnectorsResourceTest {
         final Capture<Callback<Void>> cb = Capture.newInstance();
         herder.restartTask(EasyMock.eq(taskId), EasyMock.capture(cb));
         String ownerUrl = "http://owner:8083";
-        //expectAndCallbackException(cb, new NotAssignedException("not owner test", ownerUrl));
+        expectAndCallbackException(cb, new NotAssignedException("not owner test", ownerUrl));
 
         EasyMock.expect(RestClient.httpRequest(EasyMock.eq("http://owner:8083/connectors/" + CONNECTOR_NAME + "/tasks/0/restart?forward=false"),
                 EasyMock.eq("POST"), EasyMock.isNull(), EasyMock.isNull(), EasyMock.<TypeReference>anyObject(), EasyMock.anyObject(WorkerConfig.class)))
@@ -946,6 +966,6 @@ public class ConnectorsResourceTest {
     }
 
     private  <T> void expectAndCallbackNotLeaderException(final Capture<Callback<T>> cb) {
-        //expectAndCallbackException(cb, new NotLeaderException("not leader test", LEADER_URL));
+        expectAndCallbackException(cb, new NotLeaderException("not leader test", LEADER_URL));
     }
 }

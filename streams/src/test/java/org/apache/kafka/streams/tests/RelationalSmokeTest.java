@@ -641,7 +641,7 @@ public class RelationalSmokeTest extends SmokeTestUtil {
                                            final String stateDir) {
             return mkProperties(
                 mkMap(
-                    mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, broker),
+                    mkEntry("bootstrap.servers", broker),
                     mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, application),
                     mkEntry(StreamsConfig.CLIENT_ID_CONFIG, id),
                     mkEntry(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, processingGuarantee),

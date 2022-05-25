@@ -31,7 +31,6 @@ trait TestDriver { this: Suite =>
   def createTestDriver(builder: StreamsBuilder, initialWallClockTime: Instant = Instant.now()): TopologyTestDriver = {
     val config = new Properties()
     config.put(StreamsConfig.APPLICATION_ID_CONFIG, "test")
-    config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234")
     config.put(StreamsConfig.STATE_DIR_CONFIG, s"out/state-store-${UUID.randomUUID()}")
     new TopologyTestDriver(builder.build(), config, initialWallClockTime)
   }

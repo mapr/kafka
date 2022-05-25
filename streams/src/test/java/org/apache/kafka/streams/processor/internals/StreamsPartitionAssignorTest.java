@@ -17,8 +17,12 @@
 package org.apache.kafka.streams.processor.internals;
 
 import java.util.SortedSet;
+
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
@@ -36,6 +40,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.internals.KafkaFutureImpl;
 import org.apache.kafka.common.utils.MockTime;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -57,15 +62,22 @@ import org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssigno
 import org.apache.kafka.streams.processor.internals.assignment.SubscriptionInfo;
 import org.apache.kafka.streams.processor.internals.assignment.TaskAssignor;
 import org.apache.kafka.streams.state.HostInfo;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.apache.kafka.test.MockClientSupplier;
 import org.apache.kafka.test.MockInternalTopicManager;
 import org.apache.kafka.test.MockKeyValueStoreBuilder;
 import org.apache.kafka.test.MockProcessorSupplier;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -126,8 +138,16 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @SuppressWarnings("unchecked")
-@RunWith(value = Parameterized.class)
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockRunnerDelegate(Parameterized.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class StreamsPartitionAssignorTest {
+    @Before
+    public void setUp() throws Exception {
+        MaprEnvUtil.setUp();
+    }
     private static final String CONSUMER_1 = "consumer1";
     private static final String CONSUMER_2 = "consumer2";
     private static final String CONSUMER_3 = "consumer3";
@@ -174,7 +194,9 @@ public class StreamsPartitionAssignorTest {
     private final MockClientSupplier mockClientSupplier = new MockClientSupplier();
     private static final String USER_END_POINT = "localhost:8080";
     private static final String OTHER_END_POINT = "other:9090";
+    private static final String INTERNAL_STREAM = "/s";
     private static final String APPLICATION_ID = "stream-partition-assignor-test";
+    private static final String TOPIC_PREFIX = INTERNAL_STREAM + ":" + APPLICATION_ID;
 
     private TaskManager taskManager;
     private Admin adminClient;
@@ -191,7 +213,7 @@ public class StreamsPartitionAssignorTest {
     private Map<String, Object> configProps() {
         final Map<String, Object> configurationMap = new HashMap<>();
         configurationMap.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-        configurationMap.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, USER_END_POINT);
+        configurationMap.put("bootstrap.servers", USER_END_POINT);
         configurationMap.put(InternalConfig.TASK_MANAGER_FOR_PARTITION_ASSIGNOR, taskManager);
         configurationMap.put(InternalConfig.STREAMS_METADATA_STATE_FOR_PARTITION_ASSIGNOR, streamsMetadataState);
         configurationMap.put(InternalConfig.STREAMS_ADMIN_CLIENT, adminClient);
@@ -199,6 +221,7 @@ public class StreamsPartitionAssignorTest {
         configurationMap.put(InternalConfig.NEXT_SCHEDULED_REBALANCE_MS, nextScheduledRebalanceMs);
         configurationMap.put(InternalConfig.TIME, time);
         configurationMap.put(InternalConfig.INTERNAL_TASK_ASSIGNOR_CLASS, taskAssignor.getName());
+        configurationMap.put(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG, KafkaAdminClient.class.getName());
         return configurationMap;
     }
 
@@ -239,7 +262,7 @@ public class StreamsPartitionAssignorTest {
         expect(taskManager.builder()).andReturn(builder).anyTimes();
         expect(taskManager.getTaskOffsetSums()).andReturn(taskOffsetSums).anyTimes();
         expect(taskManager.processId()).andReturn(processId).anyTimes();
-        builder.setApplicationId(APPLICATION_ID);
+        builder.setApplicationIdAndInternalStream(APPLICATION_ID, INTERNAL_STREAM, INTERNAL_STREAM);
         builder.buildTopology();
     }
 
@@ -558,7 +581,7 @@ public class StreamsPartitionAssignorTest {
 
         createMockTaskManager(prevTasks10, standbyTasks10);
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-store-changelog"),
+            singletonList(TOPIC_PREFIX + "-store-changelog"),
             singletonList(3))
         );
         configureDefaultPartitionAssignor();
@@ -684,7 +707,7 @@ public class StreamsPartitionAssignorTest {
 
         createDefaultMockTaskManager();
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-store1-changelog"),
+            singletonList(TOPIC_PREFIX + "-store1-changelog"),
             singletonList(3))
         );
         configurePartitionAssignorWith(Collections.singletonMap(StreamsConfig.PARTITION_GROUPER_CLASS_CONFIG, SingleGroupPartitionGrouperStub.class));
@@ -828,9 +851,9 @@ public class StreamsPartitionAssignorTest {
         final List<TaskId> tasks = asList(TASK_0_0, TASK_0_1, TASK_0_2, TASK_1_0, TASK_1_1, TASK_1_2);
 
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            asList(APPLICATION_ID + "-store1-changelog",
-                   APPLICATION_ID + "-store2-changelog",
-                   APPLICATION_ID + "-store3-changelog"),
+            asList(TOPIC_PREFIX + "-store1-changelog",
+                   TOPIC_PREFIX + "-store2-changelog",
+                   TOPIC_PREFIX + "-store3-changelog"),
             asList(3, 3, 3))
         );
         configureDefault();
@@ -874,7 +897,7 @@ public class StreamsPartitionAssignorTest {
     private static Set<TaskId> tasksForState(final String storeName,
                                              final List<TaskId> tasks,
                                              final Map<Integer, InternalTopologyBuilder.TopicsInfo> topicGroups) {
-        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(APPLICATION_ID, storeName, "/stream");
+        final String changelogTopic = ProcessorStateManager.storeChangelogTopic(APPLICATION_ID, storeName, INTERNAL_STREAM);
 
         final Set<TaskId> ids = new HashSet<>();
         for (final Map.Entry<Integer, InternalTopologyBuilder.TopicsInfo> entry : topicGroups.entrySet()) {
@@ -974,7 +997,7 @@ public class StreamsPartitionAssignorTest {
 
         createMockTaskManager(prevTasks00, standbyTasks01);
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-store1-changelog"),
+            singletonList(TOPIC_PREFIX + "-store1-changelog"),
             singletonList(3))
         );
         configurePartitionAssignorWith(Collections.singletonMap(StreamsConfig.NUM_STANDBY_REPLICAS_CONFIG, 1));
@@ -1091,7 +1114,7 @@ public class StreamsPartitionAssignorTest {
         builder.addSink("sink1", "topicX", null, null, null, "processor1");
         builder.addSource(null, "source2", null, null, null, "topicX");
         builder.addProcessor("processor2", new MockProcessorSupplier(), "source2");
-        final List<String> topics = asList("topic1", APPLICATION_ID + "-topicX");
+        final List<String> topics = asList("topic1", TOPIC_PREFIX + "-topicX");
         final Set<TaskId> allTasks = mkSet(TASK_0_0, TASK_0_1, TASK_0_2);
 
         final MockInternalTopicManager internalTopicManager = configureDefault();
@@ -1105,7 +1128,7 @@ public class StreamsPartitionAssignorTest {
 
         // check prepared internal topics
         assertEquals(1, internalTopicManager.readyTopics.size());
-        assertEquals(allTasks.size(), (long) internalTopicManager.readyTopics.get(APPLICATION_ID + "-topicX"));
+        assertEquals(allTasks.size(), (long) internalTopicManager.readyTopics.get(TOPIC_PREFIX + "-topicX"));
     }
 
     @Test
@@ -1119,7 +1142,7 @@ public class StreamsPartitionAssignorTest {
         builder.addProcessor("processor2", new MockProcessorSupplier(), "source2");
         builder.addSink("sink2", "topicZ", null, null, null, "processor2");
         builder.addSource(null, "source3", null, null, null, "topicZ");
-        final List<String> topics = asList("topic1", APPLICATION_ID + "-topicX", APPLICATION_ID + "-topicZ");
+        final List<String> topics = asList("topic1", TOPIC_PREFIX + "-topicX", TOPIC_PREFIX + "-topicZ");
         final Set<TaskId> allTasks = mkSet(TASK_0_0, TASK_0_1, TASK_0_2);
 
         final MockInternalTopicManager internalTopicManager = configureDefault();
@@ -1133,7 +1156,7 @@ public class StreamsPartitionAssignorTest {
 
         // check prepared internal topics
         assertEquals(2, internalTopicManager.readyTopics.size());
-        assertEquals(allTasks.size(), (long) internalTopicManager.readyTopics.get(APPLICATION_ID + "-topicZ"));
+        assertEquals(allTasks.size(), (long) internalTopicManager.readyTopics.get(TOPIC_PREFIX + "-topicZ"));
     }
 
     @Test
@@ -1164,8 +1187,8 @@ public class StreamsPartitionAssignorTest {
         builder = TopologyWrapper.getInternalTopologyBuilder(streamsBuilder.build());
 
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            asList(APPLICATION_ID + "-topic3-STATE-STORE-0000000002-changelog",
-                   APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-changelog"),
+            asList(TOPIC_PREFIX + "-topic3-STATE-STORE-0000000002-changelog",
+                   TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-changelog"),
             asList(4, 4))
         );
 
@@ -1180,10 +1203,10 @@ public class StreamsPartitionAssignorTest {
             partitionAssignor.assign(metadata, new GroupSubscription(subscriptions)).groupAssignment();
 
         final Map<String, Integer> expectedCreatedInternalTopics = new HashMap<>();
-        expectedCreatedInternalTopics.put(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 4);
-        expectedCreatedInternalTopics.put(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-changelog", 4);
-        expectedCreatedInternalTopics.put(APPLICATION_ID + "-topic3-STATE-STORE-0000000002-changelog", 4);
-        expectedCreatedInternalTopics.put(APPLICATION_ID + "-KSTREAM-MAP-0000000001-repartition", 4);
+        expectedCreatedInternalTopics.put(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 4);
+        expectedCreatedInternalTopics.put(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-changelog", 4);
+        expectedCreatedInternalTopics.put(TOPIC_PREFIX + "-topic3-STATE-STORE-0000000002-changelog", 4);
+        expectedCreatedInternalTopics.put(TOPIC_PREFIX + "-KSTREAM-MAP-0000000001-repartition", 4);
 
         // check if all internal topics were created as expected
         assertThat(mockInternalTopicManager.readyTopics, equalTo(expectedCreatedInternalTopics));
@@ -1196,14 +1219,14 @@ public class StreamsPartitionAssignorTest {
             new TopicPartition("topic3", 1),
             new TopicPartition("topic3", 2),
             new TopicPartition("topic3", 3),
-            new TopicPartition(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 0),
-            new TopicPartition(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 1),
-            new TopicPartition(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 2),
-            new TopicPartition(APPLICATION_ID + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 3),
-            new TopicPartition(APPLICATION_ID + "-KSTREAM-MAP-0000000001-repartition", 0),
-            new TopicPartition(APPLICATION_ID + "-KSTREAM-MAP-0000000001-repartition", 1),
-            new TopicPartition(APPLICATION_ID + "-KSTREAM-MAP-0000000001-repartition", 2),
-            new TopicPartition(APPLICATION_ID + "-KSTREAM-MAP-0000000001-repartition", 3)
+            new TopicPartition(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 0),
+            new TopicPartition(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 1),
+            new TopicPartition(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 2),
+            new TopicPartition(TOPIC_PREFIX + "-KTABLE-AGGREGATE-STATE-STORE-0000000006-repartition", 3),
+            new TopicPartition(TOPIC_PREFIX + "-KSTREAM-MAP-0000000001-repartition", 0),
+            new TopicPartition(TOPIC_PREFIX + "-KSTREAM-MAP-0000000001-repartition", 1),
+            new TopicPartition(TOPIC_PREFIX + "-KSTREAM-MAP-0000000001-repartition", 2),
+            new TopicPartition(TOPIC_PREFIX + "-KSTREAM-MAP-0000000001-repartition", 3)
         );
 
         // check if we created a task for all expected topicPartitions.
@@ -1424,7 +1447,7 @@ public class StreamsPartitionAssignorTest {
 
         createDefaultMockTaskManager();
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-KSTREAM-AGGREGATE-STATE-STORE-0000000001-changelog"),
+            singletonList(TOPIC_PREFIX + "-KSTREAM-AGGREGATE-STATE-STORE-0000000001-changelog"),
             singletonList(3))
         );
 
@@ -1814,7 +1837,7 @@ public class StreamsPartitionAssignorTest {
         builder.addStateStore(new MockKeyValueStoreBuilder("store1", false), "processor1");
 
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-store1-changelog"),
+            singletonList(TOPIC_PREFIX + "-store1-changelog"),
             singletonList(changelogNumPartitions - 1))
         );
 
@@ -1836,7 +1859,7 @@ public class StreamsPartitionAssignorTest {
         builder.addStateStore(new MockKeyValueStoreBuilder("store2", false), "processor1");
 
         createMockAdminClient(getTopicPartitionOffsetsMap(
-            singletonList(APPLICATION_ID + "-store1-changelog"),
+            singletonList(TOPIC_PREFIX + "-store1-changelog"),
             singletonList(3))
         );
 
@@ -1882,9 +1905,9 @@ public class StreamsPartitionAssignorTest {
     @Test
     public void shouldRequestEndOffsetsForPreexistingChangelogs() {
         final Set<TopicPartition> changelogs = mkSet(
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 0),
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 1),
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 2)
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 0),
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 1),
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 2)
         );
         adminClient = EasyMock.createMock(AdminClient.class);
         final ListOffsetsResult result = EasyMock.createNiceMock(ListOffsetsResult.class);
@@ -1929,9 +1952,9 @@ public class StreamsPartitionAssignorTest {
     @Test
     public void shouldRequestCommittedOffsetsForPreexistingSourceChangelogs() {
         final Set<TopicPartition> changelogs = mkSet(
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 0),
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 1),
-            new TopicPartition(APPLICATION_ID + "-store-changelog", 2)
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 0),
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 1),
+            new TopicPartition(TOPIC_PREFIX + "-store-changelog", 2)
         );
 
         final StreamsBuilder streamsBuilder = new StreamsBuilder();

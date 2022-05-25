@@ -919,7 +919,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         }
     }
 
-    // visible for testing
+    // used only for testing
     KafkaConsumer(LogContext logContext,
                   String clientId,
                   ConsumerCoordinator coordinator,
@@ -937,7 +937,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                   int defaultApiTimeoutMs,
                   List<ConsumerPartitionAssignor> assignors,
                   String groupId) {
-		this.config = null;
+        this.isStreams = false;
+        this.consumerDriver = this;
+        this.config = null;
 		this.logContext = logContext;
         this.log = logContext.logger(getClass());
         this.clientId = clientId;

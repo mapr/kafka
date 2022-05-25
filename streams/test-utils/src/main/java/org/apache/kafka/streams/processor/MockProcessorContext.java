@@ -238,7 +238,7 @@ public class MockProcessorContext implements ProcessorContext, RecordCollector.S
 
     @Override
     public String applicationInternalStream() {
-        return null;
+        return config.getStreamsInternalStreamCompacted();
     }
 
     @Override

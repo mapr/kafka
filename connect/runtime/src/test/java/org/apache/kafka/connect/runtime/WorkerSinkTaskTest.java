@@ -1813,7 +1813,8 @@ public class WorkerSinkTaskTest {
     }
 
     protected void expectImpersonation() throws Exception{
-        PowerMock.mockStaticPartial(UserGroupInformation.class, "getLoginUser");
+        PowerMock.mockStaticPartial(UserGroupInformation.class, "getLoginUser", "isSecurityEnabled");
+        EasyMock.expect(UserGroupInformation.isSecurityEnabled()).andReturn(true).anyTimes();
         UserGroupInformation loginUserMock = EasyMock.mock(UserGroupInformation.class);
         EasyMock.expect(UserGroupInformation.getLoginUser()).andReturn(loginUserMock).anyTimes();
         EasyMock.expect(loginUserMock.getShortUserName()).andReturn("loginUser").anyTimes();

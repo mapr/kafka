@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.streams;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
@@ -34,6 +35,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.errors.TopologyException;
 import org.apache.kafka.streams.internals.metrics.ClientMetrics;
 import org.apache.kafka.streams.kstream.Materialized;
@@ -52,6 +54,7 @@ import org.apache.kafka.streams.state.RocksDBConfigSetter;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.internals.metrics.RocksDBMetricsRecordingTrigger;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.apache.kafka.test.MockClientSupplier;
 import org.apache.kafka.test.MockMetricsReporter;
 import org.apache.kafka.test.MockProcessorSupplier;
@@ -66,7 +69,9 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.powermock.api.easymock.PowerMock;
 import org.powermock.api.easymock.annotation.Mock;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.net.InetSocketAddress;
@@ -100,8 +105,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({KafkaStreams.class, StreamThread.class, ClientMetrics.class})
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaStreams.class, StreamThread.class, ClientMetrics.class, KafkaMaprTools.class, Streams.class})
 public class KafkaStreamsTest {
 
     private static final int NUM_THREADS = 2;
@@ -116,15 +123,10 @@ public class KafkaStreamsTest {
 
     private Properties props;
     
-    @Mock
     private StateDirectory stateDirectory;
-    @Mock
     private StreamThread streamThreadOne;
-    @Mock
     private StreamThread streamThreadTwo;
-    @Mock
     private GlobalStreamThread globalStreamThread;
-    @Mock
     private Metrics metrics;
 
     private StateListenerStub streamsStateListener;
@@ -150,6 +152,7 @@ public class KafkaStreamsTest {
 
     @Before
     public void before() throws Exception {
+        MaprEnvUtil.setUp();
         time = new MockTime();
         supplier = new MockClientSupplier();
         supplier.setCluster(Cluster.bootstrap(singletonList(new InetSocketAddress("localhost", 9999))));
@@ -160,7 +163,7 @@ public class KafkaStreamsTest {
         props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
         props.put(StreamsConfig.CLIENT_ID_CONFIG, CLIENT_ID);
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:2018");
+        props.put("bootstrap.servers", "localhost:2018");
         props.put(StreamsConfig.METRIC_REPORTER_CLASSES_CONFIG, MockMetricsReporter.class.getName());
         props.put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath());
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, NUM_THREADS);
@@ -169,6 +172,11 @@ public class KafkaStreamsTest {
     }
 
     private void prepareStreams() throws Exception {
+        stateDirectory = PowerMock.createMock(StateDirectory.class);
+        streamThreadOne = PowerMock.createMock(StreamThread.class);
+        streamThreadTwo = PowerMock.createMock(StreamThread.class);
+        globalStreamThread = PowerMock.createMock(GlobalStreamThread.class);
+        metrics = PowerMock.createMock(Metrics.class);
         // setup metrics
         PowerMock.expectNew(Metrics.class,
             anyObject(MetricConfig.class),

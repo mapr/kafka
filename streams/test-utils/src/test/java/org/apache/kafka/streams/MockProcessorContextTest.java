@@ -270,7 +270,7 @@ public class MockProcessorContextTest {
     public void shouldCaptureApplicationAndRecordMetadata() {
         final Properties config = new Properties();
         config.put(StreamsConfig.APPLICATION_ID_CONFIG, "testMetadata");
-        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "");
+        config.put("bootstrap.servers", "");
 
         final AbstractProcessor<String, Object> processor = new AbstractProcessor<String, Object>() {
             @Override
@@ -392,7 +392,7 @@ public class MockProcessorContextTest {
     public void fullConstructorShouldSetAllExpectedAttributes() {
         final Properties config = new Properties();
         config.put(StreamsConfig.APPLICATION_ID_CONFIG, "testFullConstructor");
-        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "");
+        config.put("bootstrap.servers", "");
         config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass());
 

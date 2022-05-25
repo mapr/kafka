@@ -54,6 +54,7 @@ public class WorkerTaskTest {
     private static final Map<String, String> TASK_PROPS = new HashMap<>();
     static {
         TASK_PROPS.put(TaskConfig.TASK_CLASS_CONFIG, TestSinkTask.class.getName());
+        TASK_PROPS.put(TaskConfig.TASK_USER_CONFIG, "testuser");
     }
     private static final TaskConfig TASK_CONFIG = new TaskConfig(TASK_PROPS);
 

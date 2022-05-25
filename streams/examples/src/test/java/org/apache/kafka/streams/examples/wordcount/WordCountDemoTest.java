@@ -16,17 +16,26 @@
  */
 package org.apache.kafka.streams.examples.wordcount;
 
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
+import org.apache.kafka.streams.examples.MaprConfig;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +49,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Unit test of {@link WordCountDemo} stream using TopologyTestDriver.
  */
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class WordCountDemoTest {
 
     private TopologyTestDriver testDriver;
@@ -47,13 +60,14 @@ public class WordCountDemoTest {
     private TestOutputTopic<String, Long> outputTopic;
 
     @Before
-    public void setup() {
+    public void setup() throws Exception{
+        MaprEnvUtil.setUp();
         final StreamsBuilder builder = new StreamsBuilder();
         //Create Actual Stream Processing pipeline
         WordCountDemo.createWordCountStream(builder);
         testDriver = new TopologyTestDriver(builder.build(), WordCountDemo.getStreamsConfig());
-        inputTopic = testDriver.createInputTopic(WordCountDemo.INPUT_TOPIC, new StringSerializer(), new StringSerializer());
-        outputTopic = testDriver.createOutputTopic(WordCountDemo.OUTPUT_TOPIC, new StringDeserializer(), new LongDeserializer());
+        inputTopic = testDriver.createInputTopic(MaprConfig.STREAM_NAME + ":" + WordCountDemo.INPUT_TOPIC, new StringSerializer(), new StringSerializer());
+        outputTopic = testDriver.createOutputTopic(MaprConfig.STREAM_NAME + ":" + WordCountDemo.OUTPUT_TOPIC, new StringDeserializer(), new LongDeserializer());
     }
 
     @After

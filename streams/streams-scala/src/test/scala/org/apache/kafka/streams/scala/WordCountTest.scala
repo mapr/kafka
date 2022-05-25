@@ -177,7 +177,7 @@ class WordCountTest extends WordCountTestData {
     val streamsConfiguration: Properties = new Properties()
 
     streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, "wordcount-test")
-    streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.bootstrapServers())
+    streamsConfiguration.put("bootstrap.servers", cluster.bootstrapServers())
     streamsConfiguration.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "10000")
     streamsConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
     streamsConfiguration.put(StreamsConfig.STATE_DIR_CONFIG, testFolder.getRoot.getPath)

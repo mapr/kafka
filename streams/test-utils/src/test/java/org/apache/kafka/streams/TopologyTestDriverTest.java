@@ -17,6 +17,8 @@
 package org.apache.kafka.streams;
 
 import java.util.NoSuchElementException;
+
+import com.mapr.kafka.eventstreams.Streams;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
@@ -33,6 +35,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.mapr.tools.KafkaMaprTools;
 import org.apache.kafka.streams.errors.TopologyException;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KTable;
@@ -53,12 +56,19 @@ import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.internals.KeyValueStoreBuilder;
 import org.apache.kafka.streams.test.TestRecord;
+import org.apache.kafka.streams.utils.MaprEnvUtil;
 import org.apache.kafka.test.TestUtils;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
+import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 
 import java.io.File;
 import java.time.Duration;
@@ -94,8 +104,16 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(value = Parameterized.class)
+@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@RunWith(PowerMockRunner.class)
+@PowerMockRunnerDelegate(Parameterized.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PrepareForTest({KafkaMaprTools.class, Streams.class})
 public class TopologyTestDriverTest {
+    @Before
+    public void setUp() throws Exception{
+        MaprEnvUtil.setUp();
+    }
     private final static String SOURCE_TOPIC_1 = "source-topic-1";
     private final static String SOURCE_TOPIC_2 = "source-topic-2";
     private final static String SINK_TOPIC_1 = "sink-topic-1";
@@ -126,7 +144,7 @@ public class TopologyTestDriverTest {
     private TopologyTestDriver testDriver;
     private final Properties config = mkProperties(mkMap(
         mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, "test-TopologyTestDriver"),
-        mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234"),
+        mkEntry("bootstrap.servers", "dummy:1234"),
         mkEntry(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getAbsolutePath())
     ));
     private KeyValueStore<String, Long> store;
@@ -509,11 +527,16 @@ public class TopologyTestDriverTest {
         assertThat(testDriver.producedTopicNames(), is(Collections.emptySet()));
 
         pipeRecord(SOURCE_TOPIC_1, testRecord1);
+        String appId = config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG);
+        String stream = "/apps/kafka-streams/" + appId + "/kafka-internal-stream";
+        String streamCompacted = "/apps/kafka-streams/" + appId + "/kafka-internal-stream-compacted";
+        String topicPrefix = stream + ":" + appId;
+        String topicPrefixCompacted = streamCompacted + ":" + appId;
         assertThat(
             testDriver.producedTopicNames(),
             equalTo(mkSet(
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-table1-repartition",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-table1-changelog"
+                    topicPrefix + "-table1-repartition",
+                    topicPrefixCompacted + "-table1-changelog"
             ))
         );
 
@@ -521,12 +544,12 @@ public class TopologyTestDriverTest {
         assertThat(
             testDriver.producedTopicNames(),
             equalTo(mkSet(
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-table1-repartition",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-table1-changelog",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-table2-changelog",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-join-subscription-registration-topic",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-join-subscription-store-changelog",
-                config.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-join-subscription-response-topic"
+                    topicPrefix + "-table1-repartition",
+                    topicPrefixCompacted + "-table1-changelog",
+                    topicPrefixCompacted + "-table2-changelog",
+                    topicPrefix + "-join-subscription-registration-topic",
+                    topicPrefixCompacted + "-join-subscription-store-changelog",
+                    topicPrefix + "-join-subscription-response-topic"
             ))
         );
     }
@@ -1518,7 +1541,7 @@ public class TopologyTestDriverTest {
 
         final Properties config = new Properties();
         config.put(StreamsConfig.APPLICATION_ID_CONFIG, "test-TopologyTestDriver-cleanup");
-        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
+        config.put("bootstrap.servers", "dummy:1234");
         config.put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getAbsolutePath());
         config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.Long().getClass().getName());
@@ -1678,7 +1701,7 @@ public class TopologyTestDriverTest {
     public void shouldEnqueueLaterOutputsAfterEarlierOnes() {
         final Properties properties = new Properties();
         properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "dummy");
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy");
+        properties.setProperty("bootstrap.servers", "dummy");
 
         final Topology topology = new Topology();
         topology.addSource("source", new StringDeserializer(), new StringDeserializer(), "input");
@@ -1722,7 +1745,7 @@ public class TopologyTestDriverTest {
     public void shouldApplyGlobalUpdatesCorrectlyInRecursiveTopologies() {
         final Properties properties = new Properties();
         properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "dummy");
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy");
+        properties.setProperty("bootstrap.servers", "dummy");
 
         final Topology topology = new Topology();
         topology.addSource("source", new StringDeserializer(), new StringDeserializer(), "input");
@@ -1798,7 +1821,7 @@ public class TopologyTestDriverTest {
     public void shouldRespectTaskIdling() {
         final Properties properties = new Properties();
         properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "dummy");
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy");
+        properties.setProperty("bootstrap.servers", "dummy");
 
         // This is the key to this test. Wall-clock time doesn't advance automatically in TopologyTestDriver,
         // so with an idle time specified, TTD can't just expect all enqueued records to be processable.

@@ -88,7 +88,7 @@ public class StreamsGraphTest {
     public void shouldBeAbleToProcessNestedMultipleKeyChangingNodes() {
         final Properties properties = new Properties();
         properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "test-application");
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        properties.setProperty("bootstrap.servers", "localhost:9092");
         properties.setProperty(StreamsConfig.TOPOLOGY_OPTIMIZATION, StreamsConfig.OPTIMIZE);
 
         final StreamsBuilder builder = new StreamsBuilder();
@@ -117,7 +117,7 @@ public class StreamsGraphTest {
     public void shouldNotThrowNPEWithMergeNodes() {
         final Properties properties = new Properties();
         properties.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "test-application");
-        properties.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        properties.setProperty("bootstrap.servers", "localhost:9092");
         properties.setProperty(StreamsConfig.TOPOLOGY_OPTIMIZATION, StreamsConfig.OPTIMIZE);
 
         final StreamsBuilder builder = new StreamsBuilder();

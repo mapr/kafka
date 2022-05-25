@@ -11,7 +11,7 @@ import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class MaprfsPermissionsTest {
 
@@ -52,7 +52,7 @@ public class MaprfsPermissionsTest {
         replay(KafkaMaprTools.tools());
 
         MaprfsPermissions permissions = MaprfsPermissions.permissions()
-                .loadFromConfig("readdir=u:<cluster.admin> | u:<startup.user>");
+                .loadFromConfig("readdir=<cluster.admin> | <startup.user>");
         assertEquals(permissions, MaprfsPermissions.permissions()
                 .put(MapRFileAce.AccessType.READDIR, "u:mapr | u:mapruser1"));
     }

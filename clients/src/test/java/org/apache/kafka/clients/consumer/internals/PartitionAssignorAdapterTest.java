@@ -36,6 +36,7 @@ import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Assignment;
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupSubscription;
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Subscription;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.TestMaprConsumerInitializer;
 import org.apache.kafka.clients.consumer.StickyAssignor;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaException;
@@ -96,7 +97,7 @@ public class PartitionAssignorAdapterTest {
         classTypes = Arrays.asList(StickyAssignor.class, OldPartitionAssignor.class, String.class);
 
         props.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, classTypes);
-        assertThrows(KafkaException.class, () -> new KafkaConsumer<>(
+        assertThrows(KafkaException.class, () -> TestMaprConsumerInitializer.newKafkaConsumer(
             props, new StringDeserializer(), new StringDeserializer()));
     }
 

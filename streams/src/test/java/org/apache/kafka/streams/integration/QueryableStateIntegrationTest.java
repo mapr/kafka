@@ -214,7 +214,7 @@ public class QueryableStateIntegrationTest {
         final String safeTestName = safeUniqueTestName(getClass(), testName);
 
         streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, "app-" + safeTestName);
-        streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers());
+        streamsConfiguration.put("bootstrap.servers", CLUSTER.bootstrapServers());
         streamsConfiguration.put(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getPath());
         streamsConfiguration.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
         streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
@@ -454,7 +454,7 @@ public class QueryableStateIntegrationTest {
 
         final Properties properties = mkProperties(mkMap(
             mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, safeUniqueTestName(getClass(), testName)),
-            mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers())
+            mkEntry("bootstrap.servers", CLUSTER.bootstrapServers())
         ));
 
         try (final KafkaStreams streams = getStartedStreams(properties, builder, true)) {
@@ -492,7 +492,7 @@ public class QueryableStateIntegrationTest {
 
         final Properties properties = mkProperties(mkMap(
             mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, uniqueTestName + "-app"),
-            mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, CLUSTER.bootstrapServers())
+            mkEntry("bootstrap.servers", CLUSTER.bootstrapServers())
         ));
 
         try (final KafkaStreams streams = getRunningStreams(properties, builder, true)) {

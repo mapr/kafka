@@ -132,7 +132,9 @@ import static org.junit.Assert.fail;
 
 public class StreamThreadTest {
 
+    private final static String INTERNAL_STREAM = "/s";
     private final static String APPLICATION_ID = "stream-thread-test";
+    private final static String TOPIC_PREFIX = INTERNAL_STREAM + ":" + APPLICATION_ID;
     private final static UUID PROCESS_ID = UUID.fromString("87bf53a8-54f2-485f-a4b6-acdbec0a8b3d");
     private final static String CLIENT_ID = APPLICATION_ID + "-" + PROCESS_ID;
 
@@ -155,7 +157,7 @@ public class StreamThreadTest {
         Thread.currentThread().setName(CLIENT_ID + "-StreamThread-" + threadIdx);
         internalTopologyBuilder = InternalStreamsBuilderTest.internalTopologyBuilder(internalStreamsBuilder);
         internalTopologyBuilder.setApplicationIdAndInternalStream(APPLICATION_ID,
-                "/sample-stream", "/sample-stream");
+                INTERNAL_STREAM, INTERNAL_STREAM);
         streamsMetadataState = new StreamsMetadataState(internalTopologyBuilder, StreamsMetadataState.UNKNOWN_HOST);
     }
 
@@ -174,7 +176,7 @@ public class StreamThreadTest {
     private Properties configProps(final boolean enableEoS) {
         return mkProperties(mkMap(
             mkEntry(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID),
-            mkEntry(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:2171"),
+            mkEntry("bootstrap.servers", "localhost:2171"),
             mkEntry(StreamsConfig.BUFFERED_RECORDS_PER_PARTITION_CONFIG, "3"),
             mkEntry(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, MockTimestampExtractor.class.getName()),
             mkEntry(StreamsConfig.STATE_DIR_CONFIG, TestUtils.tempDirectory().getAbsolutePath()),
@@ -1219,7 +1221,7 @@ public class StreamThreadTest {
         final StreamThread thread = createStreamThread(CLIENT_ID, new StreamsConfig(configProps(false)), false);
 
         final String storeName = "store";
-        final String storeChangelog = "stream-thread-test-store-changelog";
+        final String storeChangelog = TOPIC_PREFIX + "-store-changelog";
         final TopicPartition storeChangelogTopicPartition = new TopicPartition(storeChangelog, 1);
 
         internalTopologyBuilder.addSource(null, "name", null, null, null, topic1);
@@ -1490,7 +1492,7 @@ public class StreamThreadTest {
         );
 
         final HashMap<TopicPartition, Long> offsets = new HashMap<>();
-        offsets.put(new TopicPartition("stream-thread-test-count-one-changelog", 1), 0L);
+        offsets.put(new TopicPartition(TOPIC_PREFIX + "-count-one-changelog", 1), 0L);
         restoreConsumer.updateEndOffsets(offsets);
         restoreConsumer.updateBeginningOffsets(offsets);
 
@@ -1519,8 +1521,8 @@ public class StreamThreadTest {
     public void shouldUpdateStandbyTask() throws Exception {
         final String storeName1 = "count-one";
         final String storeName2 = "table-two";
-        final String changelogName1 = APPLICATION_ID + "-" + storeName1 + "-changelog";
-        final String changelogName2 = APPLICATION_ID + "-" + storeName2 + "-changelog";
+        final String changelogName1 = TOPIC_PREFIX + "-" + storeName1 + "-changelog";
+        final String changelogName2 = TOPIC_PREFIX + "-" + storeName2 + "-changelog";
         final TopicPartition partition1 = new TopicPartition(changelogName1, 1);
         final TopicPartition partition2 = new TopicPartition(changelogName2, 1);
         internalStreamsBuilder
@@ -1811,7 +1813,7 @@ public class StreamThreadTest {
             )
         );
 
-        final TopicPartition changelogPartition = new TopicPartition("stream-thread-test-count-changelog", 0);
+        final TopicPartition changelogPartition = new TopicPartition(TOPIC_PREFIX + "-count-changelog", 0);
         final Set<TopicPartition> changelogPartitionSet = Collections.singleton(changelogPartition);
         mockRestoreConsumer.updateBeginningOffsets(Collections.singletonMap(changelogPartition, 0L));
         mockAdminClient.updateEndOffsets(Collections.singletonMap(changelogPartition, 2L));
@@ -1829,7 +1831,7 @@ public class StreamThreadTest {
                 "Never get the assignment");
 
             mockRestoreConsumer.addRecord(new ConsumerRecord<>(
-                "stream-thread-test-count-changelog",
+                TOPIC_PREFIX + "-count-changelog",
                 0,
                 0L,
                 "K1".getBytes(),
@@ -1853,13 +1855,13 @@ public class StreamThreadTest {
                 "Never restore first record");
 
             mockRestoreConsumer.addRecord(new ConsumerRecord<>(
-                "stream-thread-test-count-changelog",
+                TOPIC_PREFIX + "-count-changelog",
                 0,
                 0L,
                 "K1".getBytes(),
                 "V1".getBytes()));
             mockRestoreConsumer.addRecord(new ConsumerRecord<>(
-                "stream-thread-test-count-changelog",
+                    TOPIC_PREFIX + "-count-changelog",
                 0,
                 1L,
                 "K2".getBytes(),

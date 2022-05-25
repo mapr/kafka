@@ -160,7 +160,7 @@ public class KafkaProducerTest {
         Properties props = new Properties();
         props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999");
         props.setProperty(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, MockMetricsReporter.class.getName());
-        KafkaProducer<String, String> producer = new KafkaProducer<>(
+        KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(
                 props, new StringSerializer(), new StringSerializer());
 
         MockMetricsReporter mockMetricsReporter = (MockMetricsReporter) producer.metrics.reporters().get(0);
@@ -192,7 +192,7 @@ public class KafkaProducerTest {
 
         final int oldInitCount = MockMetricsReporter.INIT_COUNT.get();
         final int oldCloseCount = MockMetricsReporter.CLOSE_COUNT.get();
-        try (KafkaProducer<byte[], byte[]> ignored = new KafkaProducer<>(props, new ByteArraySerializer(), new ByteArraySerializer())) {
+        try (KafkaProducer<byte[], byte[]> ignored = TestMaprProducerInitializer.newKafkaProducer(props, new ByteArraySerializer(), new ByteArraySerializer())) {
             fail("should have caught an exception and returned");
         } catch (KafkaException e) {
             assertEquals(oldInitCount + 1, MockMetricsReporter.INIT_COUNT.get());
@@ -242,7 +242,7 @@ public class KafkaProducerTest {
             props.setProperty(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MockProducerInterceptor.class.getName());
             props.setProperty(MockProducerInterceptor.APPEND_STRING_PROP, "something");
 
-            KafkaProducer<String, String> producer = new KafkaProducer<>(
+            KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(
                     props, new StringSerializer(), new StringSerializer());
             assertEquals(1, MockProducerInterceptor.INIT_COUNT.get());
             assertEquals(0, MockProducerInterceptor.CLOSE_COUNT.get());
@@ -267,7 +267,7 @@ public class KafkaProducerTest {
             MockPartitioner.resetCounters();
             props.setProperty(ProducerConfig.PARTITIONER_CLASS_CONFIG, MockPartitioner.class.getName());
 
-            KafkaProducer<String, String> producer = new KafkaProducer<>(
+            KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(
                     props, new StringSerializer(), new StringSerializer());
             assertEquals(1, MockPartitioner.INIT_COUNT.get());
             assertEquals(0, MockPartitioner.CLOSE_COUNT.get());
@@ -294,7 +294,7 @@ public class KafkaProducerTest {
         MockClient client = new MockClient(time, metadata);
         client.updateMetadata(initialUpdateResponse);
 
-        final Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        final Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
                 new StringSerializer(), metadata, client, null, time);
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -707,12 +707,12 @@ public class KafkaProducerTest {
     public void testMetricConfigRecordingLevel() {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9000");
-        try (KafkaProducer<byte[], byte[]> producer = new KafkaProducer<>(props, new ByteArraySerializer(), new ByteArraySerializer())) {
+        try (KafkaProducer<byte[], byte[]> producer = TestMaprProducerInitializer.newKafkaProducer(props, new ByteArraySerializer(), new ByteArraySerializer())) {
             assertEquals(Sensor.RecordingLevel.INFO, producer.metrics.config().recordLevel());
         }
 
         props.put(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG");
-        try (KafkaProducer<byte[], byte[]> producer = new KafkaProducer<>(props, new ByteArraySerializer(), new ByteArraySerializer())) {
+        try (KafkaProducer<byte[], byte[]> producer = TestMaprProducerInitializer.newKafkaProducer(props, new ByteArraySerializer(), new ByteArraySerializer())) {
             assertEquals(Sensor.RecordingLevel.DEBUG, producer.metrics.config().recordLevel());
         }
     }
@@ -733,7 +733,7 @@ public class KafkaProducerTest {
 
         @SuppressWarnings("unchecked") // it is safe to suppress, since this is a mock class
                 ProducerInterceptors<String, String> interceptors = mock(ProducerInterceptors.class);
-        KafkaProducer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
                 new StringSerializer(), metadata, null, interceptors, Time.SYSTEM);
 
         when(interceptors.onSend(any())).then(invocation -> invocation.getArgument(0));
@@ -769,7 +769,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        try (Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        try (Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
                 new StringSerializer(), metadata, client, null, time)) {
             client.prepareResponse(
                 request -> request instanceof FindCoordinatorRequest &&
@@ -810,7 +810,7 @@ public class KafkaProducerTest {
         client.prepareResponse(FindCoordinatorResponse.prepareResponse(Errors.NONE, host1));
         client.prepareResponse(initProducerIdResponse(1L, (short) 5, Errors.NONE));
 
-        try (Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        try (Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
                 new StringSerializer(), metadata, client, null, time)) {
             producer.initTransactions();
         }
@@ -844,7 +844,7 @@ public class KafkaProducerTest {
                 new TopicPartition("topic", 0), Errors.NONE)));
         client.prepareResponse(endTxnResponse(Errors.NONE));
 
-        try (Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        try (Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
             new StringSerializer(), metadata, client, null, time)) {
             producer.initTransactions();
             producer.beginTransaction();
@@ -906,7 +906,7 @@ public class KafkaProducerTest {
             new TopicPartition("topic", 0), Errors.NONE)));
         client.prepareResponse(endTxnResponse(Errors.NONE));
 
-        try (Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        try (Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
             new StringSerializer(), metadata, client, null, time)) {
             producer.initTransactions();
             producer.beginTransaction();
@@ -947,7 +947,7 @@ public class KafkaProducerTest {
         client.prepareResponse(FindCoordinatorResponse.prepareResponse(Errors.NONE, host1));
         client.prepareResponse(initProducerIdResponse(1L, (short) 5, Errors.NONE));
 
-        try (Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(),
+        try (Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(),
             new StringSerializer(), metadata, client, null, time)) {
             producer.initTransactions();
             producer.beginTransaction();
@@ -995,7 +995,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(), new StringSerializer(),
+        Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(), new StringSerializer(),
                 metadata, client, null, time);
         assertThrows(TimeoutException.class, producer::initTransactions);
         // other transactional operations should not be allowed if we catch the error after initTransactions failed
@@ -1019,7 +1019,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(), new StringSerializer(),
+        Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(), new StringSerializer(),
                 metadata, client, null, time);
 
         String invalidTopicName = "topic abc"; // Invalid topic name due to space
@@ -1122,7 +1122,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(), new StringSerializer(),
+        Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(), new StringSerializer(),
                 metadata, client, null, time);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -1150,7 +1150,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(), new StringSerializer(),
+        Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(), new StringSerializer(),
                 metadata, client, null, time);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -1179,7 +1179,7 @@ public class KafkaProducerTest {
 
         MockClient client = new MockClient(time, metadata);
 
-        Producer<String, String> producer = new KafkaProducer<>(configs, new StringSerializer(), new StringSerializer(),
+        Producer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(configs, new StringSerializer(), new StringSerializer(),
                 metadata, client, null, time);
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -1201,7 +1201,7 @@ public class KafkaProducerTest {
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999");
         props.put("client.id", "client-1");
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(
+        KafkaProducer<String, String> producer = TestMaprProducerInitializer.newKafkaProducer(
                 props, new StringSerializer(), new StringSerializer());
 
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();

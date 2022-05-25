@@ -92,6 +92,7 @@ public class GlobalStateStoreProviderTest {
 
         final ProcessorContextImpl mockContext = mock(ProcessorContextImpl.class);
         expect(mockContext.applicationId()).andReturn("appId").anyTimes();
+        expect(mockContext.applicationInternalStream()).andReturn("/path/to/internal/stream").anyTimes();
         expect(mockContext.metrics())
             .andReturn(new StreamsMetricsImpl(new Metrics(), "threadName", StreamsConfig.METRICS_LATEST))
             .anyTimes();

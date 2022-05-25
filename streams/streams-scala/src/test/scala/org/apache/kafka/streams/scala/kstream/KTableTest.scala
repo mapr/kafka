@@ -18,21 +18,33 @@
  */
 package org.apache.kafka.streams.scala.kstream
 
-import java.time.Duration
+import com.mapr.kafka.eventstreams.Streams
+import org.apache.kafka.mapr.tools.KafkaMaprTools
 
-import org.apache.kafka.streams.kstream.{SessionWindows, Suppressed => JSuppressed, TimeWindows, Windowed}
+import java.time.Duration
+import org.apache.kafka.streams.kstream.{SessionWindows, TimeWindows, Windowed, Suppressed => JSuppressed}
 import org.apache.kafka.streams.kstream.Suppressed.BufferConfig
 import org.apache.kafka.streams.scala.ImplicitConversions._
 import org.apache.kafka.streams.scala.Serdes._
 import org.apache.kafka.streams.scala.utils.TestDriver
 import org.apache.kafka.streams.scala.{ByteArrayKeyValueStore, StreamsBuilder}
+import org.apache.kafka.streams.utils.MaprEnvUtil
+import org.junit.Before
 import org.junit.runner.RunWith
+import org.powermock.core.classloader.annotations.{PowerMockIgnore, PrepareForTest, SuppressStaticInitializationFor}
+import org.powermock.modules.junit4.PowerMockRunner
 import org.scalatest.{FlatSpec, Matchers}
-import org.scalatestplus.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
+@SuppressStaticInitializationFor(Array("com.mapr.kafka.eventstreams.Streams"))
+@RunWith(classOf[PowerMockRunner])
+@PowerMockIgnore(Array("javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"))
+@PrepareForTest(Array(classOf[KafkaMaprTools], classOf[Streams]))
 class KTableTest extends FlatSpec with Matchers with TestDriver {
 
+  @Before
+  def before(): Unit = {
+    MaprEnvUtil.setUp();
+  }
   "filter a KTable" should "filter records satisfying the predicate" in {
     val builder = new StreamsBuilder()
     val sourceTopic = "source"
