@@ -169,6 +169,8 @@ public class SslConfigs {
                 .define(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG, ConfigDef.Type.STRING, SslConfigs.DEFAULT_SSL_TRUSTMANAGER_ALGORITHM, ConfigDef.Importance.LOW, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_DOC)
                 .define(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, ConfigDef.Type.STRING, SslConfigs.DEFAULT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM, ConfigDef.Importance.LOW, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_DOC)
                 .define(SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG, ConfigDef.Type.STRING, null, ConfigDef.Importance.LOW, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_DOC)
+                .define(SslConfigs.SSL_DISABLED_PROTOCOLS_CONFIG, ConfigDef.Type.LIST, SSL_DISABLED_PROTOCOLS_DEFAULT, ConfigDef.Importance.MEDIUM, SslConfigs.SSL_DISABLED_PROTOCOLS_DOC)
+                .define(SslConfigs.SSL_DISABLED_CIPHER_SUITES_CONFIG, ConfigDef.Type.LIST, SSL_DISABLED_CIPHER_SUITES_DEFAULT, ConfigDef.Importance.LOW, SslConfigs.SSL_DISABLED_CIPHER_SUITES_DOC)
                 .define(SslConfigs.SSL_ENGINE_FACTORY_CLASS_CONFIG, ConfigDef.Type.CLASS, null, ConfigDef.Importance.LOW, SslConfigs.SSL_ENGINE_FACTORY_CLASS_DOC);
     }
 

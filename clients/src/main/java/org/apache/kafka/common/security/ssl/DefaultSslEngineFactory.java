@@ -181,12 +181,16 @@ public final class DefaultSslEngineFactory implements SslEngineFactory {
 
         if (cipherSuites != null) {
             Set<String> suites = new HashSet<>(Arrays.asList(cipherSuites));
-            suites.removeAll(Arrays.asList(disabledcipherSuites));
+            if (disabledcipherSuites != null) {
+                suites.removeAll(Arrays.asList(disabledcipherSuites));
+            }
             sslEngine.setEnabledCipherSuites(suites.toArray(new String[suites.size()]));
         }
         if(enabledProtocols != null) {
             Set<String> protocols = new HashSet<>(Arrays.asList(enabledProtocols));
-            protocols.removeAll(Arrays.asList(disabledProtocols));
+            if (disabledProtocols != null) {
+                protocols.removeAll(Arrays.asList(disabledProtocols));
+            }
             sslEngine.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
         }
 
