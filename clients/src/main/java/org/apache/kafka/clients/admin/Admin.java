@@ -1169,8 +1169,8 @@ public interface Admin extends AutoCloseable {
     AlterConsumerGroupOffsetsResult alterConsumerGroupOffsets(String groupId, Map<TopicPartition, OffsetAndMetadata> offsets, AlterConsumerGroupOffsetsOptions options);
 
     /**
-     * <p>List offset for the specified partitions and OffsetSpec. This operation enables to find
-     * the beginning offset, end offset as well as the offset matching a timestamp in partitions.
+     * <p>List offset for the specified partitions and OffsetSpec. <b>WARNING: </b> in mapr-kafka
+     * offset spec is ignored. This method returns only end offset regardless of offset spec. 
      *
      * <p>This is a convenience method for {@link #listOffsets(Map, ListOffsetsOptions)}
      *
@@ -1182,8 +1182,8 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
-     * <p>List offset for the specified partitions. This operation enables to find
-     * the beginning offset, end offset as well as the offset matching a timestamp in partitions.
+     * <p>List offset for the specified partitions.  <b>WARNING: </b> in mapr-kafka
+     * offset spec is ignored. This method returns only end offset regardless of offset spec.
      *
      * @param topicPartitionOffsets The mapping from partition to the OffsetSpec to look up.
      * @param options The options to use when retrieving the offsets
