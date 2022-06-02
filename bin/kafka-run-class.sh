@@ -469,7 +469,7 @@ export MAPR_IMPERSONATION_ENABLED=true
 # if FIPS mode is enabled, add security java options
 env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
 [ -f "${env}" ] && . "${env}"
-KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS}"
+KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS} ${MAPR_LOGIN_OPTS}"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
