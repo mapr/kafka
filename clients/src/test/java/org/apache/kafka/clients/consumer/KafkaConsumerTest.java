@@ -2523,7 +2523,7 @@ public class KafkaConsumerTest {
 
     @Test(expected = IllegalStateException.class)
     public void testAssignAfterSubscribeOnSetOfTopics() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.subscribe(singleton(topic));
         assertEquals(singleton(topic), consumer.subscription());
         consumer.assign(singleton(tp0));
@@ -2531,7 +2531,7 @@ public class KafkaConsumerTest {
 
     @Test
     public void testAssignAfterUnsubscribeFromSetOfTopics() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.subscribe(singleton(topic));
         assertFalse(consumer.subscription().isEmpty());
         consumer.unsubscribe();
@@ -2542,14 +2542,14 @@ public class KafkaConsumerTest {
 
     @Test(expected = IllegalStateException.class)
     public void testAssignAfterSubscribeOnPattern() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.subscribe(Pattern.compile("tp"));
         consumer.assign(singleton(tp0));
     }
 
     @Test
     public void testAssignAfterUnsubscribeFromPattern() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.subscribe(Pattern.compile("tp"));
         consumer.unsubscribe();
         consumer.assign(singleton(tp0));
@@ -2558,7 +2558,7 @@ public class KafkaConsumerTest {
 
     @Test(expected = IllegalStateException.class)
     public void testSubscribeAfterAssign() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.assign(singleton(tp0));
         assertEquals(singleton(tp0), consumer.assignment());
         consumer.subscribe(singleton(topic));
@@ -2566,7 +2566,7 @@ public class KafkaConsumerTest {
 
     @Test
     public void testSubscribeAfterUnsubscribe() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.assign(singleton(tp0));
         assertFalse(consumer.assignment().isEmpty());
         consumer.unsubscribe();
@@ -2606,7 +2606,7 @@ public class KafkaConsumerTest {
 
     @Test(expected = IllegalStateException.class)
     public void testSeekAfterUnsubscribe() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer("some-group-id");
+        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
         consumer.subscribe(singleton(topic));
         assertFalse(consumer.subscription().isEmpty());
         consumer.unsubscribe();
