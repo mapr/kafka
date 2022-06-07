@@ -53,7 +53,8 @@ CLASSPATH=$MAPR_CONF
 # Add MapR jars
 CLASSPATH=$CLASSPATH:$(get_mapr_core_jars) # function in mapr-config.sh
 # Add logger jars
-CLASSPATH=$CLASSPATH:$CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
+CLASSPATH=$CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
+CLASSPATH=$CLASSPATH:$(get_mapr_app_jars) # function in mapr-config.sh
 # Add 3rd party jars
 CLASSPATH=$CLASSPATH:$(get_external_jars) # function in mapr-config.sh
 # Add mapr-security-web.jar

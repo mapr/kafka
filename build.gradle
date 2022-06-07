@@ -109,7 +109,7 @@ allprojects {
             libs.nettyHandler,
             libs.nettyTransportNativeEpoll,
             // sure we have log4j from mapr
-            libs.log4j
+            libs.reload4j
           )
         }
       }
@@ -771,6 +771,8 @@ project(':core') {
     compile(libs.zookeeper) {
       exclude module: 'slf4j-log4j12'
       exclude module: 'log4j'
+      exclude module: 'reload4j'
+      exclude module: 'slf4j-reload4j'
     }
     // ZooKeeperMain depends on commons-cli but declares the dependency as `provided`
     compile libs.commonsCli
@@ -778,7 +780,10 @@ project(':core') {
     // Needed for...
     compile libs.xerces
 
-    compileOnly libs.log4j
+    compileOnly libs.reload4j
+
+    // required for javadoc
+    runtimeClasspath libs.reload4j
 
     testCompile project(':clients').sourceSets.test.output
     testCompile libs.bcpkix
@@ -802,7 +807,7 @@ project(':core') {
     testCompile libs.apachedsJdbmPartition
     testCompile libs.junit
     testCompile libs.scalatest
-    testCompile libs.slf4jlog4j
+    testCompile libs.slf4jreload4j
     testCompile libs.jfreechart
   }
 
@@ -1057,7 +1062,7 @@ project(':clients') {
     testCompile libs.junit
     testCompile libs.mockitoCore
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testRuntime libs.jacksonDatabind
     testRuntime libs.jacksonJDK8Datatypes
     testCompile libs.jacksonJaxrsJsonProvider
@@ -1190,7 +1195,15 @@ project(':tools') {
     compile libs.jettyServer
     compile libs.jettyServlet
     compile libs.jettyServlets
-    compile libs.zookeeper
+    compile(libs.zookeeper) {
+      exclude module: 'slf4j-log4j12'
+      exclude module: 'log4j'
+      exclude module: 'reload4j'
+      exclude module: 'slf4j-reload4j'
+    }
+
+    compileOnly libs.reload4j
+    compileOnly libs.slf4jreload4j
 
     testCompile project(':clients')
     testCompile libs.junit
@@ -1199,7 +1212,7 @@ project(':tools') {
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
@@ -1275,7 +1288,7 @@ project(':streams') {
     testCompile project(':clients').sourceSets.test.output
     testCompile project(':core')
     testCompile project(':core').sourceSets.test.output
-    testCompile libs.log4j
+    testCompile libs.reload4j
     testCompile libs.junit
     testCompile libs.easymock
     testCompile libs.powermockJunit4
@@ -1286,7 +1299,7 @@ project(':streams') {
     testCompile libs.kafkaEventstreams
 
     testRuntimeOnly project(':streams:test-utils')
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   task processMessages(type:JavaExec) {
@@ -1431,7 +1444,7 @@ project(':streams:streams-scala') {
     testCompile libs.kafkaEventstreams
     testCompile libs.maprFs
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
@@ -1470,7 +1483,7 @@ project(':streams:test-utils') {
     testCompile libs.kafkaEventstreams
     testCompile libs.maprFs
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
@@ -1512,7 +1525,8 @@ project(':streams:examples') {
   dependencies {
     compile project(':streams')
     compile project(':connect:json')  // this dependency should be removed after we unify data API
-    compile libs.slf4jlog4j
+    compileOnly libs.slf4jreload4j
+    compileOnly libs.reload4j
 
     testCompile project(':streams').sourceSets.test.output //MaprEnvUtil
     testCompile project(':streams:test-utils')
@@ -1706,7 +1720,7 @@ project(':jmh-benchmarks') {
     annotationProcessor libs.jmhGeneratorAnnProcess
     compile libs.jmhCoreBenchmarks
     compile libs.mockitoCore
-    compile libs.slf4jlog4j
+    compile libs.slf4jreload4j
   }
 
   jar {
@@ -1741,7 +1755,8 @@ project(':log4j-appender') {
 
   dependencies {
     compile project(':clients')
-    compile libs.slf4jlog4j
+    compileOnly libs.slf4jreload4j
+    compileOnly libs.reload4j
 
     testCompile project(':clients').sourceSets.test.output
     testCompile libs.junit
@@ -1783,7 +1798,7 @@ project(':connect:api') {
 
     testCompile libs.junit
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testCompile project(':clients').sourceSets.test.output
   }
 
@@ -1846,7 +1861,7 @@ project(':connect:transforms') {
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testCompile project(':clients').sourceSets.test.output
   }
 
@@ -1904,7 +1919,7 @@ project(':connect:json') {
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testCompile project(':clients').sourceSets.test.output
   }
 
@@ -2013,7 +2028,7 @@ project(':connect:runtime') {
     testCompile project(':core')
     testCompile project(':core').sourceSets.test.output
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
@@ -2110,7 +2125,7 @@ project(':connect:file') {
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testCompile project(':clients').sourceSets.test.output
   }
 
@@ -2150,7 +2165,7 @@ project(':connect:basic-auth-extension') {
     testCompile libs.powermockEasymock
     testCompile project(':clients').sourceSets.test.output
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
     testRuntime libs.jerseyContainerServlet
   }
 
@@ -2195,7 +2210,7 @@ project(':connect:mirror') {
     testCompile project(':core').sourceSets.test.output
 
     testRuntime project(':connect:runtime')
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
@@ -2230,7 +2245,7 @@ project(':connect:mirror-client') {
     testCompile libs.junit
     testCompile project(':clients').sourceSets.test.output
 
-    testRuntime libs.slf4jlog4j
+    testRuntime libs.slf4jreload4j
   }
 
   javadoc {
