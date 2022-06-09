@@ -410,6 +410,10 @@ public class KafkaConsumerTest {
         return newConsumer(groupId, Optional.empty());
     }
 
+    private KafkaConsumer<byte[], byte[]> newConsumerWithNullGroupId() {
+        return newConsumerWithNullGroupId(Optional.empty());
+    }
+
     private KafkaConsumer<byte[], byte[]> newConsumer(String groupId, Optional<Boolean> enableAutoCommit) {
         Properties props = new Properties();
         props.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, "my.consumer");
@@ -422,7 +426,23 @@ public class KafkaConsumerTest {
         return newConsumer(props);
     }
 
+    //in mapr we use "" as group id default value, but apache code expects null as default so give it what it wants
+    private KafkaConsumer<byte[], byte[]> newConsumerWithNullGroupId(Optional<Boolean> enableAutoCommit) {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.CLIENT_ID_CONFIG, "my.consumer");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999");
+        props.put(ConsumerConfig.METRIC_REPORTER_CLASSES_CONFIG, MockMetricsReporter.class.getName());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, null);
+        enableAutoCommit.ifPresent(
+                autoCommit -> props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, autoCommit.toString()));
+        return newConsumer(props);
+    }
+
     private KafkaConsumer<byte[], byte[]> newConsumer(Properties props) {
+        return TestMaprConsumerInitializer.newKafkaConsumer(props, new ByteArrayDeserializer(), new ByteArrayDeserializer());
+    }
+
+    private KafkaConsumer<byte[], byte[]> newConsumer(Map<String, Object> props) {
         return TestMaprConsumerInitializer.newKafkaConsumer(props, new ByteArrayDeserializer(), new ByteArrayDeserializer());
     }
 
@@ -1503,35 +1523,35 @@ public class KafkaConsumerTest {
     @Test
     public void testOperationsBySubscribingConsumerWithDefaultGroupId() {
         try {
-            newConsumer(null, Optional.of(Boolean.TRUE));
+            newConsumerWithNullGroupId(Optional.of(Boolean.TRUE));
             fail("Expected an InvalidConfigurationException");
         } catch (KafkaException e) {
             assertEquals(InvalidConfigurationException.class, e.getCause().getClass());
         }
 
         try {
-            newConsumer((String) null).subscribe(Collections.singleton(topic));
+            newConsumerWithNullGroupId().subscribe(Collections.singleton(topic));
             fail("Expected an InvalidGroupIdException");
         } catch (InvalidGroupIdException e) {
             // OK, expected
         }
 
         try {
-            newConsumer((String) null).committed(Collections.singleton(tp0)).get(tp0);
+            newConsumerWithNullGroupId().committed(Collections.singleton(tp0)).get(tp0);
             fail("Expected an InvalidGroupIdException");
         } catch (InvalidGroupIdException e) {
             // OK, expected
         }
 
         try {
-            newConsumer((String) null).commitAsync();
+            newConsumerWithNullGroupId().commitAsync();
             fail("Expected an InvalidGroupIdException");
         } catch (InvalidGroupIdException e) {
             // OK, expected
         }
 
         try {
-            newConsumer((String) null).commitSync();
+            newConsumerWithNullGroupId().commitSync();
             fail("Expected an InvalidGroupIdException");
         } catch (InvalidGroupIdException e) {
             // OK, expected
@@ -1540,7 +1560,7 @@ public class KafkaConsumerTest {
 
     @Test
     public void testOperationsByAssigningConsumerWithDefaultGroupId() {
-        KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null);
+        KafkaConsumer<byte[], byte[]> consumer = newConsumerWithNullGroupId();
         consumer.assign(singleton(tp0));
 
         try {
@@ -2484,7 +2504,7 @@ public class KafkaConsumerTest {
 
     @Test(expected = IllegalStateException.class)
     public void testEnforceRebalanceWithManualAssignment() {
-        try (KafkaConsumer<byte[], byte[]> consumer = newConsumer((String) null)) {
+        try (KafkaConsumer<byte[], byte[]> consumer = newConsumerWithNullGroupId()) {
             consumer.assign(singleton(new TopicPartition("topic", 0)));
             consumer.enforceRebalance();
         }

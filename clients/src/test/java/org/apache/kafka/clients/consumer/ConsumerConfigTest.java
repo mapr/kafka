@@ -51,14 +51,16 @@ public class ConsumerConfigTest {
 
     @Test
     public void testOverrideEnableAutoCommit() {
-        Properties properties = new Properties();
-        properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializerClassName);
-        properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClassName);
+        Map<String, Object> properties = new HashMap<>();
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializerClassName);
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializerClassName);
+        //in mapr we use "" as group id default value, but apache code expects null as default so give it what it wants
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, null);
         ConsumerConfig config = new ConsumerConfig(properties);
         boolean overrideEnableAutoCommit = config.maybeOverrideEnableAutoCommit();
         assertFalse(overrideEnableAutoCommit);
 
-        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         config = new ConsumerConfig(properties);
         try {
             config.maybeOverrideEnableAutoCommit();
