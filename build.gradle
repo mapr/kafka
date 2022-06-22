@@ -487,6 +487,8 @@ subprojects {
     scalaCompileOptions.additionalParameters = [
       "-deprecation",
       "-unchecked",
+      "-Wconf:cat=deprecation:s",
+      "-Wconf:cat=optimizer:ws",
       "-encoding", "utf8",
       "-Xlog-reflective-calls",
       "-feature",
@@ -934,6 +936,7 @@ project(':core') {
     into 'site-docs'
     duplicatesStrategy 'exclude'
   }
+
 
   tasks.create(name: "releaseTarGz", dependsOn: configurations.archives.artifacts, type: Tar) {
     into "kafka_${versions.baseScala}-${version}"
@@ -2276,6 +2279,7 @@ project(':mapr-eco-tools') {
   dependencies {
     compile project(':clients')
 
+    compile libs.commonsLang3
     compile (libs.kafkaEventstreams){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
@@ -2374,7 +2378,7 @@ task maprPublicPublish() {
     ":streams:test-utils:publishKafkaStreamsTestUtilsPublicationToTargetrepoRepository",
     ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
     ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
-    "uploadCoreArchives_2_12",
+    "uploadCoreArchives_2_13",
     // The default Scala version is 2.13. So :core:uploadArchives will publish kafka_2.13
     ":core:uploadArchives"
 }

@@ -3,7 +3,7 @@ package org.apache.kafka.mapr.tools;
 import com.mapr.kafka.eventstreams.Admin;
 import com.mapr.kafka.eventstreams.StreamDescriptor;
 import com.mapr.kafka.eventstreams.Streams;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.KafkaException;
 
 import java.io.Closeable;

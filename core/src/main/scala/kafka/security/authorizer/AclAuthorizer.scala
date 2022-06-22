@@ -18,7 +18,6 @@ package kafka.security.authorizer
 
 import java.{lang, util}
 import java.util.concurrent.{CompletableFuture, CompletionStage}
-
 import com.typesafe.scalalogging.Logger
 import kafka.api.KAFKA_2_0_IV1
 import kafka.security.authorizer.AclAuthorizer.{AclSeqs, ResourceOrdering, VersionedAcls}
@@ -367,7 +366,7 @@ class AclAuthorizer extends Authorizer with Logging {
     } else false
   }
 
-  @nowarn("cat=deprecation&cat=optimizer")
+  @nowarn("cat=optimizer")
   private def matchingAcls(resourceType: ResourceType, resourceName: String): AclSeqs = {
     // this code is performance sensitive, make sure to run AclAuthorizerBenchmark after any changes
 

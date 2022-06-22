@@ -30,7 +30,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
 
-import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 
@@ -93,7 +92,6 @@ object ConsumerPerformance extends LazyLogging {
       println("time, threadId, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
   }
 
-  @nowarn("cat=deprecation")
   def consume(consumer: KafkaConsumer[Array[Byte], Array[Byte]],
               topics: List[String],
               count: Long,
