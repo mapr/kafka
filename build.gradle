@@ -487,8 +487,6 @@ subprojects {
     scalaCompileOptions.additionalParameters = [
       "-deprecation",
       "-unchecked",
-      "-Wconf:cat=deprecation:s",
-      "-Wconf:cat=optimizer:ws",
       "-encoding", "utf8",
       "-Xlog-reflective-calls",
       "-feature",
@@ -530,6 +528,9 @@ subprojects {
       scalaCompileOptions.additionalParameters += ["-opt-warnings"]
       // Scala 2.13.2 introduces compiler warnings suppression, which is a pre-requisite for -Xfatal-warnings
       scalaCompileOptions.additionalParameters += ["-Xfatal-warnings"]
+      //  Scala 2.13 has compiler warnings suppression
+      scalaCompileOptions.additionalParameters += ["-Wconf:cat=deprecation:s"]
+      scalaCompileOptions.additionalParameters += ["-Wconf:cat=optimizer:ws"]
     }
 
     // these options are valid for Scala versions < 2.13 only
@@ -936,7 +937,6 @@ project(':core') {
     into 'site-docs'
     duplicatesStrategy 'exclude'
   }
-
 
   tasks.create(name: "releaseTarGz", dependsOn: configurations.archives.artifacts, type: Tar) {
     into "kafka_${versions.baseScala}-${version}"
@@ -2378,7 +2378,7 @@ task maprPublicPublish() {
     ":streams:test-utils:publishKafkaStreamsTestUtilsPublicationToTargetrepoRepository",
     ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
     ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
-    "uploadCoreArchives_2_13",
+    "uploadCoreArchives_2_12",
     // The default Scala version is 2.13. So :core:uploadArchives will publish kafka_2.13
     ":core:uploadArchives"
 }
