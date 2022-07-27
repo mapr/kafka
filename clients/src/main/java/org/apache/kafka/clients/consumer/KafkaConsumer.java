@@ -607,6 +607,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private boolean isStreamsClosed = false;
     private Consumer<K, V> consumerDriver = null;
     private String defaultStream = null;
+    private ConsumerGroupMetadata groupMetadataPlug;
 
     // to keep from repeatedly scanning subscriptions in poll(), cache the result during metadata updates
     private boolean cachedSubscriptionHashAllFetchPositions;
@@ -3163,6 +3164,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public ConsumerGroupMetadata groupMetadata() {
+        // if not initialized
+        if (consumerDriver == null) {
+            if (groupMetadataPlug == null) {
+              maybeThrowInvalidGroupIdException();
+              groupMetadataPlug = new ConsumerGroupMetadata(groupId.get());
+            }
+            return groupMetadataPlug;
+        }
         if (isStreams) {
             return consumerDriver.groupMetadata();
         } else {
