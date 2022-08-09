@@ -232,15 +232,15 @@ public class KafkaBasedLog<K, V> {
     public void readToEnd(Callback<Void> callback) {
         log.trace("Starting read to end log for topic {}", topic);
         producer.flush();
-        // Doing a seek will ensure we get an EOF on reaching the end
-        // of the log
-        if (isStreams == true) {
-          for (TopicPartition tp : consumer.assignment()) {
-            long offset = consumer.position(tp);
-            consumer.seek(tp, offset);
-          }
-        }
         synchronized (this) {
+            // Doing a seek will ensure we get an EOF on reaching the end
+            // of the log
+            if (isStreams) {
+                for (TopicPartition tp : consumer.assignment()) {
+                    long offset = consumer.position(tp);
+                    consumer.seek(tp, offset);
+                }
+            }
             readLogEndOffsetCallbacks.add(callback);
         }
         consumer.wakeup();
