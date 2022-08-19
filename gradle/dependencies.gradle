@@ -74,7 +74,7 @@ versions += [
   jetty: "9.4.43.v20210629",
   jersey: "2.31",
   jmh: "1.23",
-  hadoop: "3.3.3.0-eep-900-SNAPSHOT",
+  hadoop: "3.3.4.0-eep-900-SNAPSHOT",
   hamcrest: "2.2",
   reload4j: "1.2.20",
   scalaLogging: "3.9.2",
