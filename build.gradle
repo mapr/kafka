@@ -776,6 +776,8 @@ project(':core') {
       exclude module: 'log4j'
       exclude module: 'reload4j'
       exclude module: 'slf4j-reload4j'
+      exclude module: 'bc-fips'
+      exclude module: 'bctls-fips'
     }
     // ZooKeeperMain depends on commons-cli but declares the dependency as `provided`
     compile libs.commonsCli
@@ -1203,6 +1205,8 @@ project(':tools') {
       exclude module: 'log4j'
       exclude module: 'reload4j'
       exclude module: 'slf4j-reload4j'
+      exclude module: 'bc-fips'
+      exclude module: 'bctls-fips'
     }
 
     compileOnly libs.reload4j
@@ -1998,8 +2002,6 @@ project(':connect:runtime') {
     compileOnly (libs.hadoopAuth) {
       transitive = false
     }
-    compile libs.bcFips
-    compile libs.bctlsFips
     compile libs.jacksonJaxrsJsonProvider
     compile libs.jerseyContainerServlet
     compile libs.jerseyHk2
@@ -2010,9 +2012,12 @@ project(':connect:runtime') {
     compile libs.jettyServlets
     compile libs.jettyClient
     compile libs.jpam
+
     compileOnly (libs.maprSecurityWeb) {
         transitive = false
     }
+    compileOnly libs.bcFips
+    compileOnly libs.bctlsFips
 
     compile(libs.reflections)
     compile(libs.mavenArtifact)
