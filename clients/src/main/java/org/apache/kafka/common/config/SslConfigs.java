@@ -92,7 +92,7 @@ public class SslConfigs {
     public static final String SSL_DISABLED_PROTOCOLS_CONFIG = "ssl.disabled.protocols";
     protected static final String SSL_DISABLED_PROTOCOLS_DOC = "The list of protocols disabled for SSL connections. Comma-separated list. "
           + "Leave blank to use Jetty's defaults.";
-    protected static final String SSL_DISABLED_PROTOCOLS_DEFAULT = "SSLv3, TLSv1.0";
+    public static final String SSL_DISABLED_PROTOCOLS_DEFAULT = "SSLv3, TLSv1.0";
 
 
     public static final String SSL_KEYSTORE_TYPE_CONFIG = "ssl.keystore.type";

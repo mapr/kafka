@@ -31,10 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @SuppressWarnings("deprecation")
-// this class is testing functionality delegated to mapr-security-web, which is working closely with mapr environment
-// 1. testing it is responsibility of mapr-security-web itself
-// 2. it's hard to mock mapr env
-@Ignore
 public class SSLUtilsTest {
     private static final Map<String, String> DEFAULT_CONFIG = new HashMap<>();
     static {
@@ -73,6 +69,7 @@ public class SSLUtilsTest {
         configMap.put("ssl.truststore.password", "123456");
         configMap.put("ssl.provider", "SunJSSE");
         configMap.put("ssl.cipher.suites", "SSL_RSA_WITH_RC4_128_SHA,SSL_RSA_WITH_RC4_128_MD5");
+        configMap.put("ssl.cipher.suites.exclude", "SSL_RSA_WITH_RC4_128_SHA");
         configMap.put("ssl.secure.random.implementation", "SHA1PRNG");
         configMap.put("ssl.client.auth", "required");
         configMap.put("ssl.endpoint.identification.algorithm", "HTTPS");
@@ -80,6 +77,7 @@ public class SSLUtilsTest {
         configMap.put("ssl.protocol", "TLS");
         configMap.put("ssl.truststore.type", "JKS");
         configMap.put("ssl.enabled.protocols", "TLSv1.2,TLSv1.1,TLSv1");
+        configMap.put("ssl.disabled.protocols", "TLSv1.2");
         configMap.put("ssl.keymanager.algorithm", "SunX509");
         configMap.put("ssl.trustmanager.algorithm", "PKIX");
 
@@ -90,6 +88,7 @@ public class SSLUtilsTest {
         Assert.assertEquals("file:///path/to/truststore", ssl.getTrustStorePath());
         Assert.assertEquals("SunJSSE", ssl.getProvider());
         Assert.assertArrayEquals(new String[] {"SSL_RSA_WITH_RC4_128_SHA", "SSL_RSA_WITH_RC4_128_MD5"}, ssl.getIncludeCipherSuites());
+        Assert.assertArrayEquals(new String[] {"SSL_RSA_WITH_RC4_128_SHA"}, ssl.getExcludeCipherSuites());
         Assert.assertEquals("SHA1PRNG", ssl.getSecureRandomAlgorithm());
         Assert.assertTrue(ssl.getNeedClientAuth());
         Assert.assertFalse(ssl.getWantClientAuth());
@@ -97,6 +96,7 @@ public class SSLUtilsTest {
         Assert.assertEquals("JKS", ssl.getTrustStoreType());
         Assert.assertEquals("TLS", ssl.getProtocol());
         Assert.assertArrayEquals(new String[] {"TLSv1.2", "TLSv1.1", "TLSv1"}, ssl.getIncludeProtocols());
+        Assert.assertArrayEquals(new String[] {"TLSv1.2"}, ssl.getExcludeProtocols());
         Assert.assertEquals("SunX509", ssl.getKeyManagerFactoryAlgorithm());
         Assert.assertEquals("PKIX", ssl.getTrustManagerFactoryAlgorithm());
     }
@@ -111,6 +111,7 @@ public class SSLUtilsTest {
         configMap.put("ssl.truststore.password", "123456");
         configMap.put("ssl.provider", "SunJSSE");
         configMap.put("ssl.cipher.suites", "SSL_RSA_WITH_RC4_128_SHA,SSL_RSA_WITH_RC4_128_MD5");
+        configMap.put("ssl.cipher.suites.exclude", "SSL_RSA_WITH_RC4_128_SHA");
         configMap.put("ssl.secure.random.implementation", "SHA1PRNG");
         configMap.put("ssl.client.auth", "required");
         configMap.put("ssl.endpoint.identification.algorithm", "HTTPS");
@@ -118,6 +119,7 @@ public class SSLUtilsTest {
         configMap.put("ssl.protocol", "TLS");
         configMap.put("ssl.truststore.type", "JKS");
         configMap.put("ssl.enabled.protocols", "TLSv1.2,TLSv1.1,TLSv1");
+        configMap.put("ssl.disabled.protocols", "TLSv1.2");
         configMap.put("ssl.keymanager.algorithm", "SunX509");
         configMap.put("ssl.trustmanager.algorithm", "PKIX");
 
@@ -128,6 +130,7 @@ public class SSLUtilsTest {
         Assert.assertEquals("file:///path/to/truststore", ssl.getTrustStorePath());
         Assert.assertEquals("SunJSSE", ssl.getProvider());
         Assert.assertArrayEquals(new String[] {"SSL_RSA_WITH_RC4_128_SHA", "SSL_RSA_WITH_RC4_128_MD5"}, ssl.getIncludeCipherSuites());
+        Assert.assertArrayEquals(new String[] {"SSL_RSA_WITH_RC4_128_SHA"}, ssl.getExcludeCipherSuites());
         Assert.assertEquals("SHA1PRNG", ssl.getSecureRandomAlgorithm());
         Assert.assertFalse(ssl.getNeedClientAuth());
         Assert.assertFalse(ssl.getWantClientAuth());
@@ -135,6 +138,7 @@ public class SSLUtilsTest {
         Assert.assertEquals("JKS", ssl.getTrustStoreType());
         Assert.assertEquals("TLS", ssl.getProtocol());
         Assert.assertArrayEquals(new String[] {"TLSv1.2", "TLSv1.1", "TLSv1"}, ssl.getIncludeProtocols());
+        Assert.assertArrayEquals(new String[] {"TLSv1.2"}, ssl.getExcludeProtocols());
         Assert.assertEquals("SunX509", ssl.getKeyManagerFactoryAlgorithm());
         Assert.assertEquals("PKIX", ssl.getTrustManagerFactoryAlgorithm());
     }
@@ -150,8 +154,10 @@ public class SSLUtilsTest {
         configMap.put("ssl.keystore.location", "/path/to/keystore");
         configMap.put("ssl.keystore.password", "123456");
         configMap.put("ssl.key.password", "123456");
+        configMap.put("ssl.keystore.type", "JKS");
         configMap.put("ssl.truststore.location", "/path/to/truststore");
         configMap.put("ssl.truststore.password", "123456");
+        configMap.put("ssl.truststore.type", "JKS");
         configMap.put("ssl.provider", "SunJSSE");
         configMap.put("ssl.cipher.suites", "SSL_RSA_WITH_RC4_128_SHA,SSL_RSA_WITH_RC4_128_MD5");
         configMap.put("ssl.secure.random.implementation", "SHA1PRNG");
@@ -159,8 +165,8 @@ public class SSLUtilsTest {
         DistributedConfig config = new DistributedConfig(configMap);
         SslContextFactory ssl = SSLUtils.createServerSideSslContextFactory(config);
 
-        Assert.assertEquals(SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE, ssl.getKeyStoreType());
-        Assert.assertEquals(SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE, ssl.getTrustStoreType());
+        Assert.assertEquals("JKS", ssl.getKeyStoreType());
+        Assert.assertEquals("JKS", ssl.getTrustStoreType());
         Assert.assertEquals(SslConfigs.DEFAULT_SSL_PROTOCOL, ssl.getProtocol());
         Assert.assertArrayEquals(Arrays.asList(SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS.split("\\s*,\\s*")).toArray(), ssl.getIncludeProtocols());
         Assert.assertEquals(SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM, ssl.getKeyManagerFactoryAlgorithm());
@@ -180,8 +186,10 @@ public class SSLUtilsTest {
         configMap.put("ssl.keystore.location", "/path/to/keystore");
         configMap.put("ssl.keystore.password", "123456");
         configMap.put("ssl.key.password", "123456");
+        configMap.put("ssl.keystore.type", "JKS");
         configMap.put("ssl.truststore.location", "/path/to/truststore");
         configMap.put("ssl.truststore.password", "123456");
+        configMap.put("ssl.truststore.type", "JKS");
         configMap.put("ssl.provider", "SunJSSE");
         configMap.put("ssl.cipher.suites", "SSL_RSA_WITH_RC4_128_SHA,SSL_RSA_WITH_RC4_128_MD5");
         configMap.put("ssl.secure.random.implementation", "SHA1PRNG");
@@ -189,8 +197,8 @@ public class SSLUtilsTest {
         DistributedConfig config = new DistributedConfig(configMap);
         SslContextFactory ssl = SSLUtils.createClientSideSslContextFactory(config);
 
-        Assert.assertEquals(SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE, ssl.getKeyStoreType());
-        Assert.assertEquals(SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE, ssl.getTrustStoreType());
+        Assert.assertEquals("JKS", ssl.getKeyStoreType());
+        Assert.assertEquals("JKS", ssl.getTrustStoreType());
         Assert.assertEquals(SslConfigs.DEFAULT_SSL_PROTOCOL, ssl.getProtocol());
         Assert.assertArrayEquals(Arrays.asList(SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS.split("\\s*,\\s*")).toArray(), ssl.getIncludeProtocols());
         Assert.assertEquals(SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM, ssl.getKeyManagerFactoryAlgorithm());

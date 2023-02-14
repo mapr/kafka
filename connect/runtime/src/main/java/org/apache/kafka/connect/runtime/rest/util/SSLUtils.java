@@ -184,6 +184,9 @@ public class SSLUtils {
         List<String> sslEnabledProtocols = (List<String>) getOrDefault(sslConfigValues, SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG, Arrays.asList(COMMA_WITH_WHITESPACE.split(SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS)));
         ssl.setIncludeProtocols(sslEnabledProtocols.toArray(new String[sslEnabledProtocols.size()]));
 
+        List<String> sslDisabledProtocols = (List<String>) getOrDefault(sslConfigValues, SslConfigs.SSL_DISABLED_PROTOCOLS_CONFIG, Arrays.asList(COMMA_WITH_WHITESPACE.split(SslConfigs.SSL_DISABLED_PROTOCOLS_DEFAULT)));
+        ssl.setExcludeProtocols(sslDisabledProtocols.toArray(new String[sslDisabledProtocols.size()]));
+
         String sslProvider = (String) sslConfigValues.get(SslConfigs.SSL_PROVIDER_CONFIG);
         if (sslProvider != null)
             ssl.setProvider(sslProvider);
@@ -193,6 +196,10 @@ public class SSLUtils {
         List<String> sslCipherSuites = (List<String>) sslConfigValues.get(SslConfigs.SSL_CIPHER_SUITES_CONFIG);
         if (sslCipherSuites != null)
             ssl.setIncludeCipherSuites(sslCipherSuites.toArray(new String[sslCipherSuites.size()]));
+
+        List<String> sslCipherSuitesExclude = (List<String>) sslConfigValues.get(SslConfigs.SSL_DISABLED_CIPHER_SUITES_CONFIG);
+        if (sslCipherSuitesExclude != null)
+            ssl.setExcludeCipherSuites(sslCipherSuitesExclude.toArray(new String[sslCipherSuitesExclude.size()]));
 
         ssl.setKeyManagerFactoryAlgorithm((String) getOrDefault(sslConfigValues, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG, SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM));
 
