@@ -73,7 +73,7 @@ import static org.apache.kafka.streams.kstream.Suppressed.untilWindowCloses;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@SuppressStaticInitializationFor({"com.mapr.kafka.eventstreams.Streams","com.mapr.baseutils.JVMProperties"})
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 @PrepareForTest({KafkaMaprTools.class, Streams.class})

@@ -72,7 +72,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@SuppressStaticInitializationFor({"com.mapr.kafka.eventstreams.Streams","com.mapr.baseutils.JVMProperties"})
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})
 @PrepareForTest({KafkaMaprTools.class, Streams.class})

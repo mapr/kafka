@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 import org.powermock.api.easymock.PowerMock;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.core.classloader.annotations.SuppressStaticInitializationFor;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collection;
@@ -39,7 +40,8 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({Worker.class, Plugins.class, ConnectUtils.class, UserGroupInformation.class})
-@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*"})
+@PowerMockIgnore({"javax.management.*", "javax.xml.*", "org.apache.xerces.*", "org.w3c.*", "javax.security.*"})
+@SuppressStaticInitializationFor("com.mapr.baseutils.JVMProperties")
 public class WorkerImpersonationTest extends WorkerTest {
     @Override
     public void setup() {

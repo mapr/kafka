@@ -104,7 +104,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@SuppressStaticInitializationFor("com.mapr.kafka.eventstreams.Streams")
+@SuppressStaticInitializationFor({"com.mapr.kafka.eventstreams.Streams","com.mapr.baseutils.JVMProperties"})
 @RunWith(PowerMockRunner.class)
 @PowerMockRunnerDelegate(Parameterized.class)
 @PowerMockIgnore({"javax.management.*", "javax.xml.*", "jdk.xml.*", "org.apache.xerces.*", "org.w3c.*"})

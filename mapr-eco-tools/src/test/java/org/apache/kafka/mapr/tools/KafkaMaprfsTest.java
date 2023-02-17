@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(PowerMockRunner.class)
-@SuppressStaticInitializationFor("com.mapr.fs.MapRFileSystem")
+@SuppressStaticInitializationFor({"com.mapr.fs.MapRFileSystem","com.mapr.baseutils.JVMProperties"})
 public class KafkaMaprfsTest extends EasyMockSupport {
     private static final String FILE = "/user/mapr/file";
     private static final Path FOLDER_PATH = new Path(FILE);
