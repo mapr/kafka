@@ -124,7 +124,7 @@ versions += [
   zstd: "1.4.4-7",
   commonsIo: "2.11.0",
   xerces: "2.12.2",
-  kafkaeventstreams: "0.2.0-eep-910-SNAPSHOT"
+  kafkaeventstreams: "0.2.0.100-eep-911-SNAPSHOT"
 ]
 libs += [
   activation: "javax.activation:activation:$versions.activation",
