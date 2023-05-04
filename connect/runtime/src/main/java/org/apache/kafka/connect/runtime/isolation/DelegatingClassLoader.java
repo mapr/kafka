@@ -35,9 +35,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -449,6 +451,15 @@ public class DelegatingClassLoader extends URLClassLoader {
                 Logger log = Reflections.log;
                 if (log != null && log.isWarnEnabled()) {
                     log.warn("could not create Vfs.Dir from url. ignoring the exception and continuing", e);
+                }
+            } catch (UncheckedIOException e) {
+                // ignore files owned by root and not accessible for us. See KAFKA-676
+                if (!(e.getCause() instanceof AccessDeniedException)) {
+                    throw e;
+                }
+                Logger log = Reflections.log;
+                if (log != null && log.isWarnEnabled()) {
+                    log.warn("Could not scan url {} because of access denied. Ignoring and continuing", url, e);
                 }
             }
         }
