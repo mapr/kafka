@@ -16,10 +16,10 @@
  */
 package org.apache.kafka.connect.storage;
 
+import org.apache.commons.io.serialization.ValidatingObjectInputStream;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-import org.apache.kafka.connect.util.SafeObjectInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +68,8 @@ public class FileOffsetBackingStore extends MemoryOffsetBackingStore {
 
     @SuppressWarnings("unchecked")
     private void load() {
-        try (SafeObjectInputStream is = new SafeObjectInputStream(Files.newInputStream(file.toPath()))) {
+        try (ValidatingObjectInputStream is = new ValidatingObjectInputStream(Files.newInputStream(file.toPath()))) {
+            is.accept(HashMap.class, byte[].class);
             Object obj = is.readObject();
             if (!(obj instanceof HashMap))
                 throw new ConnectException("Expected HashMap but found " + obj.getClass());
