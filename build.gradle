@@ -749,7 +749,7 @@ project(':core') {
   dependencies {
     compile project(':clients')
 
-    compileOnly (libs.kafkaEventstreams) {
+    compileOnly (project(':eventstreams')) {
       exclude group: 'xerces', module: 'xercesImpl'
       exclude module: 'connect-runtime'
     }
@@ -978,6 +978,8 @@ project(':core') {
     from(project(':streams:examples').configurations.runtime) { into("libs/") }
     from(project(':mapr-eco-tools').jar) { into("libs/") }
     from(project(':mapr-eco-tools').configurations.runtime) { into("libs/") }
+    from(project(':eventstreams').jar) { into("libs/") }
+    from(project(':eventstreams').configurations.runtime) { into("libs/") }
     duplicatesStrategy 'exclude'
   }
 
@@ -1280,7 +1282,7 @@ project(':streams') {
 
     compile libs.slf4jApi
     compile libs.rocksDBJni
-    compile (libs.kafkaEventstreams){
+    compile (project(':eventstreams')){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
       transitive = false
@@ -1303,7 +1305,7 @@ project(':streams') {
     testCompile libs.bcpkix
     testCompile libs.hamcrest
     testCompile libs.hadoopCommon
-    testCompile libs.kafkaEventstreams
+    testCompile project(':eventstreams')
 
     testRuntimeOnly project(':streams:test-utils')
     testRuntime libs.slf4jreload4j
@@ -1448,7 +1450,7 @@ project(':streams:streams-scala') {
     testCompile libs.hamcrest
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
-    testCompile libs.kafkaEventstreams
+    testCompile project(':eventstreams')
     testCompile libs.maprFs
 
     testRuntime libs.slf4jreload4j
@@ -1487,7 +1489,7 @@ project(':streams:test-utils') {
     testCompile libs.hamcrest
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
-    testCompile libs.kafkaEventstreams
+    testCompile project(':eventstreams')
     testCompile libs.maprFs
 
     testRuntime libs.slf4jreload4j
@@ -1541,7 +1543,7 @@ project(':streams:examples') {
     testCompile libs.junit
     testCompile libs.powermockJunit4
     testCompile libs.powermockEasymock
-    testCompile libs.kafkaEventstreams
+    testCompile project(':eventstreams')
     testCompile libs.maprFs
   }
 
@@ -2286,7 +2288,7 @@ project(':mapr-eco-tools') {
     compile project(':clients')
 
     compile libs.commonsLang3
-    compile (libs.kafkaEventstreams){
+    compile (project(':eventstreams')){
       exclude group: 'xerces', module: 'xercesImpl'
       exclude group: 'com.mapr.db', module: 'maprdb'
       transitive = false
@@ -2296,7 +2298,7 @@ project(':mapr-eco-tools') {
       exclude group: 'xerces', module: 'xercesImpl'
     }
 
-    testCompile (libs.kafkaEventstreams) {
+    testCompile (project(':eventstreams')) {
       exclude group: 'xerces', module: 'xercesImpl'
     }
     testCompile (libs.maprFs) {
@@ -2351,6 +2353,74 @@ project(':mapr-eco-tools') {
   }
 }
 
+project(':eventstreams') {
+  archivesBaseName = "kafka-eventstreams"
+
+  dependencies {
+    compile project(':clients')
+    // Depend only on main scope to get rid of circular dependency:
+    // core -> eventstreams -> connect:runtime -> core(test)
+    compile project(':connect:runtime').sourceSets.main.output
+
+    compile libs.reload4j
+    compile libs.maprdb
+    compile libs.hadoopCommon
+    compile libs.ojai
+
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+
+    testCompile libs.junit
+    testCompile libs.easymock
+    testCompile libs.powermockEasymock
+    testCompile libs.powermockJunit4
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+      // NOTE: disabling these ones since initial eventstreams were built without -Werror and -Xlint:all
+      options.compilerArgs << "-Xlint:-deprecation"
+      options.compilerArgs << "-Xlint:-unchecked"
+      options.compilerArgs << "-Xlint:-rawtypes"
+      options.compilerArgs << "-Xlint:-fallthrough"
+   }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('log4j-slf4j-impl*')
+      include('log4j-1.2-api*jar')
+    }
+    from (configurations.runtime) {
+      exclude('kafka-clients*')
+    }
+    into "$buildDir/dependant-libs-${versions.scala}"
+    duplicatesStrategy 'exclude'
+  }
+
+  jar {
+    dependsOn 'copyDependantLibs'
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  publishing {
+    publications {
+      eventstreams(MavenPublication) {
+        groupId "org.apache.kafka"
+        artifactId "kafka-eventstreams"
+
+        from components.java
+
+        artifact(srcJar) {
+          classifier "sources"
+        }
+        artifact(javadocJar) {
+          classifier "javadoc"
+        }
+      }
+    }
+  }
+}
+
 task aggregatedJavadoc(type: Javadoc) {
   def projectsWithJavadoc = subprojects.findAll { it.javadoc.enabled }
   source = projectsWithJavadoc.collect { it.sourceSets.main.allJava }
@@ -2384,6 +2454,7 @@ task maprPublicPublish() {
     ":streams:test-utils:publishKafkaStreamsTestUtilsPublicationToTargetrepoRepository",
     ":tools:publishKafkaToolsPublicationToTargetrepoRepository",
     ":mapr-eco-tools:publishMaprEcoToolsPublicationToTargetrepoRepository",
+    ":eventstreams:publishEventstreamsPublicationToTargetrepoRepository",
     "uploadCoreArchives_2_12",
     // The default Scala version is 2.13. So :core:uploadArchives will publish kafka_2.13
     ":core:uploadArchives"

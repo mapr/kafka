@@ -44,4 +44,5 @@ include 'clients',
     'streams:upgrade-system-tests-24',
     'streams:upgrade-system-tests-25',
     'tools',
-    'mapr-eco-tools'
+    'mapr-eco-tools',
+    'eventstreams'

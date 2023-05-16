@@ -76,6 +76,8 @@ versions += [
   jersey: "2.36",
   jmh: "1.23",
   hadoop: "3.3.5.0-eep-912-SNAPSHOT",
+  ojai: "3.2.0",
+  lombok: "1.18.20",
   hamcrest: "2.2",
   reload4j: "1.2.20",
   scalaLogging: "3.9.2",
@@ -125,7 +127,6 @@ versions += [
   zstd: "1.4.4-7",
   commonsIo: "2.11.0",
   xerces: "2.12.2",
-  kafkaeventstreams: "0.2.0.300-eep-912-SNAPSHOT"
 ]
 libs += [
   activation: "javax.activation:activation:$versions.activation",
@@ -206,8 +207,10 @@ libs += [
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   zstd: "com.github.luben:zstd-jni:$versions.zstd",
   httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient",
-  kafkaEventstreams: "com.mapr.kafka:kafka-eventstreams:$versions.kafkaeventstreams",
   maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
+  maprdb: "com.mapr.db:maprdb:$maprVersion",
+  ojai: "org.ojai:ojai:$versions.ojai",
+  lombok: "org.projectlombok:lombok:$versions.lombok",
   commonsIo: "commons-io:commons-io:$versions.commonsIo",
   xerces: "xerces:xercesImpl:$versions.xerces"
 ]
