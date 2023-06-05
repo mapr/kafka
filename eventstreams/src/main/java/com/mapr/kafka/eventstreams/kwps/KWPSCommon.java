@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.Path;
 
 import com.mapr.fs.jni.Errno;
 
+@Deprecated
 public class KWPSCommon {
   private KWPSCommon() {}
 

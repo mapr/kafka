@@ -1,9 +1,9 @@
 /* Copyright (c) 2023 & onwards. Hewlett Packard Enterprise Company, All rights reserved */
-package com.mapr.kafka.eventstreams.kwps;
+package com.mapr.kafka.eventstreams.kwps.v2;
 
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_NEW_TOPIC_OWN_VOLUME;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_TOPICS_FOLDER;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_TOPICS_FOLDER_PATH;
+import static com.mapr.kwps.KwpsCommon.KWPS_NEW_TOPIC_OWN_VOLUME;
+import static com.mapr.kwps.KwpsCommon.KWPS_TOPICS_FOLDER;
+import static com.mapr.kwps.KwpsCommon.KWPS_TOPICS_FOLDER_PATH;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -26,6 +26,8 @@ import org.apache.kafka.common.internals.KafkaFutureImpl;
 
 import com.mapr.fs.MapRFileStatus;
 import com.mapr.fs.proto.Security.CredentialsMsg;
+import com.mapr.kwps.KTopicDescriptor;
+import com.mapr.kwps.KwpsCommon;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +36,7 @@ import lombok.extern.slf4j.Slf4j;
  * This class provides additional Admin capabilities for use by Kafka Wire Protocol Service
  */
 @Slf4j
-@Deprecated
-public class KafkaTopicsAdminEx extends KafkaTopicsAdmin {
+public class KafkaTopicsAdminEx extends KafkaTopicsAdminV2 {
 
   public KafkaTopicsAdminEx() throws IOException {
   }
@@ -87,7 +88,7 @@ public class KafkaTopicsAdminEx extends KafkaTopicsAdmin {
         final Path fPath = fStatus.getPath();
         if (fStatus.isDirectory()) {
           final String topicName = fPath.getName();
-          streamList.add(KWPSCommon.getStreamPath(topicName));
+          streamList.add(KwpsCommon.getStreamPath(topicName));
         } else {
           log.warn("Unknown file '{}' in Kafka topics folder!", fPath);
         }

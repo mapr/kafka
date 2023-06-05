@@ -1,12 +1,10 @@
 /* Copyright (c) 2023 & onwards. Hewlett Packard Enterprise Company, All rights reserved */
-package com.mapr.kafka.eventstreams.kwps;
+package com.mapr.kafka.eventstreams.kwps.v2;
 
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_TOPICS_FOLDER;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_TOPICS_FOLDER_PATH;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.KWPS_USER_MAPR;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.getStreamParentPath;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.getStreamPath;
-import static com.mapr.kafka.eventstreams.kwps.KWPSCommon.getVolumeName;
+
+import static com.mapr.kwps.KwpsCommon.KWPS_TOPICS_FOLDER;
+import static com.mapr.kwps.KwpsCommon.KWPS_TOPICS_FOLDER_PATH;
+import static com.mapr.kwps.KwpsCommon.KWPS_USER_MAPR;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -38,14 +36,19 @@ import com.mapr.kafka.eventstreams.impl.admin.MStreamDescriptor;
 import com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl;
 import com.mapr.kafka.eventstreams.impl.admin.MarlinAdminImpl;
 import com.mapr.kafka.eventstreams.impl.admin.TopicFeedInfo;
-import com.mapr.kafka.eventstreams.kwps.KTopicDescriptor.CompressionType;
+import com.mapr.kwps.BrokerWatcher;
+import com.mapr.kwps.BrokerDescriptor;
+import com.mapr.kwps.KTopicDescriptor;
+import com.mapr.kwps.KTopicDescriptor.CompressionType;
+import com.mapr.kwps.KTopicsAdmin;
+import com.mapr.kwps.KwpsCommon;
+import com.mapr.kwps.VolumeManager;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Deprecated
-public class KafkaTopicsAdmin implements AutoCloseable {
+public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
   static private final Properties ADMIN_PROPS = new Properties();
   static {
     ADMIN_PROPS.put(AdminClientConfig.ADMINCLIENT_CLASS_CONFIG, "com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl");
@@ -59,19 +62,19 @@ public class KafkaTopicsAdmin implements AutoCloseable {
   protected final String maprUser;
   protected final String thisUser;
 
-  public KafkaTopicsAdmin() throws IOException {
+  public KafkaTopicsAdminV2() throws IOException {
     this(KWPS_USER_MAPR, null);
   }
 
-  public KafkaTopicsAdmin(@NonNull CredentialsMsg userCredentials) throws IOException {
+  public KafkaTopicsAdminV2(@NonNull CredentialsMsg userCredentials) throws IOException {
     this(KWPS_USER_MAPR, userCredentials);
   }
 
-  public KafkaTopicsAdmin(@NonNull final String maprUser) throws IOException {
+  public KafkaTopicsAdminV2(@NonNull final String maprUser) throws IOException {
     this(maprUser, null);
   }
 
-  public KafkaTopicsAdmin(@NonNull final String maprUser, final CredentialsMsg userCredentials) throws IOException {
+  public KafkaTopicsAdminV2(@NonNull final String maprUser, final CredentialsMsg userCredentials) throws IOException {
     this.maprUser = maprUser;
     this.adminClient = (MarlinAdminClientImpl) AdminClient.create(ADMIN_PROPS);
     this.maprAdmin = (MarlinAdminImpl) adminClient.getMapRAdmin();
@@ -81,21 +84,20 @@ public class KafkaTopicsAdmin implements AutoCloseable {
     log.debug("KafkaTopicsAdmin user: {}, MapR user: {}", thisUser, maprUser);
   }
 
-  @Override
   public void close() throws IOException {
     adminClient.close();
   }
 
   public void createTopic(KTopicDescriptor ktopicDesc) throws IOException {
     final String topicName = ktopicDesc.getTopic();
-    final String streamPath = getStreamPath(topicName);
+    final String streamPath = KwpsCommon.getStreamPath(topicName);
     if (mfs.exists(new Path(streamPath))) {
       throw new TopicExistsException("The topic '" + topicName + "'" + "already exists.");
     }
 
     // Create volume if required
-    final String volumePath = getStreamParentPath(topicName);
-    final String volumeName = getVolumeName(topicName);
+    final String volumePath = KwpsCommon.getStreamParentPath(topicName);
+    final String volumeName = KwpsCommon.getVolumeName(topicName);
     if (ktopicDesc.isOwnVolume()) {
       volMgr.createVolume(volumeName, volumePath);
     } else {
@@ -149,7 +151,7 @@ public class KafkaTopicsAdmin implements AutoCloseable {
 
   public void editTopic(KTopicDescriptor ktopicDesc) throws IOException {
     final String topicName = ktopicDesc.getTopic();
-    final String streamPath = getStreamPath(topicName);
+    final String streamPath = KwpsCommon.getStreamPath(topicName);
     if (!mfs.exists(new Path(streamPath))) {
       throw new UnknownTopicOrPartitionException("The topic '" + topicName + "' does not exist.");
     }
@@ -189,7 +191,7 @@ public class KafkaTopicsAdmin implements AutoCloseable {
 
   private KTopicDescriptor getTopicDescriptorInternal(String topicName) throws IOException {
     final KTopicDescriptor ktopicDesc = new KTopicDescriptor(topicName);
-    final String streamPath = getStreamPath(topicName);
+    final String streamPath = KwpsCommon.getStreamPath(topicName);
     try {
       final MapRFileStatus fStatus = mfs.getMapRFileStatus(new Path(streamPath));
       ktopicDesc.setOwner(fStatus.getOwner());
@@ -240,7 +242,7 @@ public class KafkaTopicsAdmin implements AutoCloseable {
     if(isVol) {
       return volMgr.deleteVolume(topicName);
     } else {
-      final Path volumePath = new Path(getStreamParentPath(topicName));
+      final Path volumePath = new Path(KwpsCommon.getStreamParentPath(topicName));
       if (!mfs.exists(volumePath)) {
         throw new UnknownTopicOrPartitionException("The topic '" + topicName + "' does not exist.");
       }
@@ -311,6 +313,46 @@ public class KafkaTopicsAdmin implements AutoCloseable {
       throw e;
     } catch (Exception e) {
       throw new IOException("Failed to delete partial topic metadata.", e);
+    }
+  }
+
+  public void linkTopic(final String topicName, final String topicTarget) throws IOException {
+    throw new UnsupportedOperationException("linkTopic() isn't implemented yet.");
+  }
+
+  public BrokerDescriptor getController(Optional<String> kafkaCluster) throws IOException {
+    final String zkClusterName = mfs.getDefaultClusterName();
+    final String zkConnectString = mfs.getZkConnectString();
+    BrokerWatcher watcher = null;
+    try {
+      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+      watcher.connect();
+      return watcher.getController();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      throw new IOException(e);
+    } finally {
+      if (watcher != null) {
+        watcher.close();
+      }
+    }
+  }
+
+  public Iterable<BrokerDescriptor> listBrokers(Optional<String> kafkaCluster) throws IOException {
+    final String zkClusterName = mfs.getDefaultClusterName();
+    final String zkConnectString = mfs.getZkConnectString();
+    BrokerWatcher watcher = null;
+    try {
+      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+      watcher.connect();
+      return watcher.getBrokers();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      throw new IOException(e);
+    } finally {
+      if (watcher != null) {
+        watcher.close();
+      }
     }
   }
 

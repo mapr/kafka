@@ -12,7 +12,6 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
 import com.mapr.fs.ServiceWatcher;
 import com.mapr.org.apache.hadoop.hbase.util.Bytes;
 
@@ -20,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @SuppressWarnings("unchecked")
+@Deprecated
 public class BrokerWatcher extends ServiceWatcher {
   private static final ObjectMapper JSON_SERDE = new ObjectMapper();
 
@@ -41,19 +41,6 @@ public class BrokerWatcher extends ServiceWatcher {
     this.brokersPath = String.format(BROKERS_PATH_FORMAT, kafkaClusterName);
   }
 
-  public Iterable<KBrokerDescriptor> getBrokers() throws Exception {
-    ImmutableList.Builder<KBrokerDescriptor> builder = ImmutableList.builder();
-    log.info("Brokers path: {}.", brokersPath);
-    final ListIterator<String> brokersItr = getChildren(brokersPath).listIterator();
-    while (brokersItr.hasNext()) {
-      final KBrokerDescriptor broker = getBroker(brokersItr.next());
-      if (broker != null) {
-        builder.add(broker);
-      }
-    }
-    return builder.build();
-  }
-
   public Map<String, String> getConnectionProperties() throws Exception {
     StringBuilder bootstrapServers = new StringBuilder();
     log.info("Brokers path: {}.", brokersPath);
@@ -65,19 +52,6 @@ public class BrokerWatcher extends ServiceWatcher {
       connectionProperties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers.substring(1));
     }
     return connectionProperties;
-  }
-  
-  private KBrokerDescriptor getBroker(String broker) {
-    try {
-      final byte[] data = getData(String.format("%s/%s", brokersPath, broker));
-      final String jsonStr = Bytes.toString(data);
-      final Map<String, String> brokerProps = JSON_SERDE.readValue(jsonStr, HashMap.class);
-      final int brokerId = Integer.valueOf(broker.substring(broker.lastIndexOf('-')));    
-      return new KBrokerDescriptor(brokerId, brokerProps);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      return null;
-    }
   }
 
   private void readBrokerProps(final String broker, final StringBuilder bootstrapServers) throws Exception {

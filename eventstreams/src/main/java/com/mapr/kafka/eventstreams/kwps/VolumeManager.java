@@ -31,6 +31,7 @@ import com.mapr.fs.proto.Security.CredentialsMsg.Builder;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@Deprecated
 public class VolumeManager {
   private static final FsPermission TOPIC_VOLUME_PERMISSION = new FsPermission(0755);
 

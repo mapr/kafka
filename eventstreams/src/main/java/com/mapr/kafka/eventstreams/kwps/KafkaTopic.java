@@ -23,6 +23,7 @@ import org.apache.kafka.common.utils.Utils;
 import java.util.Collections;
 import java.util.Set;
 
+@Deprecated
 public class KafkaTopic {
 
     public static final String GROUP_METADATA_TOPIC_NAME = "__consumer_offsets";
