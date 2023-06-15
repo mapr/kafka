@@ -2363,7 +2363,7 @@ project(':eventstreams') {
     compile project(':connect:runtime').sourceSets.main.output
 
     compile libs.reload4j
-    compile libs.maprdb
+    compileOnly libs.maprdb
     compile (libs.hadoopCommon) {
 	exclude group: 'com.sun.jersey', module: 'jersey-server' 
 }
