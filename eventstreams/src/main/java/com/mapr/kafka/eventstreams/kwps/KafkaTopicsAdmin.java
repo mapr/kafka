@@ -220,7 +220,7 @@ public class KafkaTopicsAdmin implements AutoCloseable {
       ktopicDesc.setSize(topicSize);
     } catch (MarlinIOException e) {
        if (e.getErrorCode() == Errno.EACCES) {
-        log.warn("Current user doesn't have topic perm!" , e);
+        log.debug("Current user doesn't have topic perm!", e);
         // leave the default values for partition and size
         // {falls through}
        } else {

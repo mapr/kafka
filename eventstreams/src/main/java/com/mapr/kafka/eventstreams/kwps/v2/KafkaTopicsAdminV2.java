@@ -222,7 +222,7 @@ public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
       ktopicDesc.setSize(topicSize);
     } catch (MarlinIOException e) {
        if (e.getErrorCode() == Errno.EACCES) {
-        log.warn("Current user doesn't have topic perm!" , e);
+        log.debug("Current user doesn't have topic perm!", e);
         // leave the default values for partition and size
         // {falls through}
        } else {
@@ -285,20 +285,12 @@ public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
   }
 
   public Map<String, String> getConnectionProperties(Optional<String> kafkaCluster) throws IOException {
-    final String zkClusterName = mfs.getDefaultClusterName();
-    final String zkConnectString = mfs.getZkConnectString();
-    BrokerWatcher watcher = null;
-    try {
-      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+    try (final BrokerWatcher watcher = newBrokerWatcher(kafkaCluster)) {
       watcher.connect();
       return watcher.getConnectionProperties();
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new IOException(e);
-    } finally {
-      if (watcher != null) {
-        watcher.close();
-      }
     }
   }
 
@@ -321,58 +313,40 @@ public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
   }
 
   public BrokerDescriptor getController(Optional<String> kafkaCluster) throws IOException {
-    final String zkClusterName = mfs.getDefaultClusterName();
-    final String zkConnectString = mfs.getZkConnectString();
-    BrokerWatcher watcher = null;
-    try {
-      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+    try (final BrokerWatcher watcher = newBrokerWatcher(kafkaCluster)) {
       watcher.connect();
       return watcher.getController();
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new IOException(e);
-    } finally {
-      if (watcher != null) {
-        watcher.close();
-      }
     }
   }
 
   public Iterable<BrokerDescriptor> listBrokers(Optional<String> kafkaCluster) throws IOException {
-    final String zkClusterName = mfs.getDefaultClusterName();
-    final String zkConnectString = mfs.getZkConnectString();
-    BrokerWatcher watcher = null;
-    try {
-      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+    try (final BrokerWatcher watcher = newBrokerWatcher(kafkaCluster)) {
       watcher.connect();
       return watcher.getBrokers();
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new IOException(e);
-    } finally {
-      if (watcher != null) {
-        watcher.close();
-      }
     }
   }
 
   @Override
-  public void triggerStateZNode(Optional<String> kafkaCluster) throws IOException {
-    final String zkClusterName = mfs.getDefaultClusterName();
-    final String zkConnectString = mfs.getZkConnectString();
-    BrokerWatcher watcher = null;
-    try {
-      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+  public void notifyMetadataChange(Optional<String> kafkaCluster) throws IOException {
+    try (final BrokerWatcher watcher = newBrokerWatcher(kafkaCluster)) {
       watcher.connect();
-      watcher.triggerChangeZNode();
+      watcher.notifyMetadataChange();
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       throw new IOException(e);
-    } finally {
-      if (watcher != null) {
-        watcher.close();
-      }
     }
+  }
+
+  private BrokerWatcher newBrokerWatcher(final Optional<String> kafkaCluster) throws IOException {
+    final String zkClusterName = mfs.getDefaultClusterName();
+    final String zkConnectString = mfs.getZkConnectString();
+    return new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
   }
 
 }

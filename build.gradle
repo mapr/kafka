@@ -59,6 +59,7 @@ spotless {
 allprojects {
 
   repositories {
+    mavenLocal()
     mavenCentral()
     maven {
       url "http://packages.confluent.io/maven/"
