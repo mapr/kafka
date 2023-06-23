@@ -2364,7 +2364,7 @@ project(':eventstreams') {
 
     compile libs.reload4j
     compileOnly libs.maprdb
-    compile (libs.hadoopCommon) {
+    compileOnly (libs.hadoopCommon) {
 	exclude group: 'com.sun.jersey', module: 'jersey-server' 
 }
     compile libs.ojai
