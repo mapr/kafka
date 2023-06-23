@@ -66,7 +66,7 @@ versions += [
   commonsLang3: "3.12.0",
   gradle: "6.5",
   gradleVersionsPlugin: "0.28.0",
-  grgit: "4.0.1",
+  grgit: "4.1.1",
   httpclient: "4.5.11",
   easymock: "4.2",
   jackson: "2.13.3",
