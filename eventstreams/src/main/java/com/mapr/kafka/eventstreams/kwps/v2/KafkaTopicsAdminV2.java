@@ -356,4 +356,23 @@ public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
     }
   }
 
+  @Override
+  public void triggerStateZNode(Optional<String> kafkaCluster) throws IOException {
+    final String zkClusterName = mfs.getDefaultClusterName();
+    final String zkConnectString = mfs.getZkConnectString();
+    BrokerWatcher watcher = null;
+    try {
+      watcher = new BrokerWatcher(zkConnectString, zkClusterName, kafkaCluster);
+      watcher.connect();
+      watcher.triggerChangeZNode();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      throw new IOException(e);
+    } finally {
+      if (watcher != null) {
+        watcher.close();
+      }
+    }
+  }
+
 }
