@@ -472,6 +472,9 @@ env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
 [ -f "${env}" ] && . "${env}"
 KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS} ${MAPR_LOGIN_OPTS}"
 
+# JDK 17 specific, see https://openjdk.org/jeps/396
+KAFKA_OPTS="${KAFKA_OPTS} --add-opens java.base/java.net=ALL-UNNAMED"
+
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   nohup "$JAVA" $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS $MIRROR_MAKER_OPTS -cp "$CLASSPATH" $KAFKA_OPTS "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
