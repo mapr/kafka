@@ -109,7 +109,10 @@ allprojects {
             libs.nettyHandler,
             libs.nettyTransportNativeEpoll,
             // sure we have log4j from mapr
-            libs.reload4j
+            libs.reload4j,
+            // be explicit about the Guava dependency version instead of relying on the version
+            // set by OJAI or reflections (potentially older and containing CVEs)
+            libs.guava
           )
         }
       }

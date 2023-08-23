@@ -77,6 +77,7 @@ versions += [
   jmh: "1.23",
   hadoop: "3.3.5.100-eep-913-SNAPSHOT",
   ojai: "3.2.0",
+  guava: "32.0.1-jre",
   lombok: "1.18.20",
   hamcrest: "2.2",
   reload4j: "1.2.20",
@@ -210,6 +211,7 @@ libs += [
   maprFs: "com.mapr.hadoop:maprfs:$maprVersion",
   maprdb: "com.mapr.db:maprdb:$maprVersion",
   ojai: "org.ojai:ojai:$versions.ojai",
+  guava: "com.google.guava:guava:$versions.guava",
   lombok: "org.projectlombok:lombok:$versions.lombok",
   commonsIo: "commons-io:commons-io:$versions.commonsIo",
   xerces: "xerces:xercesImpl:$versions.xerces"
