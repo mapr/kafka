@@ -75,7 +75,7 @@ versions += [
   jetty: "9.4.48.v20220622",
   jersey: "2.36",
   jmh: "1.23",
-  hadoop: "3.3.5.100-eep-913-SNAPSHOT",
+  hadoop: "3.3.5.100-eep-920-SNAPSHOT",
   ojai: "3.2.0",
   guava: "32.0.1-jre",
   lombok: "1.18.20",
