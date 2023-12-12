@@ -185,6 +185,14 @@ if (file('.git').exists()) {
 
 
 subprojects {
+    // Declare org.gradle.jvm.environment=standard-jvm attribute to pick guava variant
+    configurations {
+	all {
+	    attributes {
+		attribute(Attribute.of("org.gradle.jvm.environment", String), 'standard-jvm')
+	    }
+	}
+    }
 
   // enable running :dependencies task recursively on all subprojects
   // eg: ./gradlew allDeps
