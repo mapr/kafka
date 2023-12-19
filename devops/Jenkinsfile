@@ -23,16 +23,13 @@ MAKEFILE_ARG_BRANCH_NAME = " KAFKA_BRANCH_NAME"
 
 pipeline {
   agent none
-  triggers {
-    pollSCM 'H/5 * * * *'
-  }
   options {
     skipDefaultCheckout()
     disableConcurrentBuilds()
     timestamps()
   }
   parameters {
-    choice(name: 'BUILD_TYPE', choices: ['Dev','EBF','Release'], description: 'default - Dev. EBF and Release args you can use only in release branches')
+    choice(name: 'BUILD_TYPE', choices: ['Dev','EBF','Mid_Release','Release'], description: 'default - Dev. EBF and Release args you can use only in release branches')
     string(name: 'MAKEFILE_ENV_VARS', defaultValue: 'KAFKA_ARTIFACT_VERSION=2.6.1.700-eep-921 MAPR_JAR_VERSION=7.4.0.0-mapr KAFKA_IMAGE_NAME=kafka_2.13-2.6.1.700-eep-921.tgz KAFKA_VERSION=2.6.1.700 KAFKA_BRANCH_NAME=branch-2.6.1-mapr-mep-9.2 KAFKA_GRADLE_OPTS="" GRADLE_TASKS="releaseTarGz"', description: 'Variables you can pass to makefile (command will be: make {THIS VAR} {project-name}). Please DO NOT put component_branch_name')
   }
   stages {
