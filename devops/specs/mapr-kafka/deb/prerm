@@ -1,0 +1,42 @@
+#!/bin/bash
+
+[ -n "$VERBOSE" ] && echo "prerm called with argument \`$1'" >&2
+[ -n "$VERBOSE" ] && set -x
+
+
+#
+# summary of how this script can be called:
+#        * <prerm> `remove'
+#        * <old-prerm> `upgrade' <new-version>
+#        * <new-prerm> `failed-upgrade' <old-version>
+#        * <conflictor's-prerm> `remove' `in-favour' <package> <new-version>
+#        * <deconfigured's-prerm> `deconfigure' `in-favour'
+#          <package-being-installed> <version> `removing'
+#          <conflicting-package> <version>
+#
+case "$1" in
+    remove|deconfigure)
+      rm -f __INSTALL_3DIGIT__/libs/log4j*.jar
+      rm -f __PREFIX__/lib/kafka-eventstreams*.jar
+      rm -f __PREFIX__/lib/kafka-clients*.jar
+      rm -rf __INSTALL_3DIGIT__/logs/
+      rm -rf  __PREFIX__/kafka/kafkaversion
+      
+    ;;  
+	upgrade)
+	  rm -f __INSTALL_3DIGIT__/libs/log4j*.jar
+	  rm -f __PREFIX__/lib/kafka-clients*.jar
+      rm -f __PREFIX__/lib/kafka-eventstreams-*.jar
+          rm -f __PREFIX__/lib/kafka-streams-*.jar
+          rm -f __PREFIX__/lib/rocksdbjni*.jar
+	  rm -rf __INSTALL_3DIGIT__/logs/
+	;;
+    failed-upgrade)
+    ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+    ;;  
+esac    
+

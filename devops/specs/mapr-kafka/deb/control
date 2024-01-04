@@ -1,0 +1,11 @@
+Package: mapr-kafka
+Version: __RELEASE_VERSION__
+Section: base
+Priority: optional
+Architecture: all
+Depends: mapr-client (>= 7.1.0)
+Conflicts: mapr-core (<< 7.1.0)
+Maintainer: Hewlett Packard Enterprise <ezmeral_software_support@hpe.com>
+Description: Ezmeral Ecosystem Pack: Kafka package
+Tag: __RELEASE_BRANCH__
+Commit: __GIT_COMMIT__

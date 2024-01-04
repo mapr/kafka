@@ -1,0 +1,69 @@
+#!/bin/bash
+
+[ -n "$VERBOSE" ] && echo "postinst called with argument \`$1'" >&2
+[ -n "$VERBOSE" ] && set -x
+
+
+#
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <postinst> `abort-remove'
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+#
+case "$1" in
+    configure)
+      if [ -f __PREFIX__/kafka/kafkaversion ]; then
+        rm -f __PREFIX__/kafka/kafkaversion
+      fi
+      echo "__VERSION_3DIGIT__" > __PREFIX__/kafka/kafkaversion
+      rm -f __PREFIX__/lib/kafka-clients*.jar
+      newJar=$(find __INSTALL_3DIGIT__/libs/   -printf '%T+ %p\n'   | sort -r | grep kafka-clients |  head -n 1 |  awk '{ print $2 }')
+      ln -sf $newJar  __PREFIX__/lib/.
+      newJarStreams=$(find __INSTALL_3DIGIT__/libs/   -printf '%T+ %p\n'   | sort -r | grep kafka-streams-__VERSION_3DIGIT__ |  head -n 1 |  awk '{ print $2 }')
+      ln -sf $newJarStreams  __PREFIX__/lib/.
+      newJarEventstreams=$(find __INSTALL_3DIGIT__/libs/   -printf '%T+ %p\n'   | sort -r | grep kafka-eventstreams |  head -n 1 |  awk '{ print $2 }')
+      ln -sf $newJarEventstreams  __PREFIX__/lib/.
+      newJarRocksDb=$(find __INSTALL_3DIGIT__/libs/   -printf '%T+ %p\n'   | sort -r | grep rocksdbjni |  head -n 1 |  awk '{ print $2 }')
+      ln -sf $newJarRocksDb  __PREFIX__/lib/.
+      if [ ! -d /tmp/kafka-streams ]; then
+        mkdir /tmp/kafka-streams
+        chmod 1777 /tmp/kafka-streams
+      fi
+
+      if [ ! -d __INSTALL_3DIGIT__/logs ]; then
+        mkdir __INSTALL_3DIGIT__/logs
+      fi
+      chmod 1777 __INSTALL_3DIGIT__/logs
+
+      #
+      # change permissions
+      #
+      DAEMON_CONF=__PREFIX__/conf/daemon.conf
+      if [ -f "$DAEMON_CONF" ]; then
+          MAPR_USER=$( awk -F = '$1 == "mapr.daemon.user" { print $2 }' $DAEMON_CONF)
+          MAPR_GROUP=$( awk -F = '$1 == "mapr.daemon.group" { print $2 }' $DAEMON_CONF)
+          if [ ! -z "$MAPR_USER" ]; then
+              chown -R ${MAPR_USER} __INSTALL_3DIGIT__
+          fi
+          if [ ! -z "$MAPR_GROUP" ]; then
+              chgrp -R ${MAPR_GROUP} __INSTALL_3DIGIT__
+          fi
+      fi
+        chmod u+x __INSTALL_3DIGIT__/bin/*
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+
