@@ -22,6 +22,7 @@ import org.apache.kafka.common.Cluster;
 import java.io.Closeable;
 
 /**
+ * Not supported in MapR Kafka
  * Partitioner Interface
  */
 public interface Partitioner extends Configurable, Closeable {

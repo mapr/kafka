@@ -115,6 +115,10 @@ allprojects {
 
   repositories {
     mavenCentral()
+    maven {
+       url System.getenv('MAPR_MAVEN_REPO')
+       allowInsecureProtocol = true
+    }
   }
 
   dependencyUpdates {
@@ -284,6 +288,7 @@ subprojects {
         // To test locally, invoke gradlew with `-PmavenUrl=file:///some/local/path`
         maven {
           url = mavenUrl
+          allowInsecureProtocol = true
           credentials {
             username = mavenUsername
             password = mavenPassword
@@ -1118,6 +1123,8 @@ project(':core') {
     from(project(':streams:examples').configurations.runtimeClasspath) { into("libs/") }
     from(project(':tools:tools-api').jar) { into("libs/") }
     from(project(':tools:tools-api').configurations.runtimeClasspath) { into("libs/") }
+    from(project(':eventstreams').jar) { into("libs/") }
+    from(project(':eventstreams').configurations.runtimeClasspath) { into("libs/") }
     duplicatesStrategy 'exclude'
   }
 
@@ -3130,6 +3137,61 @@ project(':connect:test-plugins') {
     implementation project(':server-common')
     implementation libs.slf4jApi
     implementation libs.jacksonDatabind
+  }
+}
+
+project(':eventstreams') {
+  archivesBaseName = "kafka-eventstreams"
+
+  dependencies {
+    implementation project(':clients')
+    // Depend only on main scope to get rid of circular dependency:
+    // core -> eventstreams -> connect:runtime -> core(test)
+    implementation project(':connect:runtime').sourceSets.main.output
+
+    implementation libs.ojai
+    implementation libs.lombok
+
+    compileOnly libs.maprdb
+    compileOnly (libs.hadoopCommon) {
+	exclude group: 'com.sun.jersey', module: 'jersey-server' 
+    }
+
+    annotationProcessor libs.lombok
+
+    testImplementation libs.junit4
+    testImplementation libs.easymock
+    testImplementation libs.powermockEasymock
+    testImplementation libs.powermockJunit4
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+      // NOTE: disabling these ones since initial eventstreams were built without -Werror and -Xlint:all
+      options.compilerArgs << "-Xlint:-deprecation"
+      options.compilerArgs << "-Xlint:-unchecked"
+      options.compilerArgs << "-Xlint:-rawtypes"
+      options.compilerArgs << "-Xlint:-fallthrough"
+   }
+
+  javadoc {
+    enabled = false
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntimeClasspath) {
+      include('slf4j-log4j12*')
+      include('reload4j*jar')
+    }
+    from (configurations.runtimeClasspath) {
+      exclude('kafka-clients*')
+      exclude('connect-*')
+    }
+    into "$buildDir/dependant-libs"
+    duplicatesStrategy 'exclude'
+  }
+
+  jar {
+    dependsOn copyDependantLibs
   }
 }
 

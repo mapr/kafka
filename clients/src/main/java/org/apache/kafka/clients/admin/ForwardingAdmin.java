@@ -19,6 +19,7 @@ package org.apache.kafka.clients.admin;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.ElectionType;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicCollection;
@@ -69,6 +70,12 @@ public class ForwardingAdmin implements Admin {
     @Override
     public ListTopicsResult listTopics(ListTopicsOptions options) {
         return delegate.listTopics(options);
+    }
+
+    @Override
+    public ListTopicsResult listTopics(String streamPath, ListTopicsOptions options) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
     }
 
     @Override

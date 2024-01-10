@@ -435,6 +435,11 @@ public class MockAdminClient extends AdminClient {
     }
 
     @Override
+    public ListTopicsResult listTopics(String streamPath, ListTopicsOptions options) {
+        return listTopics(options);
+    }
+
+    @Override
     synchronized public DescribeTopicsResult describeTopics(TopicCollection topics, DescribeTopicsOptions options) {
         if (topics instanceof TopicIdCollection)
             return DescribeTopicsResult.ofTopicIds(new HashMap<>(handleDescribeTopicsUsingIds(((TopicIdCollection) topics).topicIds(), options)));

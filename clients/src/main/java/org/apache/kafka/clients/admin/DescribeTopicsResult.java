@@ -38,7 +38,7 @@ public class DescribeTopicsResult {
     private final Map<String, KafkaFuture<TopicDescription>> nameFutures;
 
     @Deprecated
-    protected DescribeTopicsResult(Map<String, KafkaFuture<TopicDescription>> futures) {
+    DescribeTopicsResult(Map<String, KafkaFuture<TopicDescription>> futures) {
         this(null, futures);
     }
 
@@ -52,11 +52,11 @@ public class DescribeTopicsResult {
         this.nameFutures = nameFutures;
     }
 
-    static DescribeTopicsResult ofTopicIds(Map<Uuid, KafkaFuture<TopicDescription>> topicIdFutures) {
+    public static DescribeTopicsResult ofTopicIds(Map<Uuid, KafkaFuture<TopicDescription>> topicIdFutures) {
         return new DescribeTopicsResult(topicIdFutures, null);
     }
 
-    static DescribeTopicsResult ofTopicNames(Map<String, KafkaFuture<TopicDescription>> nameFutures) {
+    public static DescribeTopicsResult ofTopicNames(Map<String, KafkaFuture<TopicDescription>> nameFutures) {
         return new DescribeTopicsResult(null, nameFutures);
     }
 

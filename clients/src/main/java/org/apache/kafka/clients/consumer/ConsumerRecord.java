@@ -51,6 +51,9 @@ public class ConsumerRecord<K, V> {
     private final V value;
     private final Optional<Integer> leaderEpoch;
 
+    // MapR specific field, will always be null in Apache Kafka
+    private String producer;
+
     /**
      * Creates a record to be received from a specified topic and partition (provided for
      * compatibility with Kafka 0.9 before the message format supported timestamps and before
@@ -115,6 +118,55 @@ public class ConsumerRecord<K, V> {
         this.leaderEpoch = leaderEpoch;
     }
 
+    /**
+     * MapR specific constructor. Copy of {@link ConsumerRecord#ConsumerRecord(
+     * String, int, long, long, TimestampType, int, int, K, V, Headers, Optional)},
+     * but with MapR specific field for producer.
+     * Creates a record to be received from a specified topic and partition
+     *
+     * @param topic The topic this record is received from
+     * @param partition The partition of the topic this record is received from
+     * @param offset The offset of this record in the corresponding Kafka partition
+     * @param timestamp The timestamp of the record.
+     * @param timestampType The timestamp type
+     * @param serializedKeySize The length of the serialized key
+     * @param serializedValueSize The length of the serialized value
+     * @param key The key of the record, if one exists (null is allowed)
+     * @param value The record contents
+     * @param headers The headers of the record
+     * @param leaderEpoch Optional leader epoch of the record (may be empty for legacy record formats)
+     * @param producer Producer of this record
+     */
+    public ConsumerRecord(String topic,
+                          int partition,
+                          long offset,
+                          long timestamp,
+                          TimestampType timestampType,
+                          int serializedKeySize,
+                          int serializedValueSize,
+                          K key,
+                          V value,
+                          Headers headers,
+                          Optional<Integer> leaderEpoch,
+                          String producer) {
+        if (topic == null)
+            throw new IllegalArgumentException("Topic cannot be null");
+        if (headers == null)
+            throw new IllegalArgumentException("Headers cannot be null");
+
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+        this.timestamp = timestamp;
+        this.timestampType = timestampType;
+        this.serializedKeySize = serializedKeySize;
+        this.serializedValueSize = serializedValueSize;
+        this.key = key;
+        this.value = value;
+        this.headers = headers;
+        this.leaderEpoch = leaderEpoch;
+        this.producer = producer;
+    }
     /**
      * Creates a record to be received from a specified topic and partition (provided for
      * compatibility with Kafka 0.10 before the message format supported headers).
@@ -296,6 +348,16 @@ public class ConsumerRecord<K, V> {
         return leaderEpoch;
     }
 
+    /**
+     * MapR specific method, always returns null in Apache Kafka.
+     * Get the producer of this record if available
+     *
+     * @return the leader epoch or empty for legacy record formats
+     */
+    public String producer() {
+        return producer;
+    }
+
     @Override
     public String toString() {
         return "ConsumerRecord(topic = " + topic
@@ -307,6 +369,7 @@ public class ConsumerRecord<K, V> {
                + ", serialized value size = " + serializedValueSize
                + ", headers = " + headers
                + ", key = " + key
-               + ", value = " + value + ")";
+               + ", value = " + value
+               + ", producer = " + producer + ")";
     }
 }

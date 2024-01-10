@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.clients.producer.internals.BufferPool;
 import org.apache.kafka.clients.producer.internals.BuiltInPartitioner;
 import org.apache.kafka.clients.producer.internals.KafkaProducerMetrics;
@@ -83,6 +84,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.*;
 
 
 /**
@@ -228,33 +231,39 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class KafkaProducer<K, V> implements Producer<K, V> {
 
-    private final Logger log;
+    private Logger log;
     private static final String JMX_PREFIX = "kafka.producer";
     public static final String NETWORK_THREAD_PREFIX = "kafka-producer-network-thread";
     public static final String PRODUCER_METRIC_GROUP_NAME = "producer-metrics";
 
-    private final String clientId;
+    private String clientId;
     // Visible for testing
-    final Metrics metrics;
-    private final KafkaProducerMetrics producerMetrics;
-    private final Partitioner partitioner;
-    private final int maxRequestSize;
-    private final long totalMemorySize;
-    private final ProducerMetadata metadata;
-    private final RecordAccumulator accumulator;
-    private final Sender sender;
-    private final Thread ioThread;
-    private final CompressionType compressionType;
-    private final Sensor errors;
-    private final Time time;
-    private final Serializer<K> keySerializer;
-    private final Serializer<V> valueSerializer;
-    private final ProducerConfig producerConfig;
-    private final long maxBlockTimeMs;
-    private final boolean partitionerIgnoreKeys;
-    private final ProducerInterceptors<K, V> interceptors;
-    private final ApiVersions apiVersions;
-    private final TransactionManager transactionManager;
+    Metrics metrics;
+    private KafkaProducerMetrics producerMetrics;
+    private Partitioner partitioner;
+    private int maxRequestSize;
+    private long totalMemorySize;
+    private ProducerMetadata metadata;
+    private RecordAccumulator accumulator;
+    private Sender sender;
+    private Thread ioThread;
+    private CompressionType compressionType;
+    private Sensor errors;
+    private Time time;
+    private Serializer<K> keySerializer;
+    private Serializer<V> valueSerializer;
+    private ProducerConfig producerConfig;
+    private long maxBlockTimeMs;
+    private boolean partitionerIgnoreKeys;
+    private ProducerInterceptors<K, V> interceptors;
+    private ApiVersions apiVersions;
+    private TransactionManager transactionManager;
+
+    // MapR-specific section
+    private boolean isMapr;
+    private Producer<K, V> producerDriver;
+    private String defaultStream;
+    private boolean isMaprClosed;
 
     /**
      * A producer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -397,6 +406,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.interceptors = interceptors;
             else
                 this.interceptors = new ProducerInterceptors<>(interceptorList);
+
+            if (maybeMaprInitialize(config, keySerializer, valueSerializer, metadata, kafkaClient, interceptors, time)) {
+                return;
+            }
+
             ClusterResourceListeners clusterResourceListeners = configureClusterResourceListeners(this.keySerializer,
                     this.valueSerializer, interceptorList, reporters);
             this.maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG);
@@ -498,6 +512,38 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         this.ioThread = ioThread;
     }
 
+    /**
+     * MapR initialization branch alternate to the Apache KafkaProducer.<init>().
+     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
+     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Producer initialization.
+     * Otherwise, just returns false, proceeding to Apache Producer initialization.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean maybeMaprInitialize(ProducerConfig config,
+                                        Serializer<K> keySerializer,
+                                        Serializer<V> valueSerializer,
+                                        ProducerMetadata metadata,
+                                        KafkaClient kafkaClient,
+                                        ProducerInterceptors<K, V> interceptors,
+                                        Time time) {
+        this.isMapr = isMapr(config);
+        if (isMapr) {
+            try {
+                this.errors = this.metrics.sensor("errors");
+                this.defaultStream = producerConfig.getString(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG);
+
+                Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
+                this.producerDriver = GenericHFactory.getImplementorInstance(
+                        "com.mapr.kafka.eventstreams.impl.producer.MarlinProducerV10",
+                        new Object[]{this.producerConfig, this.keySerializer, this.valueSerializer},
+                        new Class[]{ProducerConfig.class, Serializer.class, Serializer.class});
+            } catch (Throwable e) {
+                throw new RuntimeException("Error occurred initializing MapR producer", e);
+            }
+        }
+        return isMapr;
+    }
+
     // visible for testing
     Sender newSender(LogContext logContext, KafkaClient kafkaClient, ProducerMetadata metadata) {
         int maxInflightRequests = producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION);
@@ -586,6 +632,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Needs to be called before any other methods when the {@code transactional.id} is set in the configuration.
      * This method does the following:
      * <ol>
@@ -612,6 +659,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws InterruptException if the thread is interrupted while blocked
      */
     public void initTransactions() {
+        maybeThrowMaprUsupported("Transactions API is not currently supported in MapR Producer");
         throwIfNoTransactionManager();
         throwIfProducerClosed();
         long now = time.nanoseconds();
@@ -622,6 +670,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Should be called before the start of each new transaction. Note that prior to the first invocation
      * of this method, you must invoke {@link #initTransactions()} exactly one time.
      *
@@ -637,6 +686,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
     public void beginTransaction() throws ProducerFencedException {
+        maybeThrowMaprUsupported("Transactions API is not currently supported in MapR Producer");
         throwIfNoTransactionManager();
         throwIfProducerClosed();
         long now = time.nanoseconds();
@@ -645,6 +695,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Sends a list of specified offsets to the consumer group coordinator, and also marks
      * those offsets as part of the current transaction. These offsets will be considered
      * committed only if the transaction is committed successfully. The committed offset should
@@ -685,6 +736,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Sends a list of specified offsets to the consumer group coordinator, and also marks
      * those offsets as part of the current transaction. These offsets will be considered
      * committed only if the transaction is committed successfully. The committed offset should
@@ -733,6 +785,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
                                          ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+        maybeThrowMaprUsupported("Transactions API is not currently supported in MapR Producer");
         throwIfInvalidGroupMetadata(groupMetadata);
         throwIfNoTransactionManager();
         throwIfProducerClosed();
@@ -747,6 +800,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Commits the ongoing transaction. This method will flush any unsent records before actually committing the transaction.
      * <p>
      * Further, if any of the {@link #send(ProducerRecord)} calls which were part of the transaction hit irrecoverable
@@ -779,6 +833,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws InterruptException if the thread is interrupted while blocked
      */
     public void commitTransaction() throws ProducerFencedException {
+        maybeThrowMaprUsupported("Transactions API is not currently supported in MapR Producer");
         throwIfNoTransactionManager();
         throwIfProducerClosed();
         long commitStart = time.nanoseconds();
@@ -789,6 +844,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     /**
+     * Not supported in MapR Producer.
      * Aborts the ongoing transaction. Any unflushed produce messages will be aborted when this call is made.
      * This call will throw an exception immediately if any prior {@link #send(ProducerRecord)} calls failed with a
      * {@link ProducerFencedException} or an instance of {@link org.apache.kafka.common.errors.AuthorizationException}.
@@ -813,6 +869,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * @throws InterruptException if the thread is interrupted while blocked
      */
     public void abortTransaction() throws ProducerFencedException {
+        maybeThrowMaprUsupported("Transactions API is not currently supported in MapR Producer");
         throwIfNoTransactionManager();
         throwIfProducerClosed();
         log.info("Aborting incomplete transaction");
@@ -950,6 +1007,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     // Verify that this producer instance has not been closed. This method throws IllegalStateException if the producer
     // has already been closed.
     private void throwIfProducerClosed() {
+        if (isMapr) {
+            if (isMaprClosed)
+                throw new IllegalStateException("Cannot perform operation after MapR producer has been closed");
+            return;
+        }
         if (sender == null || !sender.isRunning())
             throw new IllegalStateException("Cannot perform operation after producer has been closed");
     }
@@ -974,6 +1036,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
         try {
             throwIfProducerClosed();
+            if (isMapr) {
+                record.setTopic(maybeWrapDefaultStream(defaultStream, record.topic()));
+                setReadOnly(record.headers());
+                return producerDriver.send(record, appendCallbacks);
+            }
             // first make sure the metadata for the topic is available
             long nowMs = time.milliseconds();
             ClusterAndWaitTime clusterAndWaitTime;
@@ -1207,6 +1274,10 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     @Override
     public void flush() {
         log.trace("Flushing accumulated records in producer.");
+        if (isMapr) {
+            producerDriver.flush();
+            return;
+        }
 
         long start = time.nanoseconds();
         this.accumulator.beginFlush();
@@ -1230,6 +1301,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      */
     @Override
     public List<PartitionInfo> partitionsFor(String topic) {
+        if (isMapr) {
+            return producerDriver.partitionsFor(maybeWrapDefaultStream(defaultStream, topic));
+        }
         Objects.requireNonNull(topic, "topic cannot be null");
         try {
             return waitOnMetadata(topic, null, time.milliseconds(), maxBlockTimeMs).cluster.partitionsForTopic(topic);
@@ -1240,9 +1314,15 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     /**
      * Get the full set of internal metrics maintained by the producer.
+     * For MapR Producer, {@link ProducerConfig#METRICS_ENABLED_CONFIG} config must be set to true, otherwise
+     * it returns an empty map.
+     * See MapR Kafka metrics documentation for details.
      */
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
+        if (isMapr) {
+            return producerDriver.metrics();
+        }
         return Collections.unmodifiableMap(this.metrics.metrics());
     }
 
@@ -1337,6 +1417,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         Utils.closeQuietly(keySerializer, "producer keySerializer", firstException);
         Utils.closeQuietly(valueSerializer, "producer valueSerializer", firstException);
         Utils.closeQuietly(partitioner, "producer partitioner", firstException);
+        Utils.closeQuietly(producerDriver, "MapR producer driver", firstException);
+        isMaprClosed = true;
         AppInfoParser.unregisterAppInfo(JMX_PREFIX, clientId, metrics);
         Throwable exception = firstException.get();
         if (exception != null && !swallowException) {
@@ -1403,6 +1485,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         if (transactionManager == null)
             throw new IllegalStateException("Cannot use transactional methods without enabling transactions " +
                     "by setting the " + ProducerConfig.TRANSACTIONAL_ID_CONFIG + " configuration property");
+    }
+
+    private void maybeThrowMaprUsupported(String message) {
+        if (isMapr)
+            throw new KafkaException(message);
     }
 
     // Visible for testing

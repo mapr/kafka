@@ -18,7 +18,7 @@ package kafka.admin
 
 import kafka.admin.TopicCommand.{PartitionDescription, TopicCommandOptions, TopicService}
 import kafka.utils.Exit
-import org.apache.kafka.clients.admin.{Admin, AdminClientTestUtils, CreatePartitionsOptions, CreateTopicsOptions, DeleteTopicsOptions, NewPartitions, NewTopic, PartitionReassignment, TopicDescription}
+import org.apache.kafka.clients.admin.{Admin, AdminClientTestUtils, CreatePartitionsOptions, CreateTopicsOptions, DeleteTopicsOptions, ListTopicsOptions, NewPartitions, NewTopic, PartitionReassignment, TopicDescription}
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartitionInfo
 import org.apache.kafka.common.errors.ThrottlingQuotaExceededException
@@ -193,7 +193,7 @@ class TopicCommandTest {
     val topicService = TopicService(adminClient)
 
     val listResult = AdminClientTestUtils.listTopicsResult(topicName)
-    when(adminClient.listTopics(any())).thenReturn(listResult)
+    when(adminClient.listTopics(any(classOf[ListTopicsOptions]))).thenReturn(listResult)
 
     val result = AdminClientTestUtils.deleteTopicsResult(topicName, Errors.THROTTLING_QUOTA_EXCEEDED.exception())
     when(adminClient.deleteTopics(any[Collection[String]](), any())).thenReturn(result)
@@ -214,7 +214,7 @@ class TopicCommandTest {
     val topicService = TopicService(adminClient)
 
     val listResult = AdminClientTestUtils.listTopicsResult(topicName)
-    when(adminClient.listTopics(any())).thenReturn(listResult)
+    when(adminClient.listTopics(any(classOf[ListTopicsOptions]))).thenReturn(listResult)
 
     val topicPartitionInfo = new TopicPartitionInfo(0, new Node(0, "", 0),
       Collections.emptyList(), Collections.emptyList())

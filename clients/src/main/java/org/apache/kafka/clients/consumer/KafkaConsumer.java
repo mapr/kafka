@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.internals.OffsetFetcher;
 import org.apache.kafka.clients.consumer.internals.SubscriptionState;
 import org.apache.kafka.clients.consumer.internals.TopicMetadataFetcher;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.IsolationLevel;
 import org.apache.kafka.common.KafkaException;
@@ -86,6 +87,8 @@ import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createLo
 import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createMetrics;
 import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createSubscriptionState;
 import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createValueDeserializer;
+
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.*;
 
 /**
  * A client that consumes records from a Kafka cluster.
@@ -569,30 +572,30 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     static final String DEFAULT_REASON = "rebalance enforced by user";
 
     // Visible for testing
-    final Metrics metrics;
-    final KafkaConsumerMetrics kafkaConsumerMetrics;
+    Metrics metrics;
+    KafkaConsumerMetrics kafkaConsumerMetrics;
 
     private Logger log;
-    private final String clientId;
-    private final Optional<String> groupId;
-    private final ConsumerCoordinator coordinator;
-    private final Deserializer<K> keyDeserializer;
-    private final Deserializer<V> valueDeserializer;
-    private final Fetcher<K, V> fetcher;
-    private final OffsetFetcher offsetFetcher;
-    private final TopicMetadataFetcher topicMetadataFetcher;
-    private final ConsumerInterceptors<K, V> interceptors;
-    private final IsolationLevel isolationLevel;
+    private String clientId;
+    private Optional<String> groupId;
+    private ConsumerCoordinator coordinator;
+    private Deserializer<K> keyDeserializer;
+    private Deserializer<V> valueDeserializer;
+    private Fetcher<K, V> fetcher;
+    private OffsetFetcher offsetFetcher;
+    private TopicMetadataFetcher topicMetadataFetcher;
+    private ConsumerInterceptors<K, V> interceptors;
+    private IsolationLevel isolationLevel;
 
-    private final Time time;
-    private final ConsumerNetworkClient client;
-    private final SubscriptionState subscriptions;
-    private final ConsumerMetadata metadata;
-    private final long retryBackoffMs;
-    private final long requestTimeoutMs;
-    private final int defaultApiTimeoutMs;
+    private Time time;
+    private ConsumerNetworkClient client;
+    private SubscriptionState subscriptions;
+    private ConsumerMetadata metadata;
+    private long retryBackoffMs;
+    private long requestTimeoutMs;
+    private int defaultApiTimeoutMs;
     private volatile boolean closed = false;
-    private final List<ConsumerPartitionAssignor> assignors;
+    private List<ConsumerPartitionAssignor> assignors;
 
     // currentThread holds the threadId of the current thread accessing KafkaConsumer
     // and is used to prevent multi-threaded access
@@ -602,6 +605,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     // to keep from repeatedly scanning subscriptions in poll(), cache the result during metadata updates
     private boolean cachedSubscriptionHasAllFetchPositions;
+
+    // MapR-specific section
+    private boolean isMapr;
+    private Consumer<K, V> consumerDriver;
+    private String defaultStream;
 
     /**
      * A consumer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
@@ -701,6 +709,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             this.keyDeserializer = createKeyDeserializer(config, keyDeserializer);
             this.valueDeserializer = createValueDeserializer(config, valueDeserializer);
             this.subscriptions = createSubscriptionState(config, logContext);
+
+            if (maybeMaprInitialize(config, keyDeserializer, valueDeserializer)) {
+                return;
+            }
+
             ClusterResourceListeners clusterResourceListeners = configureClusterResourceListeners(this.keyDeserializer,
                     this.valueDeserializer, metrics.reporters(), interceptorList);
             this.metadata = new ConsumerMetadata(config, subscriptions, logContext, clusterResourceListeners);
@@ -826,6 +839,33 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * MapR initialization branch alternate to the Apache KafkaConsumer.<init>().
+     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
+     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Consumer initialization.
+     * Otherwise, just returns false, proceeding to Apache Consumer initialization.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean maybeMaprInitialize(ConsumerConfig config,
+                                        Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
+        this.isMapr = isMapr(config);
+        if (isMapr) {
+            try {
+                this.defaultStream = config.getString(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG);
+
+                Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
+                this.consumerDriver = GenericHFactory.getImplementorInstance(
+                        "com.mapr.kafka.eventstreams.impl.listener.MarlinListenerV10",
+                        new Object [] {config, this.keyDeserializer, this.valueDeserializer, this.interceptors},
+                        new Class[] {ConsumerConfig.class, Deserializer.class, Deserializer.class,
+                                ConsumerInterceptors.class});
+            } catch (Throwable e) {
+                throw new RuntimeException("Error occurred while initializing MapR consumer", e);
+            }
+        }
+        return isMapr;
+    }
+
+    /**
      * Get the set of partitions currently assigned to this consumer. If subscription happened by directly assigning
      * partitions using {@link #assign(Collection)} then this will simply return the same partitions that
      * were assigned. If topic subscription was used, then this will give the set of topic partitions currently assigned
@@ -836,6 +876,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Set<TopicPartition> assignment() {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.assignment();
+            }
             return Collections.unmodifiableSet(this.subscriptions.assignedPartitions());
         } finally {
             release();
@@ -850,6 +893,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Set<String> subscription() {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.subscription();
+            }
             return Collections.unmodifiableSet(new HashSet<>(this.subscriptions.subscription()));
         } finally {
             release();
@@ -905,6 +951,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 for (String topic : topics) {
                     if (Utils.isBlank(topic))
                         throw new IllegalArgumentException("Topic collection to subscribe to cannot contain null or empty topic");
+                }
+
+                if (isMapr) {
+                    Collection<String> wrappedTopics = maybeWrapDefaultStream(defaultStream, topics);
+                    log.info("Subscribing to topic(s): {}", Utils.join(wrappedTopics, ", "));
+                    if (this.subscriptions.subscribe(new HashSet<>(wrappedTopics), listener))
+                        consumerDriver.subscribe(wrappedTopics, listener);
+                    return;
                 }
 
                 throwIfNoAssignorsConfigured();
@@ -972,6 +1026,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                Pattern wrappedPattern = Pattern.compile(maybeWrapDefaultStream(defaultStream, pattern.toString()));
+                log.info("Subscribing to pattern: '{}'", wrappedPattern);
+                this.subscriptions.subscribe(wrappedPattern, listener);
+                consumerDriver.subscribe(wrappedPattern, listener);
+                return;
+            }
+
             throwIfNoAssignorsConfigured();
             log.info("Subscribed to pattern: '{}'", pattern);
             this.subscriptions.subscribe(pattern, listener);
@@ -1012,6 +1074,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public void unsubscribe() {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                this.subscriptions.unsubscribe();
+                consumerDriver.unsubscribe();
+                log.info("Unsubscribed all topics or patterns and assigned partitions");
+                return;
+            }
             fetcher.clearBufferedDataForUnassignedPartitions(Collections.emptySet());
             if (this.coordinator != null) {
                 this.coordinator.onLeavePrepare();
@@ -1056,6 +1124,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     String topic = (tp != null) ? tp.topic() : null;
                     if (Utils.isBlank(topic))
                         throw new IllegalArgumentException("Topic partitions to assign to cannot have null or empty topic");
+                }
+                if (isMapr) {
+                    maybeWrapDefaultStreamPartitions(defaultStream, partitions);
+                    log.info("Assigning partition(s): {}", Utils.join(partitions, ", "));
+                    if (this.subscriptions.assignFromUser(new HashSet<>(partitions)))
+                        consumerDriver.assign(partitions);
+                    return;
                 }
                 fetcher.clearBufferedDataForUnassignedPartitions(partitions);
 
@@ -1165,6 +1240,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private ConsumerRecords<K, V> poll(final Timer timer, final boolean includeMetadataInTimeout) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return this.interceptors.onConsume(consumerDriver.poll(Duration.ofMillis(timer.timeoutMs())));
+            }
             this.kafkaConsumerMetrics.recordPollStart(timer.currentTimeMs());
 
             if (this.subscriptions.hasNoSubscriptionOrUserAssignment()) {
@@ -1207,7 +1285,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             return ConsumerRecords.empty();
         } finally {
             release();
-            this.kafkaConsumerMetrics.recordPollEnd(timer.currentTimeMs());
+            if (this.kafkaConsumerMetrics != null) {
+                this.kafkaConsumerMetrics.recordPollEnd(timer.currentTimeMs());
+            }
         }
     }
 
@@ -1346,6 +1426,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync(Duration timeout) {
+        if (isMapr) {
+            acquireAndEnsureOpen();
+            try {
+                maybeThrowInvalidGroupIdException();
+                consumerDriver.commitSync(timeout);
+                return;
+            } finally {
+                release();
+            }
+        }
         commitSync(subscriptions.allConsumed(), timeout);
     }
 
@@ -1446,6 +1536,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         long commitStart = time.nanoseconds();
         try {
             maybeThrowInvalidGroupIdException();
+            if (isMapr) {
+                consumerDriver.commitSync(maybeWrapDefaultStreamPartitions(defaultStream, offsets), timeout);
+                return;
+            }
             offsets.forEach(this::updateLastSeenEpochIfNewer);
             if (!coordinator.commitOffsetsSync(new HashMap<>(offsets), time.timer(timeout))) {
                 throw new TimeoutException("Timeout of " + timeout.toMillis() + "ms expired before successfully " +
@@ -1487,6 +1581,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitAsync(OffsetCommitCallback callback) {
+        if (isMapr) {
+            acquireAndEnsureOpen();
+            try {
+                maybeThrowInvalidGroupIdException();
+                consumerDriver.commitAsync(callback);
+                return;
+            } finally {
+                release();
+            }
+        }
         commitAsync(subscriptions.allConsumed(), callback);
     }
 
@@ -1517,6 +1621,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             maybeThrowInvalidGroupIdException();
+            if (isMapr) {
+                consumerDriver.commitAsync(maybeWrapDefaultStreamPartitions(defaultStream, offsets), callback);
+                return;
+            }
             log.debug("Committing offsets: {}", offsets);
             offsets.forEach(this::updateLastSeenEpochIfNewer);
             coordinator.commitOffsetsAsync(new HashMap<>(offsets), callback);
@@ -1562,6 +1670,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             log.info("Seeking to offset {} for partition {}", offset, partition);
+            if (isMapr) {
+                partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
+                this.subscriptions.seek(partition, offset);
+                consumerDriver.seek(partition, offset);
+                return;
+            }
             SubscriptionState.FetchPosition newPosition = new SubscriptionState.FetchPosition(
                     offset,
                     Optional.empty(), // This will ensure we skip validation
@@ -1596,6 +1710,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             } else {
                 log.info("Seeking to offset {} for partition {}", offset, partition);
             }
+            if (isMapr) {
+                partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
+                this.subscriptions.seek(partition, offset);
+                consumerDriver.seek(partition, offsetAndMetadata);
+                return;
+            }
             Metadata.LeaderAndEpoch currentLeaderAndEpoch = this.metadata.currentLeader(partition);
             SubscriptionState.FetchPosition newPosition = new SubscriptionState.FetchPosition(
                     offsetAndMetadata.offset(),
@@ -1623,6 +1743,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
+                maybeWrapDefaultStreamPartitions(defaultStream, parts);
+                subscriptions.requestOffsetReset(parts, OffsetResetStrategy.EARLIEST);
+                consumerDriver.seekToBeginning(parts);
+                return;
+            }
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             subscriptions.requestOffsetReset(parts, OffsetResetStrategy.EARLIEST);
         } finally {
@@ -1648,6 +1775,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
+                maybeWrapDefaultStreamPartitions(defaultStream, parts);
+                subscriptions.requestOffsetReset(parts, OffsetResetStrategy.LATEST);
+                consumerDriver.seekToEnd(parts);
+                return;
+            }
             Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
             subscriptions.requestOffsetReset(parts, OffsetResetStrategy.LATEST);
         } finally {
@@ -1717,6 +1851,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             if (!this.subscriptions.isAssigned(partition))
                 throw new IllegalStateException("You can only check the position for partitions assigned to this consumer.");
+
+            if (isMapr) {
+                partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
+                return consumerDriver.position(partition, timeout);
+            }
 
             Timer timer = time.timer(timeout);
             do {
@@ -1855,6 +1994,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         long start = time.nanoseconds();
         try {
             maybeThrowInvalidGroupIdException();
+            if (isMapr) {
+                return consumerDriver.committed(
+                        (Set<TopicPartition>) maybeWrapDefaultStreamPartitions(defaultStream, partitions), timeout);
+            }
             final Map<TopicPartition, OffsetAndMetadata> offsets;
             offsets = coordinator.fetchCommittedOffsets(partitions, time.timer(timeout));
             if (offsets == null) {
@@ -1873,9 +2016,15 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     /**
      * Get the metrics kept by the consumer
+     * For MapR Consumer, {@link ConsumerConfig#METRICS_ENABLED_CONFIG} config must be set to true, otherwise
+     * it returns an empty map.
+     * See MapR Kafka metrics documentation for details.
      */
     @Override
     public Map<MetricName, ? extends Metric> metrics() {
+        if (isMapr) {
+            return consumerDriver.metrics();
+        }
         return Collections.unmodifiableMap(this.metrics.metrics());
     }
 
@@ -1924,6 +2073,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public List<PartitionInfo> partitionsFor(String topic, Duration timeout) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.partitionsFor(maybeWrapDefaultStream(defaultStream, topic));
+            }
             Cluster cluster = this.metadata.fetch();
             List<PartitionInfo> parts = cluster.partitionsForTopic(topic);
             if (!parts.isEmpty())
@@ -1975,7 +2127,108 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Map<String, List<PartitionInfo>> listTopics(Duration timeout) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                if (defaultStream == null) {
+                    throw new KafkaException("Cannot get listTopics() without default stream name");
+                }
+                return listTopics(defaultStream);
+            }
             return topicMetadataFetcher.getAllTopicMetadata(time.timer(timeout));
+        } finally {
+            release();
+        }
+    }
+
+    /**
+     * MapR specific method, not allowed in Apache kafka.
+     * Get metadata about partitions for all topics in the specified MapR stream that the user is authorized to view.
+
+     * @return The map of topics and its partitions
+     *
+     * @throws org.apache.kafka.common.errors.WakeupException if {@link #wakeup()} is called before or while this
+     *             function is called
+     * @throws org.apache.kafka.common.errors.InterruptException if the calling thread is interrupted before or while
+     *             this function is called
+     * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
+     * @throws org.apache.kafka.common.errors.TimeoutException if the offset metadata could not be fetched before
+     *         the amount of time allocated by {@code default.api.timeout.ms} expires.
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+        return listTopics(stream, Duration.ofMillis(defaultApiTimeoutMs));
+    }
+
+    /**
+     * MapR specific method, not allowed in Apache kafka.
+     * Get metadata about partitions for all topics in the specified MapR stream that the user is authorized to view.
+
+     * @return The map of topics and its partitions
+     *
+     * @throws org.apache.kafka.common.errors.WakeupException if {@link #wakeup()} is called before or while this
+     *             function is called
+     * @throws org.apache.kafka.common.errors.InterruptException if the calling thread is interrupted before or while
+     *             this function is called
+     * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
+     * @throws org.apache.kafka.common.errors.TimeoutException if the offset metadata could not be fetched before
+     *         the amount of time allocated by {@code default.api.timeout.ms} expires.
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout) {
+        if (!isMapr) {
+            throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                    "which is not allowed in Apache mode.");
+        }
+        acquireAndEnsureOpen();
+        try {
+            return consumerDriver.listTopics(stream, timeout);
+        } finally {
+            release();
+        }
+    }
+
+    /**
+     * MapR specific method, not allowed in Apache kafka.
+     * Get metadata about partitions for all topics matching the specified pattern.
+
+     * @return The map of topics and its partitions
+     *
+     * @throws org.apache.kafka.common.errors.WakeupException if {@link #wakeup()} is called before or while this
+     *             function is called
+     * @throws org.apache.kafka.common.errors.InterruptException if the calling thread is interrupted before or while
+     *             this function is called
+     * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
+     * @throws org.apache.kafka.common.errors.TimeoutException if the offset metadata could not be fetched before
+     *         the amount of time allocated by {@code default.api.timeout.ms} expires.
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+        return listTopics(pattern, Duration.ofMillis(defaultApiTimeoutMs));
+    }
+
+    /**
+     * MapR specific method, not allowed in Apache kafka.
+     * Get metadata about partitions for all topics matching the specified pattern.
+
+     * @return The map of topics and its partitions
+     *
+     * @throws org.apache.kafka.common.errors.WakeupException if {@link #wakeup()} is called before or while this
+     *             function is called
+     * @throws org.apache.kafka.common.errors.InterruptException if the calling thread is interrupted before or while
+     *             this function is called
+     * @throws org.apache.kafka.common.KafkaException for any other unrecoverable errors
+     * @throws org.apache.kafka.common.errors.TimeoutException if the offset metadata could not be fetched before
+     *         the amount of time allocated by {@code default.api.timeout.ms} expires.
+     */
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern, Duration timeout) {
+        if (!isMapr) {
+            throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                    "which is not allowed in Apache mode.");
+        }
+        acquireAndEnsureOpen();
+        try {
+            return consumerDriver.listTopics(
+                    Pattern.compile(maybeWrapDefaultStream(defaultStream, pattern.toString())), timeout);
         } finally {
             release();
         }
@@ -1996,6 +2249,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             log.debug("Pausing partitions {}", partitions);
+            if (isMapr) {
+                consumerDriver.pause(maybeWrapDefaultStreamPartitions(defaultStream, partitions));
+                return;
+            }
             for (TopicPartition partition: partitions) {
                 subscriptions.pause(partition);
             }
@@ -2016,6 +2273,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             log.debug("Resuming partitions {}", partitions);
+            if (isMapr) {
+                consumerDriver.resume(maybeWrapDefaultStreamPartitions(defaultStream, partitions));
+                return;
+            }
             for (TopicPartition partition: partitions) {
                 subscriptions.resume(partition);
             }
@@ -2033,6 +2294,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Set<TopicPartition> paused() {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.paused();
+            }
             return Collections.unmodifiableSet(subscriptions.pausedPartitions());
         } finally {
             release();
@@ -2098,6 +2362,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     throw new IllegalArgumentException("The target time for partition " + entry.getKey() + " is " +
                             entry.getValue() + ". The target time cannot be negative.");
             }
+            if (isMapr) {
+                return consumerDriver.offsetsForTimes(
+                        maybeWrapDefaultStreamPartitions(defaultStream, timestampsToSearch), timeout);
+            }
             return offsetFetcher.offsetsForTimes(timestampsToSearch, time.timer(timeout));
         } finally {
             release();
@@ -2143,6 +2411,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Map<TopicPartition, Long> beginningOffsets(Collection<TopicPartition> partitions, Duration timeout) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.beginningOffsets(
+                        maybeWrapDefaultStreamPartitions(defaultStream, partitions), timeout);
+            }
             return offsetFetcher.beginningOffsets(partitions, time.timer(timeout));
         } finally {
             release();
@@ -2198,6 +2470,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                return consumerDriver.endOffsets(
+                        maybeWrapDefaultStreamPartitions(defaultStream, partitions), timeout);
+            }
             return offsetFetcher.endOffsets(partitions, time.timer(timeout));
         } finally {
             release();
@@ -2205,6 +2481,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
+     * Not supported in MapR Consumer.
      * Get the consumer's current lag on the partition. Returns an "empty" {@link OptionalLong} if the lag is not known,
      * for example if there is no position yet, or if the end offset is not known yet.
      *
@@ -2220,6 +2497,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      **/
     @Override
     public OptionalLong currentLag(TopicPartition topicPartition) {
+        maybeThrowMaprUsupported("currentLag method is not currently supported in MapR Consumer");
         acquireAndEnsureOpen();
         try {
             final Long lag = subscriptions.partitionLag(topicPartition, isolationLevel);
@@ -2257,6 +2535,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         acquireAndEnsureOpen();
         try {
             maybeThrowInvalidGroupIdException();
+            if (isMapr) {
+                return consumerDriver.groupMetadata();
+            }
             return coordinator.groupMetadata();
         } finally {
             release();
@@ -2289,6 +2570,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public void enforceRebalance(final String reason) {
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                consumerDriver.enforceRebalance(reason == null || reason.isEmpty() ? DEFAULT_REASON : reason);
+                return;
+            }
             if (coordinator == null) {
                 throw new IllegalStateException("Tried to force a rebalance but consumer does not have a group.");
             }
@@ -2360,6 +2645,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void wakeup() {
+        if (isMapr) {
+            consumerDriver.wakeup();
+            return;
+        }
         this.client.wakeup();
     }
 
@@ -2411,6 +2700,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         Utils.closeQuietly(client, "consumer network client", firstException);
         Utils.closeQuietly(keyDeserializer, "consumer key deserializer", firstException);
         Utils.closeQuietly(valueDeserializer, "consumer value deserializer", firstException);
+        Utils.closeQuietly(consumerDriver, "MapR consumer driver", firstException);
         AppInfoParser.unregisterAppInfo(CONSUMER_JMX_PREFIX, clientId, metrics);
         log.debug("Kafka consumer has been closed");
         Throwable exception = firstException.get();
@@ -2504,6 +2794,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (!groupId.isPresent())
             throw new InvalidGroupIdException("To use the group management or offset commit APIs, you must " +
                     "provide a valid " + ConsumerConfig.GROUP_ID_CONFIG + " in the consumer configuration.");
+    }
+
+    private void maybeThrowMaprUsupported(String message) {
+        if (isMapr)
+            throw new KafkaException(message);
     }
 
     private void updateLastSeenEpochIfNewer(TopicPartition topicPartition, OffsetAndMetadata offsetAndMetadata) {

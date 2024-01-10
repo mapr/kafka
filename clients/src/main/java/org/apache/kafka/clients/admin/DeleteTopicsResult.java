@@ -44,11 +44,11 @@ public class DeleteTopicsResult {
         this.nameFutures = nameFutures;
     }
 
-    static DeleteTopicsResult ofTopicIds(Map<Uuid, KafkaFuture<Void>> topicIdFutures) {
+    public static DeleteTopicsResult ofTopicIds(Map<Uuid, KafkaFuture<Void>> topicIdFutures) {
         return new DeleteTopicsResult(topicIdFutures, null);
     }
 
-    static DeleteTopicsResult ofTopicNames(Map<String, KafkaFuture<Void>> nameFutures) {
+    public static DeleteTopicsResult ofTopicNames(Map<String, KafkaFuture<Void>> nameFutures) {
         return new DeleteTopicsResult(null, nameFutures);
     }
 

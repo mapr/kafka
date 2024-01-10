@@ -17,7 +17,9 @@
 
 package org.apache.kafka.clients.admin;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Metric;
@@ -42,6 +44,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.isMapr;
 
 /**
  * The administrative client for Kafka, which supports managing and inspecting topics, brokers, configurations and ACLs.
@@ -127,20 +131,42 @@ public interface Admin extends AutoCloseable {
     /**
      * Create a new Admin with the given configuration.
      *
+     * MapR initialization branch alternative to the Apache KafkaAdminClient.createInternal():
+     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
+     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Admin initialization.
+     * Otherwise, proceeds to Apache Admin initialization.
+     *
      * @param props The configuration.
      * @return The new KafkaAdminClient.
      */
     static Admin create(Properties props) {
+        if (isMapr(props)) {
+            return GenericHFactory.runMethod("com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl",
+                    "createInternal",
+                    new Object [] {new AdminClientConfig(props, true)},
+                    new Class [] {AdminClientConfig.class});
+        }
         return KafkaAdminClient.createInternal(new AdminClientConfig(props, true), null);
     }
 
     /**
      * Create a new Admin with the given configuration.
      *
+     * MapR initialization branch alternative to the Apache KafkaAdminClient.createInternal():
+     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
+     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Admin initialization.
+     * Otherwise, proceeds to Apache Admin initialization.
+     *
      * @param conf The configuration.
      * @return The new KafkaAdminClient.
      */
     static Admin create(Map<String, Object> conf) {
+        if (isMapr(conf)) {
+            return GenericHFactory.runMethod("com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl",
+                    "createInternal",
+                    new Object [] {new AdminClientConfig(conf, true)},
+                    new Class [] {AdminClientConfig.class});
+        }
         return KafkaAdminClient.createInternal(new AdminClientConfig(conf, true), null, null);
     }
 
@@ -265,7 +291,7 @@ public interface Admin extends AutoCloseable {
     DeleteTopicsResult deleteTopics(TopicCollection topics, DeleteTopicsOptions options);
 
     /**
-     * List the topics available in the cluster with the default options.
+     * List the topics available in the cluster (or default stream if MapR) with the default options.
      * <p>
      * This is a convenience method for {@link #listTopics(ListTopicsOptions)} with default options.
      * See the overload for more details.
@@ -277,12 +303,36 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
-     * List the topics available in the cluster.
+     * List the topics available in the cluster (or default stream if MapR).
      *
      * @param options The options to use when listing the topics.
      * @return The ListTopicsResult.
      */
     ListTopicsResult listTopics(ListTopicsOptions options);
+
+    /**
+     * MapR specific method, not available in Apache Kafka.
+     * List the topics available in the specified stream with the default options.
+     *
+     * This is a convenience method for #{@link #listTopics(String, ListTopicsOptions)} with default options.
+     * See the overload for more details.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @return                  The ListTopicsResult.
+     */
+    default ListTopicsResult listTopics(String streamPath) {
+        return listTopics(streamPath, new ListTopicsOptions());
+    }
+
+    /**
+     * MapR specific method, not available in Apache Kafka.
+     * List the topics available in the specified stream.
+     *
+     * @param streamPath        The name of the stream for which the topics should be listed
+     * @param options           The options to use when listing the topics.
+     * @return                  The ListTopicsResult.
+     */
+    ListTopicsResult listTopics(String streamPath, ListTopicsOptions options);
 
     /**
      * Describe some topics in the cluster, with the default options.
@@ -353,6 +403,7 @@ public interface Admin extends AutoCloseable {
     DescribeClusterResult describeCluster(DescribeClusterOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * This is a convenience method for {@link #describeAcls(AclBindingFilter, DescribeAclsOptions)} with
      * default options. See the overload for more details.
      * <p>
@@ -366,6 +417,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Lists access control lists (ACLs) according to the supplied filter.
      * <p>
      * Note: it may take some time for changes made by {@code createAcls} or {@code deleteAcls} to be reflected
@@ -380,6 +432,7 @@ public interface Admin extends AutoCloseable {
     DescribeAclsResult describeAcls(AclBindingFilter filter, DescribeAclsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * This is a convenience method for {@link #createAcls(Collection, CreateAclsOptions)} with
      * default options. See the overload for more details.
      * <p>
@@ -393,6 +446,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Creates access control lists (ACLs) which are bound to specific resources.
      * <p>
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -409,6 +463,7 @@ public interface Admin extends AutoCloseable {
     CreateAclsResult createAcls(Collection<AclBinding> acls, CreateAclsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * This is a convenience method for {@link #deleteAcls(Collection, DeleteAclsOptions)} with default options.
      * See the overload for more details.
      * <p>
@@ -422,6 +477,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Deletes access control lists (ACLs) according to the supplied filters.
      * <p>
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
@@ -436,6 +492,7 @@ public interface Admin extends AutoCloseable {
 
 
     /**
+     * Not supported in MapR Admin.
      * Get the configuration for the specified resources with the default options.
      * <p>
      * This is a convenience method for {@link #describeConfigs(Collection, DescribeConfigsOptions)} with default options.
@@ -451,6 +508,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Get the configuration for the specified resources.
      * <p>
      * The returned configuration includes default values and the isDefault() method can be used to distinguish them
@@ -470,6 +528,7 @@ public interface Admin extends AutoCloseable {
     DescribeConfigsResult describeConfigs(Collection<ConfigResource> resources, DescribeConfigsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Update the configuration for the specified resources with the default options.
      * <p>
      * This is a convenience method for {@link #alterConfigs(Map, AlterConfigsOptions)} with default options.
@@ -488,6 +547,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Update the configuration for the specified resources with the default options.
      * <p>
      * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
@@ -505,6 +565,7 @@ public interface Admin extends AutoCloseable {
     AlterConfigsResult alterConfigs(Map<ConfigResource, Config> configs, AlterConfigsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Incrementally updates the configuration for the specified resources with default options.
      * <p>
      * This is a convenience method for {@link #incrementalAlterConfigs(Map, AlterConfigsOptions)} with default options.
@@ -520,6 +581,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Incrementally update the configuration for the specified resources.
      * <p>
      * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
@@ -548,6 +610,7 @@ public interface Admin extends AutoCloseable {
         Collection<AlterConfigOp>> configs, AlterConfigsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
      * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on the
      * broker when it is created later. If the replica already exists on the broker, the replica will be moved to the given
@@ -568,6 +631,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
      * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on the
      * broker when it is created later. If the replica already exists on the broker, the replica will be moved to the given
@@ -585,6 +649,7 @@ public interface Admin extends AutoCloseable {
                                                   AlterReplicaLogDirsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Query the information of all log directories on the given set of brokers
      * <p>
      * This is a convenience method for {@link #describeLogDirs(Collection, DescribeLogDirsOptions)} with default options.
@@ -600,6 +665,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Query the information of all log directories on the given set of brokers
      * <p>
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -611,6 +677,7 @@ public interface Admin extends AutoCloseable {
     DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, DescribeLogDirsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Query the replica log directory information for the specified replicas.
      * <p>
      * This is a convenience method for {@link #describeReplicaLogDirs(Collection, DescribeReplicaLogDirsOptions)}
@@ -626,6 +693,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Query the replica log directory information for the specified replicas.
      * <p>
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -693,6 +761,7 @@ public interface Admin extends AutoCloseable {
                                             CreatePartitionsOptions options);
 
     /**
+     * Not supported in MapR Admin.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      * <p>
      * This is a convenience method for {@link #deleteRecords(Map, DeleteRecordsOptions)} with default options.
@@ -708,6 +777,7 @@ public interface Admin extends AutoCloseable {
     }
 
     /**
+     * Not supported in MapR Admin.
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      * <p>
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -1215,6 +1285,8 @@ public interface Admin extends AutoCloseable {
      * <p>List offset for the specified partitions and OffsetSpec. This operation enables to find
      * the beginning offset, end offset as well as the offset matching a timestamp in partitions.
      *
+     * Note that in MapR Admin offset spec is ignored and this method returns only end offset regardless of offset spec
+     *
      * <p>This is a convenience method for {@link #listOffsets(Map, ListOffsetsOptions)}
      *
      * @param topicPartitionOffsets The mapping from partition to the OffsetSpec to look up.
@@ -1227,6 +1299,8 @@ public interface Admin extends AutoCloseable {
     /**
      * <p>List offset for the specified partitions. This operation enables to find
      * the beginning offset, end offset as well as the offset matching a timestamp in partitions.
+     *
+     * Note that in MapR Admin offset spec is ignored and this method returns only end offset regardless of offset spec
      *
      * @param topicPartitionOffsets The mapping from partition to the OffsetSpec to look up.
      * @param options The options to use when retrieving the offsets

@@ -96,6 +96,7 @@ include 'clients',
     'streams:upgrade-system-tests-35',
     'tools',
     'tools:tools-api',
-    'trogdor'
+    'trogdor',
+    'eventstreams'
 
 rootProject.name = 'kafka'

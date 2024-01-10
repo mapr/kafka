@@ -32,7 +32,7 @@ public class CreatePartitionsResult {
 
     private final Map<String, KafkaFuture<Void>> values;
 
-    CreatePartitionsResult(Map<String, KafkaFuture<Void>> values) {
+    public CreatePartitionsResult(Map<String, KafkaFuture<Void>> values) {
         this.values = values;
     }
 

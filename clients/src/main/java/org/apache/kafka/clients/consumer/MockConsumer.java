@@ -49,6 +49,7 @@ import static org.apache.kafka.clients.consumer.KafkaConsumer.DEFAULT_CLOSE_TIME
 
 
 /**
+ * Not supported in MapR Kafka.
  * A mock of the {@link Consumer} interface you can use for testing code that uses Kafka. This class is <i> not
  * threadsafe </i>. However, you can use the {@link #schedulePollTask(Runnable)} method to write multithreaded tests
  * where a driver thread waits for {@link #poll(Duration)} to be called by a background thread and then can safely perform
@@ -477,6 +478,32 @@ public class MockConsumer<K, V> implements Consumer<K, V> {
     @Override
     public synchronized void wakeup() {
         wakeup.set(true);
+    }
+
+    // MapR specific listTopics() methods
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern, Duration timeout) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
     }
 
     /**

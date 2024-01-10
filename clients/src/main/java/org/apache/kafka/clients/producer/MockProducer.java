@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 
 /**
+ * Not supported in MapR Kafka
  * A mock of the producer interface you can use for testing code that uses Kafka.
  * <p>
  * By default this mock will synchronously complete each send call successfully. However it can be configured to allow

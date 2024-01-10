@@ -29,6 +29,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 /**
+ * Not supported in MapR Kafka
  * <p>The round robin assignor lays out all the available partitions and all the available consumers. It
  * then proceeds to do a round robin assignment from partition to consumer. If the subscriptions of all consumer
  * instances are identical, then the partitions will be uniformly distributed. (i.e., the partition ownership counts

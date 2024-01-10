@@ -42,10 +42,12 @@ public class CommonClientConfigs {
      */
 
     public static final String BOOTSTRAP_SERVERS_CONFIG = "bootstrap.servers";
+    public static final String MAPR_BOOTSTRAP_SERVERS_REGEX = "^fake(:9092)?$";
     public static final String BOOTSTRAP_SERVERS_DOC = "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. The client will make use of all servers irrespective of which servers are specified here for bootstrapping&mdash;this list only impacts the initial hosts used to discover the full set of servers. This list should be in the form "
                                                        + "<code>host1:port1,host2:port2,...</code>. Since these servers are just used for the initial connection to "
                                                        + "discover the full cluster membership (which may change dynamically), this list need not contain the full set of "
-                                                       + "servers (you may want more than one, though, in case a server is down).";
+                                                       + "servers (you may want more than one, though, in case a server is down)."
+                                                       + " If set to <code>fake</code> or <code>fake:9092</code>, MapR client will be initialized instead of Apache.";
 
     public static final String CLIENT_DNS_LOOKUP_CONFIG = "client.dns.lookup";
     public static final String CLIENT_DNS_LOOKUP_DOC = "Controls how the client uses DNS lookups. "
@@ -192,6 +194,16 @@ public class CommonClientConfigs {
     public static final String DEFAULT_API_TIMEOUT_MS_CONFIG = "default.api.timeout.ms";
     public static final String DEFAULT_API_TIMEOUT_MS_DOC = "Specifies the timeout (in milliseconds) for client APIs. " +
             "This configuration is used as the default timeout for all client operations that do not specify a <code>timeout</code> parameter.";
+
+    /** STREAMS SPECIFIC SETTINGS **/
+
+    /** <code>fs.mapr.hardmount</code> **/
+    public static final String STREAMS_HARDMOUNT_CONFIG = "fs.mapr.hardmount";
+    public static final String STREAMS_HARDMOUNT_DOC = "If server is down/unreachable, keep retrying the RPC.";
+
+    /** <code>streams.rpc.timeout.ms</code> **/
+    public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = "streams.rpc.timeout.ms";
+    public static final String STREAMS_RPC_TIMEOUT_MS_DOC = "RPCs to the server can timeout after the specified time (in milliseconds). ";
 
     /**
      * Postprocess the configuration so that exponential backoff is disabled when reconnect backoff

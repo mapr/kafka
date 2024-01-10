@@ -278,4 +278,26 @@ public interface Consumer<K, V> extends Closeable {
      */
     void wakeup();
 
+    // MapR specific API section
+
+    /**
+     * @see KafkaConsumer#listTopics(String)
+     */
+    Map<String, List<PartitionInfo>> listTopics(String stream);
+
+    /**
+     * @see KafkaConsumer#listTopics(String, Duration)
+     */
+    Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout);
+
+    /**
+     * @see KafkaConsumer#listTopics(String)
+     */
+    Map<String, List<PartitionInfo>> listTopics(Pattern pattern);
+
+    /**
+     * @see KafkaConsumer#listTopics(String, Duration)
+     */
+    Map<String, List<PartitionInfo>> listTopics(Pattern pattern, Duration timeout);
+
 }

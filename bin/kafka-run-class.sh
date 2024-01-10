@@ -45,6 +45,17 @@ should_include_file() {
   fi
 }
 
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
+# Set up MapR Java classpath
+CLASSPATH="${MAPR_CONF}:$(get_mapr_core_jars):$(get_log4j12_jars):$(get_mapr_app_jars):$(get_external_jars)"
+# Add mapr-security-web.jar
+for file in "${BASEMAPR:-/opt/mapr}"/lib/mapr-security-web-*.jar
+do
+  CLASSPATH="$CLASSPATH":"$file"
+done
+
 base_dir=$(dirname $0)/..
 
 if [ -z "$SCALA_VERSION" ]; then

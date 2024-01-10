@@ -27,7 +27,7 @@ public final class TopicPartition implements Serializable {
 
     private int hash = 0;
     private final int partition;
-    private final String topic;
+    private String topic;
 
     public TopicPartition(String topic, int partition) {
         this.partition = partition;
@@ -40,6 +40,16 @@ public final class TopicPartition implements Serializable {
 
     public String topic() {
         return topic;
+    }
+
+    /**
+     * ONLY FOR MAPR INTERNAL USE!
+     * This method is used only for wrapping a user provided topic with a default stream.
+     * DO NOT USE DIRECTLY.
+     * @param topic new topic name
+     */
+    public void setTopic(String topic) {
+        this.topic = topic;
     }
 
     @Override

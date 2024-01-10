@@ -48,7 +48,7 @@ import java.util.Objects;
  */
 public class ProducerRecord<K, V> {
 
-    private final String topic;
+    private String topic;
     private final Integer partition;
     private final Headers headers;
     private final K key;
@@ -148,6 +148,16 @@ public class ProducerRecord<K, V> {
      */
     public String topic() {
         return topic;
+    }
+
+    /**
+     * ONLY FOR MAPR INTERNAL USE!
+     * This method is used only for wrapping a user provided topic with a default stream.
+     * DO NOT USE DIRECTLY.
+     * @param topic new topic name
+     */
+    protected void setTopic(String topic) {
+        this.topic = topic;
     }
 
     /**

@@ -77,6 +77,7 @@ import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createSu
 import static org.apache.kafka.clients.consumer.internals.ConsumerUtils.createValueDeserializer;
 
 /**
+ * Not supported in MapR Kafka
  * This prototype consumer uses the EventHandler to process application
  * events so that the network IO can be processed in a background thread. Visit
  * <a href="https://cwiki.apache.org/confluence/display/KAFKA/Proposal%3A+Consumer+Threading+Model+Refactor" >this document</a>
@@ -361,6 +362,32 @@ public class PrototypeAsyncConsumer<K, V> implements Consumer<K, V> {
     @Override
     public Map<String, List<PartitionInfo>> listTopics(Duration timeout) {
         throw new KafkaException("method not implemented");
+    }
+
+    // MapR specific listTopics() methods
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(String stream, Duration timeout) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
+    public Map<String, List<PartitionInfo>> listTopics(Pattern pattern, Duration timeout) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
     }
 
     @Override

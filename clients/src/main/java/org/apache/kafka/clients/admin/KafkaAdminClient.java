@@ -1894,6 +1894,12 @@ public class KafkaAdminClient extends AdminClient {
     }
 
     @Override
+    public ListTopicsResult listTopics(String streamPath, ListTopicsOptions options) {
+        throw new KafkaException("listTopics with a stream name is a MapR specific method " +
+                "which is not allowed in Apache mode.");
+    }
+
+    @Override
     public DescribeTopicsResult describeTopics(final TopicCollection topics, DescribeTopicsOptions options) {
         if (topics instanceof TopicIdCollection)
             return DescribeTopicsResult.ofTopicIds(handleDescribeTopicsByIds(((TopicIdCollection) topics).topicIds(), options));

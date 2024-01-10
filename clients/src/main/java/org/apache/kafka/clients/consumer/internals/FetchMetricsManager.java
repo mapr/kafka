@@ -35,14 +35,14 @@ import java.util.Set;
  */
 public class FetchMetricsManager {
 
-    private final Metrics metrics;
+    public final Metrics metrics;
     private final FetchMetricsRegistry metricsRegistry;
     private final Sensor throttleTime;
-    private final Sensor bytesFetched;
-    private final Sensor recordsFetched;
-    private final Sensor fetchLatency;
-    private final Sensor recordsLag;
-    private final Sensor recordsLead;
+    public final Sensor bytesFetched;
+    public final Sensor recordsFetched;
+    public final Sensor fetchLatency;
+    public final Sensor recordsLag;
+    public final Sensor recordsLead;
 
     private int assignmentId = 0;
     private Set<TopicPartition> assignedPartitions = Collections.emptySet();
