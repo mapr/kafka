@@ -1221,6 +1221,7 @@ project(':metadata') {
 
   compileJava.dependsOn 'processMessages'
   srcJar.dependsOn 'processMessages'
+  testSrcJar.dependsOn 'processMessages'
 
   sourceSets {
     main {
@@ -1301,6 +1302,7 @@ project(':group-coordinator') {
 
   compileJava.dependsOn 'processMessages'
   srcJar.dependsOn 'processMessages'
+  testSrcJar.dependsOn 'processMessages'
 }
 
 project(':examples') {
@@ -1542,6 +1544,7 @@ project(':raft') {
 
   compileJava.dependsOn 'processMessages'
   srcJar.dependsOn 'processMessages'
+  testSrcJar.dependsOn 'processMessages'
 
   jar {
     dependsOn createVersionFile
@@ -1795,6 +1798,7 @@ project(':storage') {
 
   compileJava.dependsOn 'processMessages'
   srcJar.dependsOn 'processMessages'
+  testSrcJar.dependsOn 'processMessages'
 
   jar {
     dependsOn createVersionFile
@@ -2101,6 +2105,7 @@ project(':streams') {
 
   compileJava.dependsOn 'processMessages'
   srcJar.dependsOn 'processMessages'
+  testSrcJar.dependsOn 'processMessages'
 
   javadoc {
     include "**/org/apache/kafka/streams/**"
@@ -3159,6 +3164,7 @@ project(':eventstreams') {
 
     annotationProcessor libs.lombok
 
+    testImplementation libs.maprdb
     testImplementation libs.junit4
     testImplementation libs.easymock
     testImplementation libs.powermockEasymock
@@ -3172,6 +3178,12 @@ project(':eventstreams') {
       options.compilerArgs << "-Xlint:-rawtypes"
       options.compilerArgs << "-Xlint:-fallthrough"
    }
+
+  // For :eventstreams:compileTestJava set Java version to 11 as some tests use Map.of methods
+  // Be careful though to not affect main code here, as we better keep it Java 1.8 compatible
+  compileTestJava {
+    options.release = 11
+  }
 
   javadoc {
     enabled = false

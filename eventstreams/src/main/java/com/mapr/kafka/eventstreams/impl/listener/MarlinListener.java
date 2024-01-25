@@ -208,7 +208,7 @@ public class MarlinListener<K, V> extends MarlinClient implements Consumer<K, V>
 
     @Override
     public ConsumerRecords<K, V> poll(Duration timeout) {
-      return poll(timeout.getSeconds()*1000);
+      return poll(timeout.toMillis());
     }
 
     @Override

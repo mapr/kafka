@@ -118,7 +118,7 @@ public class Topic {
 
             // We don't use Character.isLetterOrDigit(c) because it's slower
             boolean validChar = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || c == '.' ||
-                    c == '_' || c == '-';
+                    c == '_' || c == '-' || c == '/' || c == ':'; // TODO
             if (!validChar)
                 return false;
         }

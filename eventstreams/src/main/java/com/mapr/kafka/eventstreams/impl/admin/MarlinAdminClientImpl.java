@@ -529,7 +529,10 @@ public class MarlinAdminClientImpl extends AdminClient {
   @Override
   public DeleteRecordsResult deleteRecords(Map<TopicPartition, RecordsToDelete> recordsToDelete,
                                            DeleteRecordsOptions options) {
-    throw new KafkaException("deleteRecords API not implemented");
+    // Better not throw exception here to not break applications that use this API,
+    // just log a message and document it as unsupported API
+    LOG.debug("deleteRecords() API is not currently supported in MapR Admin. Returning EMPTY result...");
+    return new DeleteRecordsResult(Collections.emptyMap());
   }
 
   @Override

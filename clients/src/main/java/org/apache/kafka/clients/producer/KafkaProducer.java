@@ -527,7 +527,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         this.isMapr = isMapr(config);
         if (isMapr) {
             try {
+                // Duplicated from Apache's constructor
                 this.errors = this.metrics.sensor("errors");
+
                 this.defaultStream = producerConfig.getString(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG);
 
                 Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");

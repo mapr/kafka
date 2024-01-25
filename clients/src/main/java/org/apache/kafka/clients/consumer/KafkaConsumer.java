@@ -848,6 +848,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.isMapr = isMapr(config);
         if (isMapr) {
             try {
+                // Duplicated from Apache's constructor
+                this.kafkaConsumerMetrics = new KafkaConsumerMetrics(metrics, CONSUMER_METRIC_GROUP_PREFIX);
+
                 this.defaultStream = config.getString(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG);
 
                 Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
@@ -1238,10 +1241,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     private ConsumerRecords<K, V> poll(final Timer timer, final boolean includeMetadataInTimeout) {
         acquireAndEnsureOpen();
         try {
+            this.kafkaConsumerMetrics.recordPollStart(timer.currentTimeMs());
+
             if (isMapr) {
                 return this.interceptors.onConsume(consumerDriver.poll(Duration.ofMillis(timer.timeoutMs())));
             }
-            this.kafkaConsumerMetrics.recordPollStart(timer.currentTimeMs());
 
             if (this.subscriptions.hasNoSubscriptionOrUserAssignment()) {
                 throw new IllegalStateException("Consumer is not subscribed to any topics or assigned any partitions");
@@ -1283,9 +1287,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             return ConsumerRecords.empty();
         } finally {
             release();
-            if (this.kafkaConsumerMetrics != null) {
-                this.kafkaConsumerMetrics.recordPollEnd(timer.currentTimeMs());
-            }
+            this.kafkaConsumerMetrics.recordPollEnd(timer.currentTimeMs());
         }
     }
 
@@ -1847,13 +1849,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     public long position(TopicPartition partition, final Duration timeout) {
         acquireAndEnsureOpen();
         try {
-            if (!this.subscriptions.isAssigned(partition))
-                throw new IllegalStateException("You can only check the position for partitions assigned to this consumer.");
-
             if (isMapr) {
                 partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
                 return consumerDriver.position(partition, timeout);
             }
+
+            if (!this.subscriptions.isAssigned(partition))
+                throw new IllegalStateException("You can only check the position for partitions assigned to this consumer.");
 
             Timer timer = time.timer(timeout);
             do {
@@ -2479,7 +2481,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     }
 
     /**
-     * Not supported in MapR Consumer.
+     * Not supported in MapR Consumer (OptionalLong.empty() would be returned).
      * Get the consumer's current lag on the partition. Returns an "empty" {@link OptionalLong} if the lag is not known,
      * for example if there is no position yet, or if the end offset is not known yet.
      *
@@ -2495,9 +2497,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      **/
     @Override
     public OptionalLong currentLag(TopicPartition topicPartition) {
-        maybeThrowMaprUsupported("currentLag method is not currently supported in MapR Consumer");
         acquireAndEnsureOpen();
         try {
+            if (isMapr) {
+                // Better not throw exception here to not break applications that use this API,
+                // just log a message and document it as unsupported API
+                log.debug("currentLag() API is not currently supoorted in MapR Consumer. Returning OptionalLong.empty()...");
+                return OptionalLong.empty();
+            }
             final Long lag = subscriptions.partitionLag(topicPartition, isolationLevel);
 
             // if the log end offset is not known and hence cannot return lag and there is
@@ -2792,11 +2799,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (!groupId.isPresent())
             throw new InvalidGroupIdException("To use the group management or offset commit APIs, you must " +
                     "provide a valid " + ConsumerConfig.GROUP_ID_CONFIG + " in the consumer configuration.");
-    }
-
-    private void maybeThrowMaprUsupported(String message) {
-        if (isMapr)
-            throw new KafkaException(message);
     }
 
     private void updateLastSeenEpochIfNewer(TopicPartition topicPartition, OffsetAndMetadata offsetAndMetadata) {

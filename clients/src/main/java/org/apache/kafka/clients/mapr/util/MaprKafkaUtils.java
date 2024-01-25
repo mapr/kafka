@@ -1,19 +1,14 @@
 package org.apache.kafka.clients.mapr.util;
 
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.AbstractConfig;
-import org.apache.kafka.common.errors.InvalidTopicException;
 import org.apache.kafka.common.utils.Utils;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -25,100 +20,13 @@ import java.util.stream.Collectors;
 
 public class MaprKafkaUtils {
 
-    /*
-    public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
-    public static final String LEAGAL_FULLTOPICNAME_PATTERN =
-            String.format("(\\/%s+)+\\:%s+", LEGAL_CHARS, LEGAL_CHARS);
-
-    public static void validateFullTopicName(String fullTopicName){
-        if(!fullTopicName.matches(LEAGAL_FULLTOPICNAME_PATTERN)){
-            throw new InvalidTopicException(String.format(
-                    "Full topic name %s is invalid. It should be %s",
-                    fullTopicName,
-                    LEAGAL_FULLTOPICNAME_PATTERN));
-        }
-    }
-    public static boolean isFullTopicName(String fullTopicName){
-        return fullTopicName.startsWith("/") && fullTopicName.contains(":");
-    }
-    public static String buildFullTopicName(String streamName, String shortTopicName){
-        return String.format("%s:%s", streamName, shortTopicName);
-    }
-
-    public static List<String> decorateTopicsWithDefaultStreamIfNeeded(List<String> topics, String defaultStream){
-        List<String> res = new ArrayList<>(topics.size());
-        for(String topic : topics){
-            String decoratedTopic = topic;
-            if(!topic.contains(":")){
-                if(defaultStream.isEmpty()){
-                    throw new InvalidTopicException(String.format(
-                            "Default stream is not specified. Short topic name %s is invalid.",
-                            topic));
-                }
-                decoratedTopic = String.format("%s:%s", defaultStream, topic);
-            }
-            validateFullTopicName(decoratedTopic);
-            res.add(decoratedTopic);
-        }
-
-        return res;
-    }
-
-    public static List<String> addStreamNameToTopics(final List<String> topics, final String stream){
-        final List<String> res = new LinkedList<>();
-        for(String topic : topics){
-            res.add(MapRTopicUtils.buildFullTopicName(stream, topic));
-        }
-        return res;
-    }
-
-    public static Map<String, Set<String>> groupTopicsByStreamName(List<String> topics){
-        Map<String, Set<String>> res = new HashMap<>();
-        for(String topic : topics){
-           String[] parts = topic.split(":");
-           String streamName = parts[0];
-           String shortTopicName = parts[1];
-           Set<String> groupedTopics = res.get(streamName);
-           if(groupedTopics == null){
-               groupedTopics = new HashSet<>();
-               res.put(streamName, groupedTopics);
-           }
-           groupedTopics.add(shortTopicName);
-        }
-
-        return res;
-    }
-
-    public static Map<String, Set<String>> allTopicsForStreamSet(Set<String> streamSet) {
-        return allTopicsForStreamSet(streamSet, AdminClient.create(new Properties()));
-    }
-
-    public static Map<String, Set<String>> allTopicsForStreamSet(Set<String> streamSet,
-                                                                 AdminClient adminClient){
-        Map<String, Set<String>> res = new HashMap<>();
-
-        try {
-            for (String streamName : streamSet) {
-                res.put(streamName,
-                        adminClient.listTopics(streamName).names().get(60, TimeUnit.SECONDS));
-            }
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new KafkaException(e);
-        } finally {
-            adminClient.close();
-        }
-
-        return res;
-    }
-    */
-
 
     /**
     * Currently deciding which branch to load by {@link CommonClientConfigs#USE_BROKERS_CONFIG}.
     * By default it is false, meaning that MapR Client will be loaded. Users need to explicitly set it to true
     * to load kafka clients in Apache mode.
     */
-    public static boolean isMapr(Map<String, ?> config) {
+    public static boolean isMapr(Map<?, ?> config) {
         Object useBrokers = config.get(CommonClientConfigs.USE_BROKERS_CONFIG);
         return !("true".equals(useBrokers) || Boolean.TRUE.equals(useBrokers));
     }
@@ -131,6 +39,7 @@ public class MaprKafkaUtils {
         return isMapr(config.values());
     }
 
+    // choose proper name here? as in listAllTopics we use this with not a default stream
     public static String maybeWrapDefaultStream(String defaultStream, String topic) {
         if (topic.contains("/") || topic.contains(":")) {
             return topic;
@@ -148,6 +57,18 @@ public class MaprKafkaUtils {
                 .collect(Collectors.toList());
     }
 
+    public static Set<String> maybeWrapDefaultStream(String defaultStream, Set<String> topics) {
+        return topics.stream()
+                .map(t -> maybeWrapDefaultStream(defaultStream, t))
+                .collect(Collectors.toSet());
+    }
+
+    public static List<String> maybeWrapDefaultStream(String defaultStream, List<String> topics) {
+        return topics.stream()
+                .map(t -> maybeWrapDefaultStream(defaultStream, t))
+                .collect(Collectors.toList());
+    }
+
     public static Collection<TopicPartition> maybeWrapDefaultStreamPartitions(String defaultStream, Collection<TopicPartition> partitions) {
         partitions.forEach(p -> p.setTopic(maybeWrapDefaultStream(defaultStream, p.topic())));
         return partitions;
@@ -156,5 +77,38 @@ public class MaprKafkaUtils {
     public static <T> Map<TopicPartition, T> maybeWrapDefaultStreamPartitions(String defaultStream, Map<TopicPartition, T> partitions) {
         partitions.keySet().forEach(p -> p.setTopic(maybeWrapDefaultStream(defaultStream, p.topic())));
         return partitions;
+    }
+
+    public static String maybeTrimTopic(String topic) {
+        if (topic != null && topic.contains(":"))
+            return topic.split(":")[1];
+        else
+            return topic;
+    }
+
+    /**
+     * Lists all topics in provided default stream and in each of used streams in provided topics collection.
+     * All topics to be returned are full-named (/stream:topic)
+     */
+    public static Set<String> listAllTopics(Admin adminClient, String defaultStream, Collection<String> topics) {
+        Set<String> result = new HashSet<>();
+
+        try {
+            if (defaultStream != null && !defaultStream.isEmpty()) {
+                result.addAll(maybeWrapDefaultStream(defaultStream, adminClient.listTopics().names().get(60, TimeUnit.SECONDS)));
+            }
+            else if (topics.stream().anyMatch(t -> !t.contains(":")))
+                throw new KafkaException("Encountered short-named topic while default stream is not provided");
+
+            Set<String> usedStreams = topics.stream()
+                    .filter(t -> t.contains(":")).map(t -> t.split(":")[0]).collect(Collectors.toSet());
+            for (String stream: usedStreams) {
+                result.addAll(maybeWrapDefaultStream(stream, adminClient.listTopics(stream).names().get(60, TimeUnit.SECONDS)));
+            }
+
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }

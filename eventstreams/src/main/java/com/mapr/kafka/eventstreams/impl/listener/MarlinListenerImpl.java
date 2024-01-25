@@ -200,7 +200,7 @@ public class MarlinListenerImpl extends MarlinJniListener {
                               this.rpcTimeoutMs,
                               hardMount,
                               config.getBoolean(mConfDef.getAutoCommitEnabled()),
-                              config.getLong(mConfDef.getAutoCommitInterval()),
+                              config.getInt(mConfDef.getAutoCommitInterval()),
                               null /* autoCommitCb, applicable for V10 */,
                               config.getLong(mConfDef.getMetadataMaxAge()),
                               config.getInt(mConfDef.getFetchMsgMaxBytesPerPartition()),
