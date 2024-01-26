@@ -51,6 +51,7 @@ import org.apache.kafka.streams.processor.internals.metrics.StreamsMetricsImpl;
 import org.apache.kafka.streams.processor.internals.metrics.ThreadMetrics;
 import org.apache.kafka.streams.state.internals.ThreadCache;
 
+import java.util.Collection;
 import java.util.Queue;
 import java.util.function.BiConsumer;
 import org.slf4j.Logger;
@@ -67,6 +68,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.streams.internals.StreamsConfigUtils.eosEnabled;
@@ -730,10 +732,19 @@ public class StreamThread extends Thread {
 
     private void subscribeConsumer() {
         if (topologyMetadata.usesPatternSubscription()) {
+            if (topologyMetadata.isMapr()) {
+                // MapR Consumer cannot subscribe to pattern with multiple mapr stream names. See MS-50
+                mainConsumer.subscribe(patternToCollection(topologyMetadata.sourceTopicPattern()), rebalanceListener);
+                return;
+            }
             mainConsumer.subscribe(topologyMetadata.sourceTopicPattern(), rebalanceListener);
         } else {
             mainConsumer.subscribe(topologyMetadata.allFullSourceTopicNames(), rebalanceListener);
         }
+    }
+
+    private Collection<String> patternToCollection(Pattern pattern) {
+        return Arrays.asList(pattern.split("\\|"));
     }
 
     public void resizeCache(final long size) {

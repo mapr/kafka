@@ -48,6 +48,7 @@ import org.apache.kafka.streams.errors.StreamsStoppedException;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.errors.UnknownStateStoreException;
 import org.apache.kafka.streams.internals.metrics.ClientMetrics;
+import org.apache.kafka.streams.mapr.InternalStorageManager;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.StreamPartitioner;
@@ -102,6 +103,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.isMapr;
 import static org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
 import static org.apache.kafka.streams.internals.ApiUtils.prepareMillisCheckFailMsgPrefix;
 import static org.apache.kafka.streams.internals.ApiUtils.validateMillisecondDuration;
@@ -882,6 +884,10 @@ public class KafkaStreams implements AutoCloseable {
                          final Time time) throws StreamsException {
         this.applicationConfigs = applicationConfigs;
         this.time = time;
+
+        if (isMapr(this.applicationConfigs)) {
+            InternalStorageManager.create(this.applicationConfigs);
+        }
 
         this.topologyMetadata = topologyMetadata;
         this.topologyMetadata.buildAndRewriteTopology();

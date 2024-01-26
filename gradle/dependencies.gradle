@@ -154,7 +154,8 @@ versions += [
   mapr: "7.6.0.0-mapr-SNAPSHOT",
   hadoop: "3.3.5.200-eep-921-SNAPSHOT",
   ojai: "3.2.0",
-  lombok: "1.18.20"
+  lombok: "1.18.20",
+  commonsLang3: "3.12.0"
 ]
 
 libs += [
@@ -257,5 +258,6 @@ libs += [
   hadoopAuth: "org.apache.hadoop:hadoop-auth:$versions.hadoop",
   hadoopCommon: "org.apache.hadoop:hadoop-common:$versions.hadoop",
   ojai: "org.ojai:ojai:$versions.ojai",
-  lombok: "org.projectlombok:lombok:$versions.lombok"
+  lombok: "org.projectlombok:lombok:$versions.lombok",
+  commonsLang3: "org.apache.commons:commons-lang3:$versions.commonsLang3"
 ]

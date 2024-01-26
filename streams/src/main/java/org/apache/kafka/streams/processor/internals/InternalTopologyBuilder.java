@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.processor.internals;
 
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.mapr.util.MaprKafkaUtils;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
@@ -157,6 +158,10 @@ public class InternalTopologyBuilder {
     private TopologyConfig topologyConfigs;  // the configs for this topology, including overrides and global defaults
 
     private boolean hasPersistentStores = false;
+
+    // MapR-specific section
+    private boolean isMapr;
+    private String defaultStream;
 
     public static class StateStoreFactory<S extends StateStore> {
         private final StoreBuilder<S> builder;
@@ -423,6 +428,9 @@ public class InternalTopologyBuilder {
         setApplicationId(config.getString(StreamsConfig.APPLICATION_ID_CONFIG));
         setStreamsConfig(config);
 
+        this.isMapr = MaprKafkaUtils.isMapr(config);
+        this.defaultStream = config.getString(StreamsConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+
         // maybe strip out caching layers
         if (topologyConfigs.cacheSize == 0L) {
             for (final StateStoreFactory<?> storeFactory : stateFactories.values()) {
@@ -440,6 +448,14 @@ public class InternalTopologyBuilder {
         }
 
         return this;
+    }
+
+    private String maybeWrapDefaultStream(String topic) {
+        return isMapr ? MaprKafkaUtils.maybeWrapDefaultStream(defaultStream, topic) : topic;
+    }
+
+    private Set<String> maybeWrapDefaultStream(Set<String> topics) {
+        return isMapr ? MaprKafkaUtils.maybeWrapDefaultStream(defaultStream, topics) : topics;
     }
 
     public final void addSource(final Topology.AutoOffsetReset offsetReset,
@@ -1110,7 +1126,7 @@ public class InternalTopologyBuilder {
                 topicSourceMap.put(decoratedTopic, node);
                 repartitionTopics.add(decoratedTopic);
             } else {
-                topicSourceMap.put(topic, node);
+                topicSourceMap.put(maybeWrapDefaultStream(topic), node);
             }
         }
     }
@@ -1252,8 +1268,8 @@ public class InternalTopologyBuilder {
             }
             if (!sourceTopics.isEmpty()) {
                 topicGroups.put(new Subtopology(entry.getKey(), topologyName), new TopicsInfo(
-                        Collections.unmodifiableSet(sinkTopics),
-                        Collections.unmodifiableSet(sourceTopics),
+                        Collections.unmodifiableSet(maybeWrapDefaultStream(sinkTopics)),
+                        Collections.unmodifiableSet(maybeWrapDefaultStream(sourceTopics)),
                         Collections.unmodifiableMap(repartitionTopics),
                         Collections.unmodifiableMap(stateChangelogTopics)));
             }
@@ -1414,7 +1430,7 @@ public class InternalTopologyBuilder {
             if (internalTopicNamesWithProperties.containsKey(topic)) {
                 decoratedTopics.add(decorateTopic(topic));
             } else {
-                decoratedTopics.add(topic);
+                decoratedTopics.add(maybeWrapDefaultStream(topic));
             }
         }
         return decoratedTopics;

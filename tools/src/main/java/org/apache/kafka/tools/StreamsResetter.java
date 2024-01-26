@@ -19,7 +19,10 @@ package org.apache.kafka.tools;
 import joptsimple.OptionException;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
+import org.apache.kafka.clients.mapr.util.MaprKafkaUtils;
+import org.apache.kafka.streams.mapr.InternalStorageManager;
 import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsOptions;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsResult;
@@ -29,6 +32,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.consumer.RoundRobinAssignor;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.annotation.InterfaceStability;
@@ -57,6 +61,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.isMapr;
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.maybeWrapDefaultStream;
 
 /**
  * {@link StreamsResetter} resets the processing state of a Kafka Streams application so that, for example,
@@ -114,6 +121,8 @@ public class StreamsResetter {
 
     private final List<String> allTopics = new LinkedList<>();
 
+    private boolean isMapr;
+
     public static void main(final String[] args) {
         Exit.exit(new StreamsResetter().execute(args));
     }
@@ -141,14 +150,30 @@ public class StreamsResetter {
 
             properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServerValue);
 
+            isMapr = isMapr(properties);
+            if (options.hasDefaultStream()) {
+                properties.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, options.defaultStream());
+            }
+
             try (Admin adminClient = Admin.create(properties)) {
                 maybeDeleteActiveConsumers(groupId, adminClient, options);
 
                 allTopics.clear();
-                allTopics.addAll(adminClient.listTopics().names().get(60, TimeUnit.SECONDS));
+                if (!isMapr) {
+                    allTopics.addAll(adminClient.listTopics().names().get(60, TimeUnit.SECONDS));
+                }
+                else {
+                    Set<String> providedTopics = new HashSet<>(options.inputTopicsOption());
+                    providedTopics.addAll(options.intermediateTopicsOption());
+                    allTopics.addAll(MaprKafkaUtils.listAllTopics(adminClient, options.defaultStream(), providedTopics));
+                }
 
                 if (options.hasDryRun()) {
                     System.out.println("----Dry run displays the actions which will be performed when running Streams Reset Tool----");
+                }
+
+                if (isMapr) {
+                    maybeDeleteInternalStorage(options);
                 }
 
                 final HashMap<Object, Object> consumerConfig = new HashMap<>(config);
@@ -164,10 +189,13 @@ public class StreamsResetter {
         }
     }
 
+    // Not Implemented in MapR. See KAFKA-994
     private void maybeDeleteActiveConsumers(final String groupId,
                                             final Admin adminClient,
                                             final StreamsResetterOptions options)
         throws ExecutionException, InterruptedException {
+        if (isMapr)
+            return;
         final DescribeConsumerGroupsResult describeResult = adminClient.describeConsumerGroups(
             Collections.singleton(groupId),
             new DescribeConsumerGroupsOptions().timeoutMs(10 * 1000));
@@ -189,8 +217,8 @@ public class StreamsResetter {
     private int maybeResetInputAndSeekToEndIntermediateTopicOffsets(final Map<Object, Object> consumerConfig,
                                                                     final StreamsResetterOptions options)
         throws IOException, ParseException {
-        final List<String> inputTopics = options.inputTopicsOption();
-        final List<String> intermediateTopics = options.intermediateTopicsOption();
+        final List<String> inputTopics = maybeWrapDefaultStream(options.defaultStream(), options.inputTopicsOption());
+        final List<String> intermediateTopics = maybeWrapDefaultStream(options.defaultStream(), options.intermediateTopicsOption());
         int topicNotFound = EXIT_CODE_SUCCESS;
 
         final List<String> notFoundInputTopics = new ArrayList<>();
@@ -251,6 +279,16 @@ public class StreamsResetter {
         config.putAll(consumerConfig);
         config.setProperty(ConsumerConfig.GROUP_ID_CONFIG, options.applicationId());
         config.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+
+        if (isMapr) {
+            if (options.hasDefaultStream()) {
+                config.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, options.defaultStream());
+            }
+            config.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, "true");
+            config.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM,
+                    InternalStorageManager.storage(options.applicationId()).internalStreamCompacted);
+            config.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
+        }
 
         try (final KafkaConsumer<byte[], byte[]> client =
                  new KafkaConsumer<>(config, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
@@ -562,6 +600,8 @@ public class StreamsResetter {
         private final OptionSpec<String> commandConfigOption;
         private final OptionSpecBuilder forceOption;
 
+        private final OptionSpec<String> defaultStreamOption;
+
         public StreamsResetterOptions(String[] args) {
             super(args);
             applicationIdOption = parser.accepts("application-id", "The Kafka Streams application ID (application.id).")
@@ -623,6 +663,11 @@ public class StreamsResetter {
 
             dryRunOption = parser.accepts("dry-run", "Display the actions that would be performed without executing the reset commands.");
 
+            defaultStreamOption = parser.accepts("default-stream", "Default stream that is used if topic is specified without stream.")
+                    .withRequiredArg()
+                    .ofType(String.class)
+                    .describedAs("default-stream");
+
             try {
                 options = parser.parse(args);
                 if (CommandLineUtils.isPrintHelpNeeded(this)) {
@@ -665,6 +710,14 @@ public class StreamsResetter {
 
         public String bootstrapServer() {
             return options.valueOf(bootstrapServerOption);
+        }
+
+        public boolean hasDefaultStream() {
+            return options.has(defaultStreamOption);
+        }
+
+        public String defaultStream() {
+            return options.valueOf(defaultStreamOption);
         }
 
         public boolean hasBootstrapServers() {
@@ -736,11 +789,11 @@ public class StreamsResetter {
         }
 
         public boolean isInputTopic(String topic) {
-            return options.valuesOf(inputTopicsOption).contains(topic);
+            return maybeWrapDefaultStream(defaultStream(), options.valuesOf(inputTopicsOption)).contains(topic);
         }
 
         public boolean isIntermediateTopic(String topic) {
-            return options.valuesOf(intermediateTopicsOption).contains(topic);
+            return maybeWrapDefaultStream(defaultStream(), options.valuesOf(intermediateTopicsOption)).contains(topic);
         }
 
         private boolean isInferredInternalTopic(final String topicName) {
@@ -756,4 +809,21 @@ public class StreamsResetter {
             return options.valuesOf(internalTopicsOption);
         }
     }
+
+    private void maybeDeleteInternalStorage(StreamsResetterOptions options) {
+        String appId = options.applicationId();
+        System.out.println("Deleting KStreams Application dir and internal streams for application: " + appId);
+
+        if (!options.hasDryRun()) {
+            InternalStorageManager.delete(appId);
+        } else {
+            InternalStorageManager.Storage storage = InternalStorageManager.storage(appId);
+            System.out.println("MapR-FS Directory: " + storage.appDir);
+            System.out.println("MapR-ES Stream: " + storage.internalStream);
+            System.out.println("MapR-ES Stream compacted: " + storage.internalStreamCompacted);
+        }
+
+        System.out.println("Done.");
+    }
+
 }

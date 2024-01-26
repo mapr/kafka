@@ -17,6 +17,7 @@
 package org.apache.kafka.streams.processor.internals;
 
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.mapr.util.MaprKafkaUtils;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.KafkaFutureImpl;
@@ -129,6 +130,10 @@ public class TopologyMetadata {
             log.info("Created an empty KafkaStreams app with no topology");
         }
         this.taskExecutionMetadata = new TaskExecutionMetadata(builders.keySet(), pausedTopologies, processingMode);
+    }
+
+    public boolean isMapr() {
+        return MaprKafkaUtils.isMapr(config);
     }
 
     // Need to (re)set the log here to pick up the `processId` part of the clientId in the prefix

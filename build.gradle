@@ -1125,6 +1125,8 @@ project(':core') {
     from(project(':tools:tools-api').configurations.runtimeClasspath) { into("libs/") }
     from(project(':eventstreams').jar) { into("libs/") }
     from(project(':eventstreams').configurations.runtimeClasspath) { into("libs/") }
+    from(project(':mapr-eco-tools').jar) { into("libs/") }
+    from(project(':mapr-eco-tools').configurations.runtimeClasspath) { into("libs/") }
     duplicatesStrategy 'exclude'
   }
 
@@ -1898,6 +1900,9 @@ project(':tools') {
     implementation libs.log4j
     implementation libs.joptSimple
 
+    // For InternalStorageManager, to delete app dir and internal streams in streams resetter tool
+    implementation project(':streams')
+
     implementation libs.jose4j                    // for SASL/OAUTHBEARER JWT validation
     implementation libs.jacksonJaxrsJsonProvider
 
@@ -2045,6 +2050,10 @@ project(':streams') {
     api project(':clients')
     // `org.rocksdb.Options` is part of Kafka Streams public api via `RocksDBConfigSetter`
     api libs.rocksDBJni
+
+    implementation project(':mapr-eco-tools')
+    compileOnly libs.maprfs
+    compileOnly libs.hadoopCommon
 
     implementation libs.slf4jApi
     implementation libs.jacksonAnnotations
@@ -3183,6 +3192,59 @@ project(':eventstreams') {
   // Be careful though to not affect main code here, as we better keep it Java 1.8 compatible
   compileTestJava {
     options.release = 11
+  }
+
+  javadoc {
+    enabled = false
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntimeClasspath) {
+      include('slf4j-log4j12*')
+      include('reload4j*jar')
+    }
+    from (configurations.runtimeClasspath) {
+      exclude('kafka-clients*')
+      exclude('connect-*')
+    }
+    into "$buildDir/dependant-libs"
+    duplicatesStrategy 'exclude'
+  }
+
+  jar {
+    dependsOn copyDependantLibs
+  }
+}
+
+project(':mapr-eco-tools') {
+  archivesBaseName = "mapr-eco-tools"
+
+  dependencies {
+    implementation project(':clients')
+
+    implementation libs.commonsLang3
+    implementation (project(':eventstreams')){
+      exclude group: 'xerces', module: 'xercesImpl'
+      exclude group: 'com.mapr.db', module: 'maprdb'
+      transitive = false
+    }
+    compileOnly libs.hadoopCommon
+    compileOnly (libs.maprfs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
+
+    testImplementation (project(':eventstreams')) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
+    testImplementation (libs.maprfs) {
+      exclude group: 'xerces', module: 'xercesImpl'
+    }
+    testImplementation project(':clients')
+    testImplementation project(':clients').sourceSets.test.output
+    testImplementation libs.junit4
+    testImplementation libs.easymock
+    testImplementation libs.powermockJunit4
+    testImplementation libs.powermockEasymock
   }
 
   javadoc {

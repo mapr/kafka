@@ -172,12 +172,26 @@ public class ProcessorStateManager implements StateManager {
     private TaskType taskType;
     private final boolean stateUpdaterEnabled;
 
-    public static String storeChangelogTopic(final String prefix, final String storeName, final String namedTopology) {
+    public static String storeChangelogTopic(String prefix, final String storeName, final String namedTopology) {
+        prefix = maybeUseCompactedStream(prefix);
         if (namedTopology == null) {
             return prefix + "-" + storeName + STATE_CHANGELOG_TOPIC_SUFFIX;
         } else {
             return prefix + "-" + namedTopology + "-" + storeName + STATE_CHANGELOG_TOPIC_SUFFIX;
         }
+    }
+
+    /*
+    MapR kafka-streams utilizes internal config TOPIC_PREFIX_ALTERNATIVE to pass internal mapr stream prefix,
+    BUT changelog topics must be compacted and log compaction is a stream-level configuration in MapR kafka.
+    Thus, here we apply a little hack to add a "-compacted" suffix to a stream name to use compacted stream instead.
+    Both internal streams are created at KafkaStreams.<init> call
+     */
+    private static String maybeUseCompactedStream(String prefix) {
+        if (prefix.contains("/") && prefix.contains(":")) {
+            prefix = prefix.replace(":", "-compacted:");
+        }
+        return prefix;
     }
 
     /**

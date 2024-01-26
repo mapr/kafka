@@ -97,6 +97,7 @@ include 'clients',
     'tools',
     'tools:tools-api',
     'trogdor',
-    'eventstreams'
+    'eventstreams',
+    'mapr-eco-tools'
 
 rootProject.name = 'kafka'

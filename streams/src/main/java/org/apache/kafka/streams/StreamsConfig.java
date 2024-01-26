@@ -70,6 +70,8 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
 import static org.apache.kafka.common.config.ConfigDef.ValidString.in;
 import static org.apache.kafka.common.config.ConfigDef.parseType;
+import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.isMapr;
+import static org.apache.kafka.streams.mapr.InternalStorageManager.storage;
 
 /**
  * Configuration for a {@link KafkaStreams} instance.
@@ -788,6 +790,23 @@ public class StreamsConfig extends AbstractConfig {
     @Deprecated
     public static final String TOPOLOGY_OPTIMIZATION = TOPOLOGY_OPTIMIZATION_CONFIG;
 
+    // MapR-specific section
+
+    /** <code>use.brokers</code> */
+    public static final String USE_BROKERS_CONFIG = CommonClientConfigs.USE_BROKERS_CONFIG;
+    private static final String USE_BROKERS_DOC = CommonClientConfigs.USE_BROKERS_DOC;
+
+    /** {@code}streams.default.stream} */
+    public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+    private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream to consume from and send the messages to, "
+            + "if the topic name does not specify the stream.  For example, if a message is sent to exampleTopic and this parameter "
+            + "is set to /exampleStream, then the message will be sent to /exampleStream:exampleTopic.  If a message is sent to "
+            + "/anotherStream:exampleTopic, then the stream name provided will be respected.";
+
+    /** {@code}streams.appdir.permissions} */
+    public static final String APPLICATION_DIR_ACES_CONFIG = "streams.appdir.aces";
+    private static final String APPLICATION_DIR_ACES_DOC = "Map with ACEs (Access Control Expressions) " +
+            "for internal application directory";
 
     private static final String[] NON_CONFIGURABLE_CONSUMER_DEFAULT_CONFIGS =
         new String[] {ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG};
@@ -809,8 +828,9 @@ public class StreamsConfig extends AbstractConfig {
                     Type.STRING,
                     Importance.HIGH,
                     APPLICATION_ID_DOC)
-            .define(BOOTSTRAP_SERVERS_CONFIG, // required with no default value
+            .define(BOOTSTRAP_SERVERS_CONFIG, // required with no default value (not in MapR Kafka)
                     Type.LIST,
+                    Collections.emptyList(), // Optional in MapR Kafka
                     Importance.HIGH,
                     CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
             .define(NUM_STANDBY_REPLICAS_CONFIG,
@@ -1127,6 +1147,21 @@ public class StreamsConfig extends AbstractConfig {
                     24 * 60 * 60 * 1000L,
                     Importance.LOW,
                     WINDOW_STORE_CHANGE_LOG_ADDITIONAL_RETENTION_MS_DOC)
+            .define(STREAMS_DEFAULT_STREAM_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    STREAMS_DEFAULT_STREAM_DOC)
+            .define(APPLICATION_DIR_ACES_CONFIG,
+                    Type.STRING,
+                    "",
+                    Importance.MEDIUM,
+                    APPLICATION_DIR_ACES_DOC)
+            .define(USE_BROKERS_CONFIG,
+                    Type.BOOLEAN,
+                    CommonClientConfigs.DEFAULT_USE_BROKERS,
+                    Importance.HIGH,
+                    USE_BROKERS_DOC)
             .define(WINDOW_SIZE_MS_CONFIG,
                     Type.LONG,
                     null,
@@ -1348,7 +1383,7 @@ public class StreamsConfig extends AbstractConfig {
 
     protected StreamsConfig(final Map<?, ?> props,
                             final boolean doLog) {
-        super(CONFIG, props, doLog);
+        super(CONFIG, maybeMaprOverride(props), doLog);
         eosEnabled = StreamsConfigUtils.eosEnabled(this);
 
         final String processingModeConfig = getString(StreamsConfig.PROCESSING_GUARANTEE_CONFIG);
@@ -1370,6 +1405,22 @@ public class StreamsConfig extends AbstractConfig {
             verifyEOSTransactionTimeoutCompatibility();
         }
         verifyTopologyOptimizationConfigs(getString(TOPOLOGY_OPTIMIZATION_CONFIG));
+    }
+
+    /*
+    MapR-specific private method.
+    The logic here is to utilize already existing internal config TOPIC_PREFIX_ALTERNATIVE to create all internal
+    topics in internal mapr stream. See ProcessorStatemanager#maybeUseCompactedStream for compacted case
+     */
+    private static Map<?, ?> maybeMaprOverride(Map<?, ?> props) {
+        if (isMapr(props)) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> uncheckedProps = ((Map<String, Object>)props);
+            String applicationId = (String) uncheckedProps.get(APPLICATION_ID_CONFIG);
+            String maprPrefix = storage(applicationId).internalStream + ":" + applicationId;
+            uncheckedProps.compute(InternalConfig.TOPIC_PREFIX_ALTERNATIVE, (k, v) -> v == null ? maprPrefix : maprPrefix + v);
+        }
+        return props;
     }
 
     private void verifyEOSTransactionTimeoutCompatibility() {
@@ -1450,7 +1501,7 @@ public class StreamsConfig extends AbstractConfig {
         consumerProps.putAll(clientProvidedProps);
 
         // bootstrap.servers should be from StreamsConfig
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().getOrDefault(BOOTSTRAP_SERVERS_CONFIG, Collections.emptyList()));
 
         return consumerProps;
     }
@@ -1577,6 +1628,12 @@ public class StreamsConfig extends AbstractConfig {
         // disable auto topic creation
         consumerProps.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, "false");
 
+        // MapR-specific section
+        consumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        consumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM,
+                storage(getString(APPLICATION_ID_CONFIG)).internalStreamCompacted);
+
         // verify that producer batch config is no larger than segment size, then add topic configs required for creating topics
         final Map<String, Object> topicProps = originalsWithPrefix(TOPIC_PREFIX, false);
         final Map<String, Object> producerProps = getClientPropsWithPrefix(PRODUCER_PREFIX, ProducerConfig.configNames());
@@ -1629,6 +1686,12 @@ public class StreamsConfig extends AbstractConfig {
         // add client id with stream client id prefix
         baseConsumerProps.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId);
         baseConsumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
+
+        // MapR-specific section
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_CONFIG, true);
+        baseConsumerProps.put(ConsumerConfig.STREAMS_CLIENTSIDE_PARTITION_ASSIGNMENT_INTERNAL_STREAM,
+                storage(getString(APPLICATION_ID_CONFIG)).internalStreamCompacted);
 
         return baseConsumerProps;
     }
@@ -1693,7 +1756,10 @@ public class StreamsConfig extends AbstractConfig {
             props.put("internal.auto.downgrade.txn.commit", true);
         }
 
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().get(BOOTSTRAP_SERVERS_CONFIG));
+        // MapR-specific section
+        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, getString(STREAMS_DEFAULT_STREAM_CONFIG));
+
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, originals().getOrDefault(BOOTSTRAP_SERVERS_CONFIG, Collections.emptyList()));
         // add client id with stream client id prefix
         props.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId);
 
