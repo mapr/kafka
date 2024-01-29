@@ -2766,6 +2766,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * @throws ConcurrentModificationException if another thread already has the lock
      */
     private void acquire() {
+        if (isMapr) // TODO: it is a workaround for MS-1386
+            return;
         final Thread thread = Thread.currentThread();
         final long threadId = thread.getId();
         if (threadId != currentThread.get() && !currentThread.compareAndSet(NO_CURRENT_THREAD, threadId))
@@ -2780,6 +2782,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * Release the light lock protecting the consumer from multi-threaded access.
      */
     private void release() {
+        if (isMapr) // TODO: it is a workaround for MS-1386
+            return;
         if (refcount.decrementAndGet() == 0)
             currentThread.set(NO_CURRENT_THREAD);
     }
