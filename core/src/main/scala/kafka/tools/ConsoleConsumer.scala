@@ -27,6 +27,7 @@ import com.typesafe.scalalogging.LazyLogging
 import joptsimple._
 import kafka.utils.Implicits._
 import kafka.utils.{Exit, _}
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig, ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.common.{MessageFormatter, TopicPartition}
 import org.apache.kafka.common.errors.{AuthenticationException, TimeoutException, WakeupException}
@@ -149,7 +150,9 @@ object ConsoleConsumer extends Logging {
     props ++= config.consumerProps
     props ++= config.extraConsumerProps
     setAutoOffsetResetValue(config, props)
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServer)
+    props.setProperty(ConsumerConfig.USE_BROKERS_CONFIG, config.useBrokers.toString)
+    if (config.options.has(config.bootstrapServerOpt))
+      props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServer)
     if (props.getProperty(ConsumerConfig.CLIENT_ID_CONFIG) == null)
       props.put(ConsumerConfig.CLIENT_ID_CONFIG, "console-consumer")
     CommandLineUtils.maybeMergeOptions(
@@ -265,6 +268,7 @@ object ConsoleConsumer extends Logging {
       .ofType(classOf[java.lang.Integer])
     val skipMessageOnErrorOpt = parser.accepts("skip-message-on-error", "If there is an error when processing a message, " +
       "skip it instead of halt.")
+    val useBrokersOpt = parser.accepts("use-brokers", CommonClientConfigs.USE_BROKERS_DOC)
     val bootstrapServerOpt = parser.accepts("bootstrap-server", "REQUIRED: The server(s) to connect to.")
       .withRequiredArg
       .describedAs("server to connect to")
@@ -318,6 +322,7 @@ object ConsoleConsumer extends Logging {
     formatterArgs ++= CommandLineUtils.parseKeyValueArgs(options.valuesOf(messageFormatterArgOpt))
     val maxMessages = if (options.has(maxMessagesOpt)) options.valueOf(maxMessagesOpt).intValue else -1
     val timeoutMs = if (options.has(timeoutMsOpt)) options.valueOf(timeoutMsOpt).intValue else -1
+    val useBrokers = options.has(useBrokersOpt)
     val bootstrapServer = options.valueOf(bootstrapServerOpt)
     val keyDeserializer = options.valueOf(keyDeserializerOpt)
     val valueDeserializer = options.valueOf(valueDeserializerOpt)
@@ -375,7 +380,7 @@ object ConsoleConsumer extends Logging {
       else if (fromBeginning) ListOffsetsRequest.EARLIEST_TIMESTAMP
       else ListOffsetsRequest.LATEST_TIMESTAMP
 
-    CommandLineUtils.checkRequiredArgs(parser, options, bootstrapServerOpt)
+    CommandLineUtils.checkRequiredArgs(parser, options)
 
     // if the group id is provided in more than place (through different means) all values must be the same
     val groupIdsProvided = Set(

@@ -327,6 +327,10 @@ public class ProducerConfig extends AbstractConfig {
             "By default the TransactionId is not configured, which means transactions cannot be used. " +
             "Note that, by default, transactions require a cluster of at least three brokers which is the recommended setting for production; for development you can change this, by adjusting broker setting <code>transaction.state.log.replication.factor</code>.";
 
+    /** <code>use.brokers</code> */
+    public static final String USE_BROKERS_CONFIG = CommonClientConfigs.USE_BROKERS_CONFIG;
+    private static final String USE_BROKERS_DOC = CommonClientConfigs.USE_BROKERS_DOC;
+
     /**
      * <code>security.providers</code>
      */
@@ -501,6 +505,11 @@ public class ProducerConfig extends AbstractConfig {
                                         SECURITY_PROVIDERS_DOC)
                                 .withClientSslSupport()
                                 .withClientSaslSupport()
+                                .define(USE_BROKERS_CONFIG,
+                                        Type.BOOLEAN,
+                                        CommonClientConfigs.DEFAULT_USE_BROKERS,
+                                        Importance.HIGH,
+                                        USE_BROKERS_DOC)
                                 .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
                                         Type.INT,
                                         30000,

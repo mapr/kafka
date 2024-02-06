@@ -16,7 +16,6 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
@@ -51,9 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class KafkaTopicsAdminV2 implements KTopicsAdmin, AutoCloseable {
   static private final Properties ADMIN_PROPS = new Properties();
-  static {
-    ADMIN_PROPS.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "fake");
-  }
 
   protected MarlinAdminClientImpl adminClient;
   protected final MarlinAdminImpl maprAdmin;

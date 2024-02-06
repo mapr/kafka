@@ -514,9 +514,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
     /**
      * MapR initialization branch alternate to the Apache KafkaProducer.<init>().
-     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
-     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Producer initialization.
-     * Otherwise, just returns false, proceeding to Apache Producer initialization.
+     * See {@link org.apache.kafka.clients.mapr.util.MaprKafkaUtils#isMapr(Map)} for how isMapr is determined.
      */
     @SuppressWarnings("unchecked")
     private boolean maybeMaprInitialize(ProducerConfig config,

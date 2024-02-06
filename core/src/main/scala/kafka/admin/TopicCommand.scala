@@ -478,6 +478,8 @@ object TopicCommand extends Logging {
   }
 
   class TopicCommandOptions(args: Array[String]) extends CommandDefaultOptions(args) {
+    private val useBrokersOpt = parser.accepts("use-brokers", CommonClientConfigs.USE_BROKERS_DOC)
+
     private val bootstrapServerOpt = parser.accepts("bootstrap-server", "REQUIRED: The Kafka server to connect to.")
       .withRequiredArg
       .describedAs("server to connect to")
@@ -572,7 +574,11 @@ object TopicCommand extends Logging {
     def hasDeleteOption: Boolean = has(deleteOpt)
 
     def bootstrapServer: Option[String] = valueAsOption(bootstrapServerOpt)
-    def commandConfig: Properties = if (has(commandConfigOpt)) Utils.loadProps(options.valueOf(commandConfigOpt)) else new Properties()
+    def commandConfig: Properties = {
+      val props = if (has(commandConfigOpt)) Utils.loadProps(options.valueOf(commandConfigOpt)) else new Properties()
+      props.setProperty(CommonClientConfigs.USE_BROKERS_CONFIG, has(useBrokersOpt).toString)
+      props
+    }
     def topic: Option[String] = valueAsOption(topicOpt)
     def topicId: Option[String] = valueAsOption(topicIdOpt)
     def partitions: Option[Integer] = valueAsOption(partitionsOpt)
@@ -605,8 +611,8 @@ object TopicCommand extends Logging {
         CommandLineUtils.printUsageAndExit(parser, "Command must include exactly one action: --list, --describe, --create, --alter or --delete")
 
       // check required args
-      if (!has(bootstrapServerOpt))
-        throw new IllegalArgumentException("--bootstrap-server must be specified")
+      if (!has(bootstrapServerOpt) && has(useBrokersOpt))
+        throw new IllegalArgumentException("--bootstrap-server must be specified along with --use-brokers")
       if (has(describeOpt) && has(ifExistsOpt)) {
         if (!has(topicOpt) && !has(topicIdOpt))
           CommandLineUtils.printUsageAndExit(parser, "--topic or --topic-id is required to describe a topic")

@@ -132,9 +132,7 @@ public interface Admin extends AutoCloseable {
      * Create a new Admin with the given configuration.
      *
      * MapR initialization branch alternative to the Apache KafkaAdminClient.createInternal():
-     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
-     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Admin initialization.
-     * Otherwise, proceeds to Apache Admin initialization.
+     * See {@link org.apache.kafka.clients.mapr.util.MaprKafkaUtils#isMapr(Map)} for how isMapr is determined.
      *
      * @param props The configuration.
      * @return The new KafkaAdminClient.
@@ -153,9 +151,7 @@ public interface Admin extends AutoCloseable {
      * Create a new Admin with the given configuration.
      *
      * MapR initialization branch alternative to the Apache KafkaAdminClient.createInternal():
-     * If {@link CommonClientConfigs#BOOTSTRAP_SERVERS_CONFIG} value matches
-     * {@link CommonClientConfigs#MAPR_BOOTSTRAP_SERVERS_REGEX}, starts MapR Admin initialization.
-     * Otherwise, proceeds to Apache Admin initialization.
+     * See {@link org.apache.kafka.clients.mapr.util.MaprKafkaUtils#isMapr(Map)} for how isMapr is determined.
      *
      * @param conf The configuration.
      * @return The new KafkaAdminClient.

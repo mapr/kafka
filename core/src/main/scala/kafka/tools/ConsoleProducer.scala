@@ -25,6 +25,7 @@ import joptsimple.{OptionException, OptionParser, OptionSet}
 import kafka.common.MessageReader
 import kafka.utils.Implicits._
 import kafka.utils.{Exit, Logging, ToolsUtils}
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
 import org.apache.kafka.clients.producer.{KafkaProducer, Producer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.KafkaException
@@ -135,9 +136,10 @@ object ConsoleProducer extends Logging {
 
     props ++= config.extraProducerProps
 
+    props.setProperty(ProducerConfig.USE_BROKERS_CONFIG, config.useBrokers.toString)
     if (config.bootstrapServer != null)
       props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServer)
-    else
+    else if (config.brokerList != null)
       props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.brokerList)
 
     props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, config.compressionCodec)
@@ -178,12 +180,12 @@ object ConsoleProducer extends Logging {
       .withRequiredArg
       .describedAs("topic")
       .ofType(classOf[String])
+    val useBrokersOpt = parser.accepts("use-brokers", CommonClientConfigs.USE_BROKERS_DOC)
     val brokerListOpt = parser.accepts("broker-list", "DEPRECATED, use --bootstrap-server instead; ignored if --bootstrap-server is specified.  The broker list string in the form HOST1:PORT1,HOST2:PORT2.")
       .withRequiredArg
       .describedAs("broker-list")
       .ofType(classOf[String])
     val bootstrapServerOpt = parser.accepts("bootstrap-server", "REQUIRED unless --broker-list(deprecated) is specified. The server(s) to connect to. The broker list string in the form HOST1:PORT1,HOST2:PORT2.")
-      .requiredUnless("broker-list")
       .withRequiredArg
       .describedAs("server to connect to")
       .ofType(classOf[String])
@@ -312,11 +314,14 @@ object ConsoleProducer extends Logging {
 
     val topic = options.valueOf(topicOpt)
 
+    val useBrokers : Boolean = options.has(useBrokersOpt);
+
     val bootstrapServer = options.valueOf(bootstrapServerOpt)
     val brokerList = options.valueOf(brokerListOpt)
 
     val brokerHostsAndPorts = options.valueOf(if (options.has(bootstrapServerOpt)) bootstrapServerOpt else brokerListOpt)
-    ToolsUtils.validatePortOrDie(parser, brokerHostsAndPorts)
+    if (brokerHostsAndPorts != null)
+      ToolsUtils.validatePortOrDie(parser, brokerHostsAndPorts)
 
     val sync = options.has(syncOpt)
     val compressionCodecOptionValue = options.valueOf(compressionCodecOpt)

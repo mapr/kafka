@@ -28,6 +28,7 @@ import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Utils;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -128,7 +129,12 @@ public class AdminClientConfig extends AbstractConfig {
     public static final String SECURITY_PROVIDERS_CONFIG = SecurityConfig.SECURITY_PROVIDERS_CONFIG;
     private static final String SECURITY_PROVIDERS_DOC = SecurityConfig.SECURITY_PROVIDERS_DOC;
 
-    /** STREAMS SPECIFIC SETTINGS **/
+    /** MapR-specific settings **/
+
+    /** <code>use.brokers</code> */
+    public static final String USE_BROKERS_CONFIG = CommonClientConfigs.USE_BROKERS_CONFIG;
+    private static final String USE_BROKERS_DOC = CommonClientConfigs.USE_BROKERS_DOC;
+
     /** <code>streams.rpc.timeout.ms</code> */
     public static final String STREAMS_RPC_TIMEOUT_MS_CONFIG = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_CONFIG;
     private static final String STREAMS_RPC_TIMEOUT_MS_DOC = CommonClientConfigs.STREAMS_RPC_TIMEOUT_MS_DOC;
@@ -147,6 +153,7 @@ public class AdminClientConfig extends AbstractConfig {
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG,
                                         Type.LIST,
+                                        Collections.emptyList(), // Optional in MapR Kafka
                                         Importance.HIGH,
                                         BOOTSTRAP_SERVERS_DOC)
                                 .define(CLIENT_ID_CONFIG, Type.STRING, "", Importance.MEDIUM, CLIENT_ID_DOC)
@@ -243,6 +250,11 @@ public class AdminClientConfig extends AbstractConfig {
                                                 .in(Utils.enumOptions(SecurityProtocol.class)),
                                         Importance.MEDIUM,
                                         SECURITY_PROTOCOL_DOC)
+                                .define(USE_BROKERS_CONFIG,
+                                        Type.BOOLEAN,
+                                        CommonClientConfigs.DEFAULT_USE_BROKERS,
+                                        Importance.HIGH,
+                                        USE_BROKERS_DOC)
                                 .define(STREAMS_RPC_TIMEOUT_MS_CONFIG,
                                         Type.INT,
                                         120000,

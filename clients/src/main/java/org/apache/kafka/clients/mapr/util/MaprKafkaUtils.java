@@ -112,8 +112,15 @@ public class MaprKafkaUtils {
     }
     */
 
+
+    /**
+    * Currently deciding which branch to load by {@link CommonClientConfigs#USE_BROKERS_CONFIG}.
+    * By default it is false, meaning that MapR Client will be loaded. Users need to explicitly set it to true
+    * to load kafka clients in Apache mode.
+    */
     public static boolean isMapr(Map<String, ?> config) {
-        return getBootstrapServers(config).matches(CommonClientConfigs.MAPR_BOOTSTRAP_SERVERS_REGEX);
+        Object useBrokers = config.get(CommonClientConfigs.USE_BROKERS_CONFIG);
+        return !("true".equals(useBrokers) || Boolean.TRUE.equals(useBrokers));
     }
 
     public static boolean isMapr(Properties properties) {
@@ -122,18 +129,6 @@ public class MaprKafkaUtils {
 
     public static boolean isMapr(AbstractConfig config) {
         return isMapr(config.values());
-    }
-
-    @SuppressWarnings("unchecked")
-    private static String getBootstrapServers(Map<String, ?> config) {
-        Object bootstrapServers = config.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
-        if (bootstrapServers instanceof String)
-            return (String) bootstrapServers;
-        else if (bootstrapServers instanceof List)
-            // might throw ClassCastException here if the list contains non-string, but Apache code would also throw it
-            return String.join(",", ((List<String>)bootstrapServers));
-        else
-            return "invalid_type"; // invalid case, but don't throw here, let Apache code do this
     }
 
     public static String maybeWrapDefaultStream(String defaultStream, String topic) {
