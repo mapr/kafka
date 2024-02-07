@@ -41,7 +41,7 @@ import java.util.Collections;
 public class MarlinConsumerCoordinator extends MarlinCoordinator {
   private final MarlinListener<?, ?> listener;
   private final MarlinListenerImpl listenerimpl;
-  private final Thread pollThread = new Thread(new ConsumerPollThread());
+  private final Thread pollThread;
   private final SubscriptionState subscriptionState = new SubscriptionState();
   private ConsumerRebalanceListener rebalanceCb;
   private final ConsumerPartitionAssignor assignor;
@@ -60,7 +60,8 @@ public class MarlinConsumerCoordinator extends MarlinCoordinator {
   private String internalStream;
 
   public MarlinConsumerCoordinator(MarlinListener<?, ?> listener, MarlinListenerImpl listenerimpl, String groupId,
-      List<ConsumerPartitionAssignor> assignors, String intStream, ConsumerGroupMetadata groupMetadata) {
+      List<ConsumerPartitionAssignor> assignors, String intStream, ConsumerGroupMetadata groupMetadata,
+          /* TODO: it is a workaround for MS-1386 */ String clientId) {
     super(groupId);
     internalStream = intStream;
     this.listener = listener;
@@ -68,6 +69,7 @@ public class MarlinConsumerCoordinator extends MarlinCoordinator {
     // TODO Support multiple assignors once multiple protocol support is added to group-join protocol.
     this.assignor = assignors.get(0);
     this.groupMetadata = groupMetadata;
+    this.pollThread = new Thread(new ConsumerPollThread(), /* TODO: it is a workaround for MS-1386 */ clientId + "-coordinator");
     pollThread.start();
     init();
     log.debug("MarlinConsumerCoordinator constructor");

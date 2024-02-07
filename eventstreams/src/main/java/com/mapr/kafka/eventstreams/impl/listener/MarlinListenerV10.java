@@ -48,7 +48,8 @@ public class MarlinListenerV10<K,V> extends MarlinListener<K,V> {
 
         _clientSidePartitioningEnabled = true;
         _coordinator = new MarlinConsumerCoordinator(this, _listener, config.getString(mConfDef.getGroupID()), assignors,
-            config.getString(mConfDef.getClientSidePartitionAssignmentInternalStream()), _groupMetadata);
+            config.getString(mConfDef.getClientSidePartitionAssignmentInternalStream()), _groupMetadata,
+                /* TODO: it is a workaround for MS-1386 */ config.getString(ConsumerConfig.CLIENT_ID_CONFIG));
       }
     }
 

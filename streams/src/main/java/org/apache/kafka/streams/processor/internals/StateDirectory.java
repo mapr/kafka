@@ -347,7 +347,9 @@ public class StateDirectory {
 
         final Thread lockOwner = lockedTasksToOwner.get(taskId);
         if (lockOwner != null) {
-            if (lockOwner.equals(Thread.currentThread())) {
+            if (lockOwner.equals(Thread.currentThread()) ||
+                /* TODO: it is a workaround for MS-1386 */
+                lockOwner.getName().equals(Thread.currentThread().getName() + "-consumer-coordinator")) {
                 log.trace("{} Found cached state dir lock for task {}", logPrefix(), taskId);
                 // we already own the lock
                 return true;
