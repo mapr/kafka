@@ -162,6 +162,11 @@ public class ConnectorConfig extends AbstractConfig {
     public static final String CONNECTOR_CLIENT_ADMIN_OVERRIDES_PREFIX = "admin.override.";
     public static final String PREDICATES_PREFIX = "predicates.";
 
+    public static final String AUTHENTICATION_ENABLE_CONFIG = "authentication.enable";
+    public static final boolean AUTHENTICATION_ENABLE_DEFAULT = false;
+    public static final String AUTHENTICATION_ENABLE_DOC =
+            "Enable MapR Sasl authentication for connectors.";
+
     private final EnrichedConnectorConfig enrichedConfig;
     private static class EnrichedConnectorConfig extends AbstractConfig {
         EnrichedConnectorConfig(ConfigDef configDef, Map<String, String> props) {
@@ -199,7 +204,8 @@ public class ConnectorConfig extends AbstractConfig {
                 .define(ERRORS_LOG_ENABLE_CONFIG, Type.BOOLEAN, ERRORS_LOG_ENABLE_DEFAULT, Importance.MEDIUM,
                         ERRORS_LOG_ENABLE_DOC, ERROR_GROUP, ++orderInErrorGroup, Width.SHORT, ERRORS_LOG_ENABLE_DISPLAY)
                 .define(ERRORS_LOG_INCLUDE_MESSAGES_CONFIG, Type.BOOLEAN, ERRORS_LOG_INCLUDE_MESSAGES_DEFAULT, Importance.MEDIUM,
-                        ERRORS_LOG_INCLUDE_MESSAGES_DOC, ERROR_GROUP, ++orderInErrorGroup, Width.SHORT, ERRORS_LOG_INCLUDE_MESSAGES_DISPLAY);
+                        ERRORS_LOG_INCLUDE_MESSAGES_DOC, ERROR_GROUP, ++orderInErrorGroup, Width.SHORT, ERRORS_LOG_INCLUDE_MESSAGES_DISPLAY)
+                .define(AUTHENTICATION_ENABLE_CONFIG, Type.BOOLEAN, AUTHENTICATION_ENABLE_DEFAULT, Importance.LOW, AUTHENTICATION_ENABLE_DOC);
     }
 
     private static ConfigDef.CompositeValidator aliasValidator(String kind) {

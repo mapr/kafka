@@ -166,9 +166,11 @@ public class MirrorSourceConnector extends SourceConnector {
         scheduler.execute(this::loadTopicPartitions, "loading initial set of topic-partitions");
         scheduler.execute(this::computeAndCreateTopicPartitions, "creating downstream topic-partitions");
         scheduler.execute(this::refreshKnownTargetTopics, "refreshing known target topics");
-        scheduler.scheduleRepeating(this::syncTopicAcls, config.syncTopicAclsInterval(), "syncing topic ACLs");
-        scheduler.scheduleRepeating(this::syncTopicConfigs, config.syncTopicConfigsInterval(),
-            "syncing topic configs");
+//        describeAcls API not implemented in MarlinAdminClientImpl
+//        scheduler.scheduleRepeating(this::syncTopicAcls, config.syncTopicAclsInterval(), "syncing topic ACLs");
+//        describeConfigs API not implemented in MarlinAdminClientImpl
+//        scheduler.scheduleRepeating(this::syncTopicConfigs, config.syncTopicConfigsInterval(),
+//            "syncing topic configs");
         scheduler.scheduleRepeatingDelayed(this::refreshTopicPartitions, config.refreshTopicsInterval(),
             "refreshing topics");
         log.info("Started {} with {} topic-partitions.", connectorName, knownSourceTopicPartitions.size());
@@ -481,14 +483,15 @@ public class MirrorSourceConnector extends SourceConnector {
     // visible for testing
     void createNewTopics(Set<String> newSourceTopics, Map<String, Long> sourceTopicToPartitionCounts)
             throws ExecutionException, InterruptedException {
-        Map<String, Config> sourceTopicToConfig = describeTopicConfigs(newSourceTopics);
+//        Commmented out configs part because describeConfigs is not implemented in MapR
+//        Map<String, Config> sourceTopicToConfig = describeTopicConfigs(newSourceTopics);
         Map<String, NewTopic> newTopics = newSourceTopics.stream()
                 .map(sourceTopic -> {
                     String remoteTopic = formatRemoteTopic(sourceTopic);
                     int partitionCount = sourceTopicToPartitionCounts.get(sourceTopic).intValue();
-                    Map<String, String> configs = configToMap(targetConfig(sourceTopicToConfig.get(sourceTopic), false));
-                    return new NewTopic(remoteTopic, partitionCount, (short) replicationFactor)
-                            .configs(configs);
+//                    Map<String, String> configs = configToMap(targetConfig(sourceTopicToConfig.get(sourceTopic), false));
+                    return new NewTopic(remoteTopic, partitionCount, (short) replicationFactor);
+//                            .configs(configs);
                 })
                 .collect(Collectors.toMap(NewTopic::name, Function.identity()));
         createNewTopics(newTopics);
@@ -547,7 +550,12 @@ public class MirrorSourceConnector extends SourceConnector {
 
     private static Collection<TopicDescription> describeTopics(Admin adminClient, Collection<String> topics)
             throws InterruptedException, ExecutionException {
-        return adminClient.describeTopics(topics).allTopicNames().get().values();
+        return adminClient.describeTopics(topics).allTopicNames().get().values().stream()
+                .map(t -> t.name().startsWith("/")
+                        ? new TopicDescription(t.name().split(":")[1],
+                        t.isInternal(), t.partitions(), t.authorizedOperations())
+                        : t)
+                .collect(Collectors.toSet());
     }
 
     static Map<String, String> configToMap(Config config) {

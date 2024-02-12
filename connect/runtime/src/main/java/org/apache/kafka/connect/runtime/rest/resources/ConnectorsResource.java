@@ -19,10 +19,12 @@ package org.apache.kafka.connect.runtime.rest.resources;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.connect.errors.NotFoundException;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.RestartRequest;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.rest.HerderRequestHandler;
 import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.runtime.rest.RestServerConfig;
@@ -40,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -133,7 +136,8 @@ public class ConnectorsResource implements ConnectResource {
     @POST
     @Path("/")
     @Operation(summary = "Create a new connector")
-    public Response createConnector(final @Parameter(hidden = true) @QueryParam("forward") Boolean forward,
+    public Response createConnector(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                                    final @Parameter(hidden = true) @QueryParam("forward") Boolean forward,
                                     final @Context HttpHeaders headers,
                                     final CreateConnectorRequest createRequest) throws Throwable {
         // Trim leading and trailing whitespaces from the connector name, replace null with empty string
@@ -142,6 +146,13 @@ public class ConnectorsResource implements ConnectResource {
         String name = createRequest.name() == null ? "" : createRequest.name().trim();
 
         Map<String, String> configs = createRequest.config();
+
+        String remoteUser = httpRequest.getRemoteUser();
+        configs.put(TaskConfig.TASK_USER_CONFIG,
+                remoteUser != null ? remoteUser : UserGroupInformation.getCurrentUser().getShortUserName());
+
+        configs.putIfAbsent(ConnectorConfig.AUTHENTICATION_ENABLE_CONFIG, Boolean.toString(UserGroupInformation.isSecurityEnabled()));
+
         checkAndPutConnectorConfigName(name, configs);
 
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
@@ -219,10 +230,15 @@ public class ConnectorsResource implements ConnectResource {
     @PUT
     @Path("/{connector}/config")
     @Operation(summary = "Create or reconfigure the specified connector")
-    public Response putConnectorConfig(final @PathParam("connector") String connector,
+    public Response putConnectorConfig(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                                       final @PathParam("connector") String connector,
                                        final @Context HttpHeaders headers,
                                        final @Parameter(hidden = true) @QueryParam("forward") Boolean forward,
                                        final Map<String, String> connectorConfig) throws Throwable {
+        String remoteUser = httpRequest.getRemoteUser();
+        connectorConfig.put(TaskConfig.TASK_USER_CONFIG,
+                remoteUser != null ? remoteUser : UserGroupInformation.getCurrentUser().getShortUserName());
+
         FutureCallback<Herder.Created<ConnectorInfo>> cb = new FutureCallback<>();
         checkAndPutConnectorConfigName(connector, connectorConfig);
 

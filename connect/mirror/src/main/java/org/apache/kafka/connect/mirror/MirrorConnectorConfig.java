@@ -16,7 +16,10 @@
  */
 package org.apache.kafka.connect.mirror;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ForwardingAdmin;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -31,10 +34,12 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMI
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 import static org.apache.kafka.common.config.ConfigDef.CaseInsensitiveValidString.in;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.time.Duration;
+import java.util.Set;
 
 /** Shared config properties used by {@link MirrorSourceConnector}, {@link MirrorCheckpointConnector}, and {@link MirrorHeartbeatConnector}.
  *  <p>
@@ -148,7 +153,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     Map<String, Object> sourceProducerConfig(String role) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(originalsWithPrefix(SOURCE_CLUSTER_PREFIX));
-        props.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        props.keySet().retainAll(withDefaultStream(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         props.putAll(originalsWithPrefix(PRODUCER_CLIENT_PREFIX));
         props.putAll(originalsWithPrefix(SOURCE_PREFIX + PRODUCER_CLIENT_PREFIX));
         addClientId(props, role);
@@ -164,7 +169,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     static Map<String, Object> sourceConsumerConfig(Map<String, ?> props) {
         Map<String, Object> result = new HashMap<>();
         result.putAll(Utils.entriesWithPrefix(props, SOURCE_CLUSTER_PREFIX));
-        result.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        result.keySet().retainAll(withDefaultStream(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         result.putAll(Utils.entriesWithPrefix(props, CONSUMER_CLIENT_PREFIX));
         result.putAll(Utils.entriesWithPrefix(props, SOURCE_PREFIX + CONSUMER_CLIENT_PREFIX));
         result.put(ENABLE_AUTO_COMMIT_CONFIG, "false");
@@ -175,7 +180,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     Map<String, Object> targetAdminConfig(String role) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(originalsWithPrefix(TARGET_CLUSTER_PREFIX));
-        props.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        props.keySet().retainAll(withDefaultStream(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         props.putAll(originalsWithPrefix(ADMIN_CLIENT_PREFIX));
         props.putAll(originalsWithPrefix(TARGET_PREFIX + ADMIN_CLIENT_PREFIX));
         addClientId(props, role);
@@ -185,7 +190,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     Map<String, Object> targetProducerConfig(String role) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(originalsWithPrefix(TARGET_CLUSTER_PREFIX));
-        props.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        props.keySet().retainAll(withDefaultStream(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         props.putAll(originalsWithPrefix(PRODUCER_CLIENT_PREFIX));
         props.putAll(originalsWithPrefix(TARGET_PREFIX + PRODUCER_CLIENT_PREFIX));
         addClientId(props, role);
@@ -195,7 +200,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     Map<String, Object> targetConsumerConfig(String role) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(originalsWithPrefix(TARGET_CLUSTER_PREFIX));
-        props.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        props.keySet().retainAll(withDefaultStream(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         props.putAll(originalsWithPrefix(CONSUMER_CLIENT_PREFIX));
         props.putAll(originalsWithPrefix(TARGET_PREFIX + CONSUMER_CLIENT_PREFIX));
         props.put(ENABLE_AUTO_COMMIT_CONFIG, "false");
@@ -207,7 +212,7 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
     Map<String, Object> sourceAdminConfig(String role) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(originalsWithPrefix(SOURCE_CLUSTER_PREFIX));
-        props.keySet().retainAll(MirrorClientConfig.CLIENT_CONFIG_DEF.names());
+        props.keySet().retainAll(withDefaultStream(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, MirrorClientConfig.CLIENT_CONFIG_DEF.names()));
         props.putAll(originalsWithPrefix(ADMIN_CLIENT_PREFIX));
         props.putAll(originalsWithPrefix(SOURCE_PREFIX + ADMIN_CLIENT_PREFIX));
         addClientId(props, role);
@@ -223,6 +228,12 @@ public abstract class MirrorConnectorConfig extends AbstractConfig {
         }
 
         return reporters;
+    }
+
+    private static Set<String> withDefaultStream(String defaultStream, Set<String> set) {
+        Set<String> newSet = new HashSet<>(set);
+        newSet.add(defaultStream);
+        return newSet;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

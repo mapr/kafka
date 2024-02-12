@@ -156,8 +156,9 @@ public class MirrorSourceTask extends SourceTask {
                 SourceRecord converted = convertRecord(record);
                 sourceRecords.add(converted);
                 TopicPartition topicPartition = new TopicPartition(converted.topic(), converted.kafkaPartition());
-                metrics.recordAge(topicPartition, System.currentTimeMillis() - record.timestamp());
-                metrics.recordBytes(topicPartition, byteSize(record.value()));
+//                Mapr Kafka doesn't support metrics
+//                metrics.recordAge(topicPartition, System.currentTimeMillis() - record.timestamp());
+//                metrics.recordBytes(topicPartition, byteSize(record.value()));
             }
             if (sourceRecords.isEmpty()) {
                 // WorkerSourceTasks expects non-zero batch size

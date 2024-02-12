@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.runtime.rest;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -28,10 +29,13 @@ import org.apache.kafka.connect.runtime.health.ConnectClusterDetailsImpl;
 import org.apache.kafka.connect.runtime.health.ConnectClusterStateImpl;
 import org.apache.kafka.connect.runtime.rest.errors.ConnectExceptionMapper;
 import org.apache.kafka.connect.runtime.rest.resources.ConnectResource;
+import org.apache.kafka.connect.runtime.rest.util.HeadersFilter;
 import org.apache.kafka.connect.runtime.rest.util.SSLUtils;
+import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Slf4jRequestLogWriter;
@@ -58,6 +62,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -170,6 +175,12 @@ public abstract class RestServer {
             connector.setName(ADMIN_SERVER_CONNECTOR_NAME);
         }
 
+        for (ConnectionFactory cf : connector.getConnectionFactories()) {
+            if (cf instanceof HttpConnectionFactory) {
+                ((HttpConnectionFactory) cf).getHttpConfiguration().setSendServerVersion(false);
+            }
+        }
+
         if (!hostname.isEmpty())
             connector.setHost(hostname);
 
@@ -266,6 +277,23 @@ public abstract class RestServer {
             contextHandlers.add(adminContext);
         }
 
+        if (config.getBoolean(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
+            FilterHolder holder = new FilterHolder(new AuthenticationFilter());
+            holder.setInitParameter(
+                    AuthenticationFilter.AUTH_TYPE,
+                    "org.apache.hadoop.security.authentication.server.MultiMechsAuthenticationHandler");
+            Long cookiesExpirationTime = config.getLong(RestServerConfig.AUTHENTICATION_COOKIE_EXPIRATION_CONFIG);
+            holder.setInitParameter(AuthenticationFilter.AUTH_TOKEN_VALIDITY, cookiesExpirationTime.toString());
+            List<String> authenticationTypes = config.getList(RestServerConfig.HADOOP_AUTHENTICATION_TYPES_CONFIG);
+            ListIterator<String> authenticationTypesIterator = authenticationTypes.listIterator();
+            while (authenticationTypesIterator.hasNext()) {
+                holder.setInitParameter("type" + authenticationTypesIterator.nextIndex(),
+                        authenticationTypesIterator.next());
+            }
+            context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
+            log.debug("Basic and MapR SASL authentications enabled");
+        }
+
         String allowedOrigins = config.allowedOrigins();
         if (!Utils.isBlank(allowedOrigins)) {
             FilterHolder filterHolder = new FilterHolder(new CrossOriginFilter());
@@ -277,6 +305,7 @@ public abstract class RestServer {
             }
             context.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
         }
+        configureCustomAndSecurityHeaders(context);
 
         String headerConfig = config.responseHeaders();
         if (!Utils.isBlank(headerConfig)) {
@@ -300,6 +329,19 @@ public abstract class RestServer {
         }
 
         log.info("REST resources initialized; server is started and ready to handle requests");
+    }
+    private void configureCustomAndSecurityHeaders(ServletContextHandler context) {
+        String headersFile = config.getString(RestServerConfig.HEADERS_FILE_CONFIG);
+        if (headersFile != null && !headersFile.isEmpty()) {
+            addScurityAndCustomHeadersFilter(context);
+        }
+    }
+
+    private void addScurityAndCustomHeadersFilter(ServletContextHandler context) {
+        FilterHolder holder = new FilterHolder(new HeadersFilter());
+        holder.setInitParameter(RestServerConfig.HEADERS_FILE_CONFIG,
+                config.getString(RestServerConfig.HEADERS_FILE_CONFIG));
+        context.addFilter(holder, "/*", EnumSet.allOf(DispatcherType.class));
     }
 
     /**

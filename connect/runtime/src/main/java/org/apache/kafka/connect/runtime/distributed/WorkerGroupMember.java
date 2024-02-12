@@ -23,6 +23,7 @@ import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient;
 import org.apache.kafka.clients.GroupRebalanceConfig;
+import org.apache.kafka.clients.mapr.GenericHFactory;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
 import org.apache.kafka.common.metrics.MetricsContext;
@@ -62,7 +63,7 @@ public class WorkerGroupMember {
     private final String clientId;
     private final ConsumerNetworkClient client;
     private final Metrics metrics;
-    private final WorkerCoordinator coordinator;
+    private final GenericWorkerCoordinator coordinator;
 
     private boolean stopped = false;
 
@@ -76,6 +77,27 @@ public class WorkerGroupMember {
         try {
             this.clientId = clientId;
             this.log = logContext.logger(WorkerGroupMember.class);
+
+            String configTopic = (String) config.originals().get(DistributedConfig.CONFIG_TOPIC_CONFIG);
+            if (configTopic != null && (configTopic.startsWith("/") || configTopic.contains(":"))) {
+                this.coordinator = GenericHFactory.getImplementorInstance(
+                        "com.mapr.kafka.eventstreams.impl.MarlinWorkerCoordinatorV10",
+                        new Object [] {config,
+                                config.getString(DistributedConfig.GROUP_ID_CONFIG),
+                                restUrl,
+                                configStorage,
+                                listener},
+                        new Class<?> [] {DistributedConfig.class,
+                                String.class,
+                                String.class,
+                                ConfigBackingStore.class,
+                                WorkerRebalanceListener.class});
+
+                // Not relevant / not supported by MAPR-STREAMS
+                this.client = null;
+                this.metrics = null;
+                return;
+            }
 
             Map<String, String> metricsTags = new LinkedHashMap<>();
             metricsTags.put("client-id", clientId);
@@ -171,7 +193,7 @@ public class WorkerGroupMember {
      * Interrupt any running poll() calls, causing a WakeupException to be thrown in the thread invoking that method.
      */
     public void wakeup() {
-        this.client.wakeup();
+        this.coordinator.wakeup();
     }
 
     /**

@@ -50,6 +50,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Stubber;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -151,6 +152,8 @@ public class ConnectorsResourceTest {
     private UriInfo forward;
     @Mock
     private RestClient restClient;
+    @Mock
+    private HttpServletRequest httpRequest;
     @Mock
     private RestServerConfig serverConfig;
 
@@ -279,7 +282,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME), eq(body.config()), eq(false), cb.capture());
 
-        connectorsResource.createConnector(FORWARD, NULL_HEADERS, body);
+        connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, body);
     }
 
     @Test
@@ -292,7 +295,7 @@ public class ConnectorsResourceTest {
 
         when(restClient.httpRequest(eq(LEADER_URL + "connectors?forward=false"), eq("POST"), isNull(), eq(body), any()))
                 .thenReturn(new RestClient.HttpResponse<>(201, new HashMap<>(), new ConnectorInfo(CONNECTOR_NAME, CONNECTOR_CONFIG, CONNECTOR_TASK_NAMES, ConnectorType.SOURCE)));
-        connectorsResource.createConnector(FORWARD, NULL_HEADERS, body);
+        connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, body);
     }
 
     @Test
@@ -305,7 +308,7 @@ public class ConnectorsResourceTest {
 
         when(restClient.httpRequest(eq(LEADER_URL + "connectors?forward=false"), eq("POST"), eq(httpHeaders), any(), any()))
                 .thenReturn(new RestClient.HttpResponse<>(202, new HashMap<>(), null));
-        connectorsResource.createConnector(FORWARD, httpHeaders, body);
+        connectorsResource.createConnector(httpRequest, FORWARD, httpHeaders, body);
     }
 
     @Test
@@ -315,7 +318,7 @@ public class ConnectorsResourceTest {
         final ArgumentCaptor<Callback<Herder.Created<ConnectorInfo>>> cb = ArgumentCaptor.forClass(Callback.class);
         expectAndCallbackException(cb, new AlreadyExistsException("already exists"))
             .when(herder).putConnectorConfig(eq(CONNECTOR_NAME), eq(body.config()), eq(false), cb.capture());
-        assertThrows(AlreadyExistsException.class, () -> connectorsResource.createConnector(FORWARD, NULL_HEADERS, body));
+        assertThrows(AlreadyExistsException.class, () -> connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, body));
     }
 
     @Test
@@ -331,7 +334,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(bodyOut.name()), eq(bodyOut.config()), eq(false), cb.capture());
 
-        connectorsResource.createConnector(FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, bodyIn);
     }
 
     @Test
@@ -347,7 +350,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(bodyOut.name()), eq(bodyOut.config()), eq(false), cb.capture());
 
-        connectorsResource.createConnector(FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, bodyIn);
     }
 
     @Test
@@ -363,7 +366,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(bodyOut.name()), eq(bodyOut.config()), eq(false), cb.capture());
 
-        connectorsResource.createConnector(FORWARD, NULL_HEADERS, bodyIn);
+        connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, bodyIn);
     }
 
     @Test
@@ -471,7 +474,7 @@ public class ConnectorsResourceTest {
             ConnectorType.SINK))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME), eq(CONNECTOR_CONFIG), eq(true), cb.capture());
 
-        connectorsResource.putConnectorConfig(CONNECTOR_NAME, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG);
+        connectorsResource.putConnectorConfig(httpRequest, CONNECTOR_NAME, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG);
     }
 
     @Test
@@ -483,7 +486,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME_SPECIAL_CHARS), eq(body.config()), eq(false), cb.capture());
 
-        String rspLocation = connectorsResource.createConnector(FORWARD, NULL_HEADERS, body).getLocation().toString();
+        String rspLocation = connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, body).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_SPECIAL_CHARS, decoded);
     }
@@ -497,7 +500,7 @@ public class ConnectorsResourceTest {
             CONNECTOR_TASK_NAMES, ConnectorType.SOURCE))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME_CONTROL_SEQUENCES1), eq(body.config()), eq(false), cb.capture());
 
-        String rspLocation = connectorsResource.createConnector(FORWARD, NULL_HEADERS, body).getLocation().toString();
+        String rspLocation = connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, body).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_CONTROL_SEQUENCES1, decoded);
     }
@@ -510,7 +513,7 @@ public class ConnectorsResourceTest {
             ConnectorType.SINK))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME_SPECIAL_CHARS), eq(CONNECTOR_CONFIG_SPECIAL_CHARS), eq(true), cb.capture());
 
-        String rspLocation = connectorsResource.putConnectorConfig(CONNECTOR_NAME_SPECIAL_CHARS, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_SPECIAL_CHARS).getLocation().toString();
+        String rspLocation = connectorsResource.putConnectorConfig(httpRequest, CONNECTOR_NAME_SPECIAL_CHARS, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_SPECIAL_CHARS).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_SPECIAL_CHARS, decoded);
     }
@@ -523,7 +526,7 @@ public class ConnectorsResourceTest {
             ConnectorType.SINK))
         ).when(herder).putConnectorConfig(eq(CONNECTOR_NAME_CONTROL_SEQUENCES1), eq(CONNECTOR_CONFIG_CONTROL_SEQUENCES), eq(true), cb.capture());
 
-        String rspLocation = connectorsResource.putConnectorConfig(CONNECTOR_NAME_CONTROL_SEQUENCES1, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_CONTROL_SEQUENCES).getLocation().toString();
+        String rspLocation = connectorsResource.putConnectorConfig(httpRequest, CONNECTOR_NAME_CONTROL_SEQUENCES1, NULL_HEADERS, FORWARD, CONNECTOR_CONFIG_CONTROL_SEQUENCES).getLocation().toString();
         String decoded = new URI(rspLocation).getPath();
         Assert.assertEquals("/connectors/" + CONNECTOR_NAME_CONTROL_SEQUENCES1, decoded);
     }
@@ -532,7 +535,7 @@ public class ConnectorsResourceTest {
     public void testPutConnectorConfigNameMismatch() {
         Map<String, String> connConfig = new HashMap<>(CONNECTOR_CONFIG);
         connConfig.put(ConnectorConfig.NAME_CONFIG, "mismatched-name");
-        assertThrows(BadRequestException.class, () -> connectorsResource.putConnectorConfig(CONNECTOR_NAME,
+        assertThrows(BadRequestException.class, () -> connectorsResource.putConnectorConfig(httpRequest, CONNECTOR_NAME,
             NULL_HEADERS, FORWARD, connConfig));
     }
 
@@ -541,7 +544,7 @@ public class ConnectorsResourceTest {
         Map<String, String> connConfig = new HashMap<>();
         connConfig.put(ConnectorConfig.NAME_CONFIG, "mismatched-name");
         CreateConnectorRequest request = new CreateConnectorRequest(CONNECTOR_NAME, connConfig);
-        assertThrows(BadRequestException.class, () -> connectorsResource.createConnector(FORWARD, NULL_HEADERS, request));
+        assertThrows(BadRequestException.class, () -> connectorsResource.createConnector(httpRequest, FORWARD, NULL_HEADERS, request));
     }
 
     @Test

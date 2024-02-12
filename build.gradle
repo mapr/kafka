@@ -2835,6 +2835,13 @@ project(':connect:runtime') {
     implementation libs.mavenArtifact
     implementation libs.swaggerAnnotations
 
+    compileOnly (libs.maprSecurityWeb) {
+      exclude module: 'httpclient'
+    }
+    implementation libs.bcFips
+    implementation libs.bctlsFips
+    implementation libs.jpam
+
     // We use this library to generate OpenAPI docs for the REST API, but we don't want or need it at compile
     // or run time. So, we add it to a separate configuration, which we use later on during docs generation
     swagger libs.swaggerJaxrs2

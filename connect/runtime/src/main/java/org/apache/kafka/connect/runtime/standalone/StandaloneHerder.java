@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.connect.runtime.standalone;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
 import org.apache.kafka.connect.errors.AlreadyExistsException;
@@ -31,6 +32,7 @@ import org.apache.kafka.connect.runtime.SessionKey;
 import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.apache.kafka.connect.runtime.SourceConnectorConfig;
 import org.apache.kafka.connect.runtime.TargetState;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.rest.InternalRequestSignature;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
@@ -50,6 +52,7 @@ import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -427,6 +430,11 @@ public class StandaloneHerder extends AbstractHerder {
 
     private void createConnectorTasks(String connName, Collection<ConnectorTaskId> taskIds) {
         Map<String, String> connConfigs = configState.connectorConfig(connName);
+        try {
+            connConfigs.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+        } catch (IOException e) {
+            log.error("Can not get current user: " +  e);
+        }
         for (ConnectorTaskId taskId : taskIds) {
             startTask(taskId, connConfigs);
         }

@@ -2537,7 +2537,7 @@ public class DistributedHerderTest {
         doNothing().when(member).poll(anyLong());
 
         OngoingStubbing<RestClient.HttpResponse<Object>> expectRequest = when(restClient.httpRequest(
-                any(), eq("PUT"), isNull(), isNull(), isNull(), any(), any()
+                any(), eq("PUT"), isNull(), isNull(), isNull(), any(), any(), any()
         ));
 
         if (succeed) {
@@ -3132,7 +3132,7 @@ public class DistributedHerderTest {
         changedTaskConfigs.add(TASK_CONFIG);
         when(worker.connectorTaskConfigs(CONN1, sinkConnectorConfig)).thenReturn(changedTaskConfigs);
 
-        when(restClient.httpRequest(any(), eq("POST"), any(), any(), any(), any(), any()))
+        when(restClient.httpRequest(any(), eq("POST"), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new ConnectException("Request to leader to reconfigure connector tasks failed"))
                 .thenThrow(new ConnectException("Request to leader to reconfigure connector tasks failed"))
                 .thenReturn(null);

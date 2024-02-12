@@ -90,7 +90,8 @@ public class RestClientTest {
                 new TestDTO("requestBodyData"),
                 TEST_TYPE,
                 MOCK_SECRET_KEY,
-                requestSignatureAlgorithm
+                requestSignatureAlgorithm,
+                null
         );
     }
 

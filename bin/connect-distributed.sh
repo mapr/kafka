@@ -42,4 +42,65 @@ case $COMMAND in
     ;;
 esac
 
-exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectDistributed "$@"
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
+[ -f "${env}" ] && . "${env}"
+export KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS} ${MAPR_LOGIN_OPTS}"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)"
+
+pid="/opt/mapr/pid/kafka-connect.pid"
+HIVE_HOME=$(ls -d /opt/mapr/hive/hive-* 2> /dev/null)
+
+KAFKA_CONNECT_CONF="$@"
+logDir="$base_dir/../logs"
+if [ ! -d "$logDir" ]; then
+  mkdir -p "$logDir"
+fi
+logFile="$logDir/connect-distributed.log"
+if [ -f ${KAFKA_CONNECT_CONF} ]; then
+	CONF_STREAM_DEFAULT=$(sed -n "/config.storage.topic/p"  ${KAFKA_CONNECT_CONF} | grep "=/var/mapr/.__mapr_connect:configs$")
+	OFFSET_STREAM_DEFAULT=$(sed -n "/offset.storage.topic/p"  ${KAFKA_CONNECT_CONF} | grep "=/var/mapr/.__mapr_connect:offsets$")
+fi
+if [ $CONF_STREAM_DEFAULT ] || [ $OFFSET_STREAM_DEFAULT ]; then
+        nowC=$(date +%s)
+        while [  1 -eq 1 ]; do
+                ret=0
+                { maprcli volume info -name mapr.var; ret=$?; } >> /dev/null
+                if [ $ret -eq 0 ]; then
+                        # volume exist. Try to create stream.
+                        break;
+                fi
+
+                # waiting for valume to be created
+                realNow=$(date +%s)
+                timeDiff="$(( $realNow - $nowC ))"
+                if [ "$timeDiff" -gt 12 ]; then
+                        now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+                        echo "[$now] ERROR Kafka connect can not create default streams. Volume was not created." >> $logFile
+                        exit 1
+                fi
+                now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+                echo "[$now] INFO Waiting 10 sec for /var/mapr to be created" >> $logFile
+                sleep 10
+        done
+        now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+        echo "[$now] INFO Creating stream /var/mapr/.__mapr_connect if it does not already exist" >> $logFile
+        output="$(maprcli stream create -path /var/mapr/.__mapr_connect -produceperm p -consumeperm p -topicperm p -ttl 0  2>&1)"
+        if [[ $output == *"Permission denied"* ]]; then
+                now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+                echo "[$now] ERROR You do not have permission to create streams for storage.topic. Please fix the permission issue or change default values of config.storage.topic and offset.storage.topic in connect-distributed.properties" >> $logFile
+                exit 1
+        fi
+fi
+
+# Add connect plugins to classpath
+CONNECTORS_CLASSPATH=""
+for jar in /opt/mapr/kafka-connect-*/kafka-connect-*/share/java/kafka-connect-*/*.jar
+do
+	CONNECTORS_CLASSPATH="$CONNECTORS_CLASSPATH:$jar"
+done
+export CONNECTORS_CLASSPATH
+export HIVE_HOME
+
+exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectDistributed "$@" & echo $! > $pid

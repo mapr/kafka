@@ -117,6 +117,14 @@ public abstract class AbstractConnectCli<T extends WorkerConfig> {
         WorkerInfo initInfo = new WorkerInfo();
         initInfo.logAll();
 
+        // Load the MarlinClient and associated jni classes first.
+        log.info("Loading MarlinClient");
+        try {
+            Class.forName("com.mapr.kafka.eventstreams.impl.MarlinClient");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
         log.info("Scanning for plugin classes. This might take a moment ...");
         Plugins plugins = new Plugins(workerProps);
         plugins.compareAndSwapWithDelegatingLoader();

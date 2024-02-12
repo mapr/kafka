@@ -16,15 +16,22 @@
  */
 package org.apache.kafka.connect.runtime.rest.util;
 
+import com.mapr.web.security.SslConfig;
+import com.mapr.web.security.WebSecurityManager;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.runtime.rest.RestServer;
+import org.apache.kafka.connect.runtime.rest.RestServerConfig;
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
+import java.security.Security;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -34,6 +41,19 @@ import java.util.regex.Pattern;
  */
 public class SSLUtils {
 
+    private static final Map<String, Object> MAPR_SSL_CONFIGS = new HashMap<>();
+    static {
+        try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, sslConfig.getServerKeystoreType());
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, sslConfig.getServerKeystoreLocation());
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerKeystorePassword())));
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, sslConfig.getServerTruststoreType());
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, sslConfig.getServerTruststoreLocation());
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerTruststorePassword())));
+            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerKeyPassword())));
+        }
+    }
+
     private static final Pattern COMMA_WITH_WHITESPACE = Pattern.compile("\\s*,\\s*");
 
 
@@ -42,6 +62,7 @@ public class SSLUtils {
      */
     public static SslContextFactory createServerSideSslContextFactory(AbstractConfig config, String prefix) {
         Map<String, Object> sslConfigValues = config.valuesWithPrefixAllOrNothing(prefix);
+        MAPR_SSL_CONFIGS.forEach(sslConfigValues::putIfAbsent);
 
         final SslContextFactory.Server ssl = new SslContextFactory.Server();
 
@@ -65,6 +86,7 @@ public class SSLUtils {
      */
     public static SslContextFactory createClientSideSslContextFactory(AbstractConfig config) {
         Map<String, Object> sslConfigValues = config.valuesWithPrefixAllOrNothing("listeners.https.");
+        MAPR_SSL_CONFIGS.forEach(sslConfigValues::putIfAbsent);
 
         final SslContextFactory.Client ssl = new SslContextFactory.Client();
 
@@ -76,10 +98,21 @@ public class SSLUtils {
         return ssl;
     }
 
+    private static void maybeEnableFips(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
+        String keyStoreType = (String) getOrDefault(sslConfigValues,
+                SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE);
+        if ("BCFKS".equals(keyStoreType)) {
+            Security.addProvider(new BouncyCastleFipsProvider());
+            Security.addProvider(new BouncyCastleJsseProvider());
+            ssl.setProvider(BouncyCastleJsseProvider.PROVIDER_NAME);
+        }
+    }
+
     /**
      * Configures KeyStore related settings in SslContextFactory
      */
     protected static void configureSslContextFactoryKeyStore(SslContextFactory ssl, Map<String, Object> sslConfigValues) {
+        maybeEnableFips(ssl, sslConfigValues);
         ssl.setKeyStoreType((String) getOrDefault(sslConfigValues, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE));
 
         String sslKeystoreLocation = (String) sslConfigValues.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
@@ -125,6 +158,9 @@ public class SSLUtils {
         List<String> sslEnabledProtocols = (List<String>) getOrDefault(sslConfigValues, SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG, Arrays.asList(COMMA_WITH_WHITESPACE.split(SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS)));
         ssl.setIncludeProtocols(sslEnabledProtocols.toArray(new String[0]));
 
+        List<String> sslDisabledProtocols = (List<String>) getOrDefault(sslConfigValues, RestServerConfig.SSL_DISABLED_PROTOCOLS_CONFIG, Arrays.asList(COMMA_WITH_WHITESPACE.split(RestServerConfig.SSL_DISABLED_PROTOCOLS_DEFAULT)));
+        ssl.setExcludeProtocols(sslDisabledProtocols.toArray(new String[sslDisabledProtocols.size()]));
+
         String sslProvider = (String) sslConfigValues.get(SslConfigs.SSL_PROVIDER_CONFIG);
         if (sslProvider != null)
             ssl.setProvider(sslProvider);
@@ -134,6 +170,9 @@ public class SSLUtils {
         List<String> sslCipherSuites = (List<String>) sslConfigValues.get(SslConfigs.SSL_CIPHER_SUITES_CONFIG);
         if (sslCipherSuites != null)
             ssl.setIncludeCipherSuites(sslCipherSuites.toArray(new String[0]));
+
+        List<String> sslCipherSuitesExclude = (List<String>) getOrDefault(sslConfigValues, RestServerConfig.SSL_DISABLED_CIPHER_SUITES_CONFIG, Arrays.asList(COMMA_WITH_WHITESPACE.split(RestServerConfig.SSL_DISABLED_CIPHER_SUITES_DEFAULT)));
+        ssl.setExcludeCipherSuites(sslCipherSuitesExclude.toArray(new String[sslCipherSuitesExclude.size()]));
 
         ssl.setKeyManagerFactoryAlgorithm((String) getOrDefault(sslConfigValues, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG, SslConfigs.DEFAULT_SSL_KEYMANGER_ALGORITHM));
 

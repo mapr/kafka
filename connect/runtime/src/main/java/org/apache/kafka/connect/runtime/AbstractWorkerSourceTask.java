@@ -69,6 +69,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static org.apache.kafka.connect.runtime.WorkerConfig.TOPIC_TRACKING_ENABLE_CONFIG;
+import static org.apache.kafka.connect.util.ImpersonationUtil.maybeRunImpersonated;
 
 /**
  * WorkerTask that contains shared logic for running source tasks with either standard semantics
@@ -335,6 +336,12 @@ public abstract class AbstractWorkerSourceTask extends WorkerTask {
 
     @Override
     public void execute() {
+        maybeRunImpersonated(workerConfig, taskConfig, () -> {
+            executeInternal();
+            return null;
+        });
+    }
+    public void executeInternal() {
         try {
             prepareToEnterSendLoop();
             while (!isStopping()) {

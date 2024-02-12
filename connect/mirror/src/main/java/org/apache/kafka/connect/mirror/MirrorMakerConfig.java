@@ -19,6 +19,9 @@ package org.apache.kafka.connect.mirror;
 import java.util.Arrays;
 import java.util.Map.Entry;
 
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -148,11 +151,24 @@ public class MirrorMakerConfig extends AbstractConfig {
         return new MirrorClientConfig(transform(props));
     }
 
+    private void maybeSetDefaultStreams(Map<String, String> props) {
+        if (props.containsKey("stream")) {
+            props.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+            props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+            props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG,
+                    props.get("stream"));
+        }
+    }
+
     // loads properties of the form cluster.x.y.z
     Map<String, String> clusterProps(String cluster) {
         Map<String, String> props = new HashMap<>();
 
         props.putAll(stringsWithPrefixStripped(cluster + "."));
+
+        maybeSetDefaultStreams(props);
 
         for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
             String v = props.get(k);
@@ -180,6 +196,7 @@ public class MirrorMakerConfig extends AbstractConfig {
     public Map<String, String> workerConfig(SourceAndTarget sourceAndTarget) {
         Map<String, String> props = new HashMap<>();
         props.putAll(clusterProps(sourceAndTarget.target()));
+        maybeSetDefaultStreams(props);
 
         // Accept common top-level configs that are otherwise ignored by MM2.
         // N.B. all other worker properties should be configured for specific herders,
@@ -210,6 +227,16 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putIfAbsent(KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
         props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
         props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
+
+        String stream = props.get("stream");
+        if (stream != null) {
+            props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, stream
+                    + ":mm2-offsets." + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, stream
+                    + ":mm2-status." + sourceAndTarget.source() + ".internal");
+            props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, stream
+                    + ":mm2-configs." + sourceAndTarget.source() + ".internal");
+        }
 
         return props;
     }

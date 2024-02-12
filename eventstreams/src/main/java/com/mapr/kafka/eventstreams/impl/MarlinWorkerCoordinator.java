@@ -344,4 +344,9 @@ public class MarlinWorkerCoordinator extends MarlinCoordinator implements Generi
     return false;
   }
 
+  @Override
+  public void requestRejoin(String reason) {
+    requestRejoin();
+  }
+
 }

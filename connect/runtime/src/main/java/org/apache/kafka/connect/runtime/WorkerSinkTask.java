@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Collections.singleton;
 import static org.apache.kafka.connect.runtime.WorkerConfig.TOPIC_TRACKING_ENABLE_CONFIG;
+import static org.apache.kafka.connect.util.ImpersonationUtil.maybeRunImpersonated;
 
 /**
  * {@link WorkerTask} that uses a {@link SinkTask} to export data from Kafka.
@@ -211,6 +212,12 @@ class WorkerSinkTask extends WorkerTask {
 
     @Override
     public void execute() {
+        maybeRunImpersonated(workerConfig, taskConfig, () -> {
+            executeInternal();
+            return null;
+        });
+    }
+    public void executeInternal() {
         log.info("{} Executing sink task", this);
         // Make sure any uncommitted data has been committed and the task has
         // a chance to clean up its state

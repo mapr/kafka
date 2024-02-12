@@ -23,7 +23,7 @@ fi
 base_dir=$(dirname $0)
 
 if [ "x$KAFKA_LOG4J_OPTS" = "x" ]; then
-    export KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:$base_dir/../config/connect-log4j.properties"
+    export KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:$base_dir/../config/connect-mirror-maker-log4j.properties"
 fi
 
 if [ "x$KAFKA_HEAP_OPTS" = "x" ]; then
@@ -41,5 +41,12 @@ case $COMMAND in
   *)
     ;;
 esac
+
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
+[ -f "${env}" ] && . "${env}"
+export KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS} ${MAPR_LOGIN_OPTS} -Dmapr.library.flatclass"
+
 
 exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.mirror.MirrorMaker "$@"

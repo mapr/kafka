@@ -51,7 +51,7 @@ import static org.apache.kafka.connect.runtime.distributed.ConnectProtocolCompat
  * This class manages the coordination process with the Kafka group coordinator on the broker for managing assignments
  * to workers.
  */
-public class WorkerCoordinator extends AbstractCoordinator implements Closeable {
+public class WorkerCoordinator extends AbstractCoordinator implements Closeable, GenericWorkerCoordinator {
     private final Logger log;
     private final String restUrl;
     private final ConfigBackingStore configStorage;
@@ -116,7 +116,7 @@ public class WorkerCoordinator extends AbstractCoordinator implements Closeable 
 
     // expose for tests
     @Override
-    protected synchronized boolean ensureCoordinatorReady(final Timer timer) {
+    public synchronized boolean ensureCoordinatorReady(final Timer timer) {
         return super.ensureCoordinatorReady(timer);
     }
 
@@ -349,6 +349,11 @@ public class WorkerCoordinator extends AbstractCoordinator implements Closeable 
      */
     public short currentProtocolVersion() {
         return currentConnectProtocol.protocolVersion();
+    }
+
+    @Override
+    public void wakeup() {
+      this.client.wakeup();
     }
 
     private class WorkerCoordinatorMetrics {

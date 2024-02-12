@@ -16,7 +16,11 @@
  */
 package org.apache.kafka.connect.runtime.distributed;
 
+import com.mapr.security.client.ClientSecurity;
+import com.mapr.security.client.MapRClientSecurityException;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -49,8 +53,10 @@ import org.apache.kafka.connect.runtime.SessionKey;
 import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.apache.kafka.connect.runtime.SourceConnectorConfig;
 import org.apache.kafka.connect.runtime.TargetState;
+import org.apache.kafka.connect.runtime.TaskConfig;
 import org.apache.kafka.connect.runtime.TaskStatus;
 import org.apache.kafka.connect.runtime.Worker;
+import org.apache.kafka.connect.runtime.rest.RestServerConfig;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorOffsets;
 import org.apache.kafka.connect.runtime.rest.entities.Message;
 import org.apache.kafka.connect.storage.PrivilegedWriteException;
@@ -81,6 +87,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -224,6 +231,8 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
 
     private final DistributedConfig config;
 
+    private String authHeader;
+
     /**
      * Create a herder that will form a Connect cluster with other {@link DistributedHerder} instances (in this or other JVMs)
      * that have the same group ID.
@@ -349,6 +358,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                 ConnectProtocolCompatibility.SESSIONED.name()
             );
         }
+        authHeader = readChallengeString();
     }
 
     @Override
@@ -1213,7 +1223,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                     log.trace("Forwarding zombie fencing request for connector {} to leader at {}", id.connector(), fenceUrl);
                     forwardRequestExecutor.execute(() -> {
                         try {
-                            restClient.httpRequest(fenceUrl, "PUT", null, null, null, sessionKey, requestSignatureAlgorithm);
+                            restClient.httpRequest(fenceUrl, "PUT", null, null, null, sessionKey, requestSignatureAlgorithm, authHeader);
                             callback.onCompletion(null, null);
                         } catch (Throwable t) {
                             callback.onCompletion(t, null);
@@ -1864,6 +1874,9 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
     private boolean startTask(ConnectorTaskId taskId) {
         log.info("Starting task {}", taskId);
         Map<String, String> connProps = configState.connectorConfig(taskId.connector());
+        if (!connProps.containsKey(TaskConfig.TASK_USER_CONFIG)) {
+            setTaskUser(connProps);
+        }
         switch (connectorType(connProps)) {
             case SINK:
                 return worker.startSinkTask(
@@ -1941,6 +1954,7 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         final Map<String, String> configProps = configState.connectorConfig(connectorName);
         final CloseableConnectorContext ctx = new HerderConnectorContext(this, connectorName);
         final TargetState initialState = configState.targetState(connectorName);
+        setTaskUserIfNull(configProps);
         final Callback<TargetState> onInitialStateChange = (error, newState) -> {
             if (error != null) {
                 callback.onCompletion(new ConnectException("Failed to start connector: " + connectorName, error), null);
@@ -1965,6 +1979,23 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
             }
         };
         worker.startConnector(connectorName, configProps, ctx, this, initialState, onInitialStateChange);
+    }
+
+    private void setTaskUserIfNull(Map<String, String> configProps) {
+        // If no task.user in config then authentication.method=NONE and task.user should be set to the current user
+        if (configProps.containsKey(TaskConfig.TASK_USER_CONFIG) && configProps.get(TaskConfig.TASK_USER_CONFIG) == null) {
+            setTaskUser(configProps);
+        }
+    }
+
+    private void setTaskUser(Map<String, String> configProps) {
+        // task.user should be set to the current user
+        try {
+            configProps.put(TaskConfig.TASK_USER_CONFIG, UserGroupInformation.getCurrentUser().getShortUserName());
+
+        } catch (IOException e) {
+            log.error("Can not get the current user: " +  e);
+        }
     }
 
     private Callable<Void> getConnectorStartingCallable(final String connectorName) {
@@ -2120,13 +2151,31 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
                             .build()
                             .toString();
                     log.trace("Forwarding task configurations for connector {} to leader", connName);
-                    restClient.httpRequest(reconfigUrl, "POST", null, rawTaskProps, null, sessionKey, requestSignatureAlgorithm);
+                    restClient.httpRequest(reconfigUrl, "POST", null, rawTaskProps, null, sessionKey, requestSignatureAlgorithm, authHeader);
                     cb.onCompletion(null, null);
                 } catch (ConnectException e) {
                     log.error("Request to leader to reconfigure connector tasks failed", e);
                     cb.onCompletion(e, null);
                 }
             });
+        }
+    }
+    private String readChallengeString() {
+        if (config.getBoolean(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
+            ClientSecurity cs = new ClientSecurity();
+            try {
+                log.info("Generating challenge string. It may take up to few minutes to" +
+                        " generate random sequence from /dev/random...");
+                long start = System.currentTimeMillis();
+                String challengeString = cs.generateChallenge();
+                log.info("Challenge generation was successfully completed and took " +
+                        (System.currentTimeMillis() - start) + " ms");
+                return String.format("MAPR-Negotiate %s", challengeString);
+            } catch (MapRClientSecurityException e) {
+                throw new KafkaException("Cannot read challenge string", e);
+            }
+        } else {
+            return null;
         }
     }
 

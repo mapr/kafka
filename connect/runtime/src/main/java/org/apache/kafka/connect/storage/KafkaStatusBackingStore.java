@@ -96,7 +96,7 @@ public class KafkaStatusBackingStore extends KafkaTopicBasedBackingStore impleme
     public static final String TASK_STATUS_PREFIX = "status-task-";
     public static final String CONNECTOR_STATUS_PREFIX = "status-connector-";
     public static final String TOPIC_STATUS_PREFIX = "status-topic-";
-    public static final String TOPIC_STATUS_SEPARATOR = ":connector-";
+    public static final String TOPIC_STATUS_SEPARATOR = "@connector-";
 
     public static final String STATE_KEY_NAME = "state";
     public static final String TRACE_KEY_NAME = "trace";
@@ -612,7 +612,7 @@ public class KafkaStatusBackingStore extends KafkaTopicBasedBackingStore impleme
     }
 
     private void readTopicStatus(String key, byte[] value) {
-        int delimiterPos = key.indexOf(':');
+        int delimiterPos = key.indexOf('@');
         int beginPos = TOPIC_STATUS_PREFIX.length();
         if (beginPos > delimiterPos) {
             log.warn("Discarding record with invalid topic status key {}", key);

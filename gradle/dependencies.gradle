@@ -103,7 +103,6 @@ versions += [
   jopt: "5.0.4",
   jose4j: "0.9.3",
   junit: "5.9.3",
-  junit4: "4.13",
   jqwik: "1.7.4",
   kafka_0100: "0.10.0.1",
   kafka_0101: "0.10.1.1",
@@ -150,12 +149,16 @@ versions += [
   swaggerJaxrs2: "2.2.8",
   zinc: "1.9.2",
   zookeeper: "3.8.3",
-  zstd: "1.5.5-1",
   mapr: "7.6.0.0-mapr-SNAPSHOT",
   hadoop: "3.3.5.200-eep-921-SNAPSHOT",
   ojai: "3.2.0",
   lombok: "1.18.20",
-  commonsLang3: "3.12.0"
+  junit4: "4.13",
+  commonsLang3: "3.12.0",
+  bcFips: "1.0.2.1",
+  bctlsFips: "1.0.11.4",
+  jpam : "1.1",
+  zstd: "1.5.5-1"
 ]
 
 libs += [
@@ -200,7 +203,6 @@ libs += [
   junitJupiter: "org.junit.jupiter:junit-jupiter:$versions.junit",
   junitJupiterApi: "org.junit.jupiter:junit-jupiter-api:$versions.junit",
   junitVintageEngine: "org.junit.vintage:junit-vintage-engine:$versions.junit",
-  junit4: "junit:junit:$versions.junit4",
   jqwik: "net.jqwik:jqwik:$versions.jqwik",
   hamcrest: "org.hamcrest:hamcrest:$versions.hamcrest",
   kafkaStreams_0100: "org.apache.kafka:kafka-streams:$versions.kafka_0100",
@@ -252,12 +254,17 @@ libs += [
   jfreechart: "jfreechart:jfreechart:$versions.jfreechart",
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   zstd: "com.github.luben:zstd-jni:$versions.zstd",
-  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient",
   maprfs: "com.mapr.hadoop:maprfs:$versions.mapr",
   maprdb: "com.mapr.db:maprdb:$versions.mapr",
+  maprSecurityWeb: "com.mapr.security:mapr-security-web:$versions.mapr",
   hadoopAuth: "org.apache.hadoop:hadoop-auth:$versions.hadoop",
   hadoopCommon: "org.apache.hadoop:hadoop-common:$versions.hadoop",
   ojai: "org.ojai:ojai:$versions.ojai",
   lombok: "org.projectlombok:lombok:$versions.lombok",
-  commonsLang3: "org.apache.commons:commons-lang3:$versions.commonsLang3"
+  junit4: "junit:junit:$versions.junit4",
+  commonsLang3: "org.apache.commons:commons-lang3:$versions.commonsLang3",
+  bcFips: "org.bouncycastle:bc-fips:$versions.bcFips",
+  bctlsFips: "org.bouncycastle:bctls-fips:$versions.bctlsFips",
+  jpam: "net.sf.jpam:jpam:$versions.jpam",
+  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient"
 ]

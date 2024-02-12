@@ -66,6 +66,7 @@ import org.apache.kafka.connect.runtime.errors.WorkerErrantRecordReporter;
 import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.Plugins.ClassLoaderUsage;
+import org.apache.kafka.connect.runtime.rest.RestServerConfig;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorOffset;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorOffsets;
 import org.apache.kafka.connect.runtime.rest.entities.Message;
@@ -122,6 +123,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.connect.util.ImpersonationUtil.maybeRunImpersonated;
 
 /**
  * <p>
@@ -228,6 +230,11 @@ public class Worker {
      */
     public void start() {
         log.info("Worker starting");
+        if (config.getBoolean(RestServerConfig.ENABLE_IMPERSONATION_CONFIG) &&
+                !config.getBoolean(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG)){
+            throw new RuntimeException(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG +
+                    " must be enabled in order to support MapR Streams impersonation");
+        }
 
         globalOffsetBackingStore.start();
 
@@ -619,6 +626,10 @@ public class Worker {
 
             try (LoaderSwap loaderSwap = plugins.withClassLoader(connectorLoader)) {
                 final ConnectorConfig connConfig = new ConnectorConfig(plugins, connProps);
+                String taskUser = connProps.get(TaskConfig.TASK_USER_CONFIG);
+                if (taskUser != null) {
+                    taskProps.put(TaskConfig.TASK_USER_CONFIG, taskUser);
+                }
                 final TaskConfig taskConfig = new TaskConfig(taskProps);
                 final Class<? extends Task> taskClass = taskConfig.getClass(TaskConfig.TASK_CLASS_CONFIG).asSubclass(Task.class);
                 final Task task = plugins.newTask(taskClass);
@@ -652,15 +663,18 @@ public class Worker {
                 } else {
                     log.info("Set up the header converter {} for task {} using the connector config", headerConverter.getClass(), id);
                 }
+                final Converter finalKeyConverter = keyConverter;
+                final Converter finalValueConverter = valueConverter;
+                final HeaderConverter finalHeaderConverter = headerConverter;
 
-                workerTask = taskBuilder
+                workerTask = maybeRunImpersonated(config, taskProps, () -> taskBuilder
                         .withTask(task)
                         .withConnectorConfig(connConfig)
-                        .withKeyConverter(keyConverter)
-                        .withValueConverter(valueConverter)
-                        .withHeaderConverter(headerConverter)
+                        .withKeyConverter(finalKeyConverter)
+                        .withValueConverter(finalValueConverter)
+                        .withHeaderConverter(finalHeaderConverter)
                         .withClassloader(connectorLoader)
-                        .build();
+                        .build());
 
                 workerTask.initialize(taskConfig);
             } catch (Throwable t) {
@@ -774,6 +788,7 @@ public class Worker {
                                                String clusterId) {
         Map<String, Object> producerProps = new HashMap<>();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServers());
+        producerProps.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, config.originals().get(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG));
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer");
         // These settings will execute infinite retries on retriable exceptions. They *may* be overridden via configs passed to the worker,

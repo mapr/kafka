@@ -26,6 +26,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.runtime.rest.RestServerConfig;
 import org.apache.kafka.connect.sink.SinkConnector;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.storage.Converter;
@@ -411,6 +412,10 @@ public class Plugins {
             klass = pluginClass(delegatingLoader, className, Converter.class);
         } catch (ClassNotFoundException e) {
             throw new ConnectException("Failed to load internal converter class " + className);
+        }
+
+        if (Boolean.parseBoolean(converterConfig.get(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG))) {
+            converterConfig.put("maprsasl.auth", "true");
         }
 
         Converter plugin;

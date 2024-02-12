@@ -77,7 +77,7 @@ public class RestClient {
      */
     public <T> HttpResponse<T> httpRequest(String url, String method, HttpHeaders headers, Object requestBodyData,
                                                   TypeReference<T> responseFormat) {
-        return httpRequest(url, method, headers, requestBodyData, responseFormat, null, null);
+        return httpRequest(url, method, headers, requestBodyData, responseFormat, null, null, null);
     }
 
     /**
@@ -97,7 +97,7 @@ public class RestClient {
      */
     public <T> HttpResponse<T> httpRequest(String url, String method, HttpHeaders headers, Object requestBodyData,
                                                   TypeReference<T> responseFormat,
-                                                  SecretKey sessionKey, String requestSignatureAlgorithm) {
+                                                  SecretKey sessionKey, String requestSignatureAlgorithm, String authHeader) {
         // Only try to load SSL configs if we have to (see KAFKA-14816)
         SslContextFactory sslContextFactory = url.startsWith("https://")
                 ? SSLUtils.createClientSideSslContextFactory(config)
@@ -113,7 +113,7 @@ public class RestClient {
         }
 
         try {
-            return httpRequest(client, url, method, headers, requestBodyData, responseFormat, sessionKey, requestSignatureAlgorithm);
+            return httpRequest(client, url, method, headers, requestBodyData, responseFormat, sessionKey, requestSignatureAlgorithm, authHeader);
         } finally {
             try {
                 client.stop();
@@ -126,7 +126,7 @@ public class RestClient {
     private <T> HttpResponse<T> httpRequest(HttpClient client, String url, String method,
                                            HttpHeaders headers, Object requestBodyData,
                                            TypeReference<T> responseFormat, SecretKey sessionKey,
-                                           String requestSignatureAlgorithm) {
+                                           String requestSignatureAlgorithm, String authHeader) {
         try {
             String serializedBody = requestBodyData == null ? null : JSON_SERDE.writeValueAsString(requestBodyData);
             log.trace("Sending {} with input {} to {}", method, serializedBody, url);
@@ -135,6 +135,9 @@ public class RestClient {
             req.method(method);
             req.accept("application/json");
             req.agent("kafka-connect");
+            if (authHeader != null) {
+                req.header(HttpHeaders.AUTHORIZATION, authHeader);
+            }
             addHeadersToRequest(headers, req);
 
             if (serializedBody != null) {

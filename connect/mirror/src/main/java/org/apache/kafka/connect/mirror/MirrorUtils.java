@@ -71,8 +71,10 @@ public final class MirrorUtils {
     }
 
     static Map<String, Object> wrapPartition(TopicPartition topicPartition, String sourceClusterAlias) {
+        String fullTopic = topicPartition.topic();
+        String topic = fullTopic.startsWith("/") ? fullTopic.split(":")[1] : fullTopic;
         Map<String, Object> wrapped = new HashMap<>();
-        wrapped.put(TOPIC_KEY, topicPartition.topic());
+        wrapped.put(TOPIC_KEY, topic);
         wrapped.put(PARTITION_KEY, topicPartition.partition());
         wrapped.put(SOURCE_CLUSTER_KEY, sourceClusterAlias);
         return wrapped;

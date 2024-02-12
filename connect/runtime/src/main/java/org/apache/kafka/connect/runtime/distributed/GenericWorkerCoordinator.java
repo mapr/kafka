@@ -26,7 +26,7 @@ import java.io.Closeable;
 public interface GenericWorkerCoordinator extends Closeable {
   public boolean ensureCoordinatorReady(final Timer timer);
   public void ensureActiveGroup();
-  public void requestRejoin();
+  public void requestRejoin(String reason);
   public String memberId();
   public void wakeup();
   public void poll(long timeout) throws WakeupException;

@@ -105,6 +105,42 @@ public abstract class RestServerConfig extends AbstractConfig {
             Arrays.asList("set", "add", "setDate", "addDate")
     );
 
+    public static final String SSL_DISABLED_PROTOCOLS_CONFIG = "ssl.disabled.protocols";
+    protected static final String SSL_DISABLED_PROTOCOLS_DOC = "The list of protocols disabled for SSL connections. Comma-separated list. "
+            + "Leave blank to use Jetty's defaults.";
+    public static final String SSL_DISABLED_PROTOCOLS_DEFAULT = "SSLv3, TLSv1.0";
+
+    public static final String SSL_DISABLED_CIPHER_SUITES_CONFIG = "ssl.cipher.suites.exclude";
+    protected static final String SSL_DISABLED_CIPHER_SUITES_DOC = "A list of excluded SSL cipher suites. Leave blank to use Jetty's defaults.";
+    public static final String SSL_DISABLED_CIPHER_SUITES_DEFAULT = "TLS_DHE.*, TLS_EDH.*, .*RC4.*, .*MD5.*, .*DES.*";
+
+    //SecurityHeaders and custom headers file
+    public static final String HEADERS_FILE_CONFIG = "headers.file";
+    public static final String HEADERS_FILE_DEFAULT = "";
+    public static final String HEADERS_FILE_CONFIG_DOC =
+            "The option is used to specify XML file that contains security and custom headers. "
+                    + "The headers will be added to a response by Jetty server.";
+
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_CONFIG =
+            "authentication.cookie.expiration";
+    public static final String AUTHENTICATION_COOKIE_EXPIRATION_DOC =
+            "The option is used to specify expiration time (in seconds) for authentication" +
+                    " cookie. ";
+    public static final String AUTHENTICATION_ENABLE_CONFIG = "authentication.enable";
+    public static final boolean AUTHENTICATION_ENABLE_DEFAULT = false;
+    public static final String AUTHENTICATION_ENABLE_DOC =
+            "Enable authentication. MapR supports multiple authentication methods at same time: Basic and MapR SASL";
+    public static final String HADOOP_AUTHENTICATION_TYPES_CONFIG = "hadoop.http.authentication.types";
+    public static final List<String> HADOOP_AUTHENTICATION_TYPES_DEFAULT =
+            Collections.unmodifiableList(Arrays.asList("maprauth", "basic"));
+    public static final String HADOOP_AUTHENTICATION_TYPES_DOC =
+            "A list of hadoop authentication types for MultiMechsAuthenticationHandler";
+
+    public static final String ENABLE_IMPERSONATION_CONFIG = "impersonation.enable";
+    private static final String ENABLE_IMPERSONATION_DOC
+            = "Enable impersonation.";
+    public static final boolean ENABLE_IMPERSONATION_DEFAULT = false;
+
 
     /**
      * @return the listeners to use for this server, or empty if no admin endpoints should be exposed,
@@ -210,7 +246,43 @@ public abstract class RestServerConfig extends AbstractConfig {
                         SslClientAuth.NONE.toString(),
                         in(Utils.enumOptions(SslClientAuth.class)),
                         ConfigDef.Importance.LOW,
-                        BrokerSecurityConfigs.SSL_CLIENT_AUTH_DOC);
+                        BrokerSecurityConfigs.SSL_CLIENT_AUTH_DOC)
+                .define(RestServerConfig.SSL_DISABLED_PROTOCOLS_CONFIG,
+                        ConfigDef.Type.LIST,
+                        SSL_DISABLED_PROTOCOLS_DEFAULT,
+                        ConfigDef.Importance.MEDIUM,
+                        RestServerConfig.SSL_DISABLED_PROTOCOLS_DOC)
+                .define(RestServerConfig.SSL_DISABLED_CIPHER_SUITES_CONFIG,
+                        ConfigDef.Type.LIST,
+                        SSL_DISABLED_CIPHER_SUITES_DEFAULT,
+                        ConfigDef.Importance.LOW,
+                        RestServerConfig.SSL_DISABLED_CIPHER_SUITES_DOC)
+                .define(
+                        HEADERS_FILE_CONFIG,
+                        ConfigDef.Type.STRING,
+                        HEADERS_FILE_DEFAULT,
+                        ConfigDef.Importance.LOW,
+                        HEADERS_FILE_CONFIG_DOC)
+                .define(AUTHENTICATION_COOKIE_EXPIRATION_CONFIG,
+                        ConfigDef.Type.LONG,
+                        2 * 3600, // 2 hours
+                        ConfigDef.Importance.LOW,
+                        AUTHENTICATION_COOKIE_EXPIRATION_DOC)
+                .define(AUTHENTICATION_ENABLE_CONFIG,
+                        ConfigDef.Type.BOOLEAN,
+                        AUTHENTICATION_ENABLE_DEFAULT,
+                        ConfigDef.Importance.LOW,
+                        AUTHENTICATION_ENABLE_DOC)
+                .define(HADOOP_AUTHENTICATION_TYPES_CONFIG,
+                        ConfigDef.Type.LIST,
+                        HADOOP_AUTHENTICATION_TYPES_DEFAULT,
+                        ConfigDef.Importance.LOW,
+                        HADOOP_AUTHENTICATION_TYPES_DOC)
+                .define(ENABLE_IMPERSONATION_CONFIG,
+                        ConfigDef.Type.BOOLEAN,
+                        ENABLE_IMPERSONATION_DEFAULT,
+                        ConfigDef.Importance.MEDIUM,
+                        ENABLE_IMPERSONATION_DOC);
     }
 
     public static RestServerConfig forPublic(Integer rebalanceTimeoutMs, Map<?, ?> props) {
