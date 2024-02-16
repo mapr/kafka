@@ -1139,7 +1139,8 @@ public class StreamThread extends Thread {
 
             if ((now - lastPurgeMs) > purgeTimeMs) {
                 // try to purge the committed records for repartition topics if possible
-                taskManager.maybePurgeCommittedRecords();
+                // Workaround for non-implemented admin.deleteRecords API in MaprlinAdminClientImpl
+//                taskManager.maybePurgeCommittedRecords();
                 lastPurgeMs = now;
             }
 

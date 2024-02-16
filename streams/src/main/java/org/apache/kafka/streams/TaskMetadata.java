@@ -59,6 +59,8 @@ public interface TaskMetadata {
 
     /**
      * Time task idling started. If the task is not currently idling it will return empty.
+     * Not implemented in MapR, always returns Optional.empty(). This requires
+     * {@link org.apache.kafka.clients.consumer.KafkaConsumer @currentLag} to be implemented.
      *
      * @return time when task idling started, empty {@code Optional} if the task is currently not idling
      */

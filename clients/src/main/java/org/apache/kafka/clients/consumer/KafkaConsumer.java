@@ -2497,14 +2497,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      **/
     @Override
     public OptionalLong currentLag(TopicPartition topicPartition) {
+        maybeThrowMaprUsupported("currentLag method is not currently supported in MapR Consumer");
         acquireAndEnsureOpen();
         try {
-            if (isMapr) {
-                // Better not throw exception here to not break applications that use this API,
-                // just log a message and document it as unsupported API
-                log.debug("currentLag() API is not currently supoorted in MapR Consumer. Returning OptionalLong.empty()...");
-                return OptionalLong.empty();
-            }
             final Long lag = subscriptions.partitionLag(topicPartition, isolationLevel);
 
             // if the log end offset is not known and hence cannot return lag and there is
@@ -2803,6 +2798,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         if (!groupId.isPresent())
             throw new InvalidGroupIdException("To use the group management or offset commit APIs, you must " +
                     "provide a valid " + ConsumerConfig.GROUP_ID_CONFIG + " in the consumer configuration.");
+    }
+
+    private void maybeThrowMaprUsupported(String message) {
+        if (isMapr)
+            throw new KafkaException(message);
     }
 
     private void updateLastSeenEpochIfNewer(TopicPartition topicPartition, OffsetAndMetadata offsetAndMetadata) {

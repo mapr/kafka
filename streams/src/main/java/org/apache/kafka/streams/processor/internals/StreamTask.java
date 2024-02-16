@@ -701,7 +701,11 @@ public class StreamTask extends AbstractTask implements ProcessorNodePunctuator,
             // thus, the task is not processable, even if there is available data in the record queue
             return false;
         }
-        final boolean readyToProcess = partitionGroup.readyToProcess(wallClockTime);
+//        final boolean readyToProcess = partitionGroup.readyToProcess(wallClockTime);
+//        Workaround for non-implemented consumer.currentLag method
+//        this should only affect TaskMetadata.timeCurrentIdlingStarted() API which will always return Optional.empty()
+//        as if task would never be idling
+        final boolean readyToProcess = true;
         if (!readyToProcess) {
             if (!timeCurrentIdlingStarted.isPresent()) {
                 timeCurrentIdlingStarted = Optional.of(wallClockTime);
