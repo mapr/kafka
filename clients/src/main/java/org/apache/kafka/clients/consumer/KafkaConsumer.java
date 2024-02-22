@@ -1672,7 +1672,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             log.info("Seeking to offset {} for partition {}", offset, partition);
             if (isMapr) {
                 partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
-                this.subscriptions.seek(partition, offset);
+                this.subscriptions.throwIfNotSubscribedOrAssigned(partition);
                 consumerDriver.seek(partition, offset);
                 return;
             }
@@ -1712,7 +1712,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             }
             if (isMapr) {
                 partition.setTopic(maybeWrapDefaultStream(defaultStream, partition.topic()));
-                this.subscriptions.seek(partition, offset);
+                this.subscriptions.throwIfNotSubscribedOrAssigned(partition);
                 consumerDriver.seek(partition, offsetAndMetadata);
                 return;
             }
@@ -1746,7 +1746,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             if (isMapr) {
                 Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
                 maybeWrapDefaultStreamPartitions(defaultStream, parts);
-                subscriptions.requestOffsetReset(parts, OffsetResetStrategy.EARLIEST);
+                parts.forEach(subscriptions::throwIfNotSubscribedOrAssigned);
                 consumerDriver.seekToBeginning(parts);
                 return;
             }
@@ -1778,7 +1778,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             if (isMapr) {
                 Collection<TopicPartition> parts = partitions.size() == 0 ? this.subscriptions.assignedPartitions() : partitions;
                 maybeWrapDefaultStreamPartitions(defaultStream, parts);
-                subscriptions.requestOffsetReset(parts, OffsetResetStrategy.LATEST);
+                parts.forEach(subscriptions::throwIfNotSubscribedOrAssigned);
                 consumerDriver.seekToEnd(parts);
                 return;
             }

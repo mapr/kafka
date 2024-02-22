@@ -1194,4 +1194,13 @@ public class SubscriptionState {
 
         }
     }
+
+    public void throwIfNotSubscribedOrAssigned(TopicPartition partition) {
+        String topic = partition.topic();
+        if (!(isAssigned(partition) || subscription().contains(topic))) {
+            log.error("Partition {} is not assigned", partition);
+            throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                    partition.topic(), partition.partition()));
+        }
+    }
 }
