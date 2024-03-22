@@ -736,16 +736,13 @@ class WorkerSinkTask extends WorkerTask {
                     resumeAll();
                 }
                 // Ensure that the paused partitions contains only assigned partitions and repause as necessary
-                // Still assuming that eager rebalancing is used to workaround MS-1404
-                context.pausedPartitions().retainAll(partitions);
+                context.pausedPartitions().retainAll(consumer.assignment());
                 if (shouldPause())
                     pauseAll();
                 else if (!context.pausedPartitions().isEmpty())
                     consumer.pause(context.pausedPartitions());
             }
-//            updatePartitionCount();
-            // Still assuming that eager rebalancing is used to workaround MS-1404
-            sinkTaskMetricsGroup.recordPartitionCount(partitions.size());
+            updatePartitionCount();
             if (partitions.isEmpty()) {
                 return;
             }
