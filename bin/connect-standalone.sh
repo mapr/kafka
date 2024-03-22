@@ -52,4 +52,10 @@ done
 export CONNECTORS_CLASSPATH
 export HIVE_HOME
 
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
+[ -f "${env}" ] && . "${env}"
+export KAFKA_OPTS="${KAFKA_OPTS} ${MAPR_COMMON_JAVA_OPTS} ${MAPR_LOGIN_OPTS}"
+
 exec $(dirname $0)/kafka-run-class.sh $EXTRA_ARGS org.apache.kafka.connect.cli.ConnectStandalone "$@"
