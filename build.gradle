@@ -3171,7 +3171,7 @@ project(':eventstreams') {
     // core -> eventstreams -> connect:runtime -> core(test)
     implementation project(':connect:runtime').sourceSets.main.output
 
-    implementation libs.ojai
+    compileOnly libs.ojai
     implementation libs.lombok
 
     compileOnly libs.maprdb
