@@ -2379,7 +2379,7 @@ project(':eventstreams') {
     compileOnly (libs.hadoopCommon) {
 	exclude group: 'com.sun.jersey', module: 'jersey-server' 
 }
-    compile libs.ojai
+    compileOnly libs.ojai
 
     compileOnly libs.lombok
     annotationProcessor libs.lombok
