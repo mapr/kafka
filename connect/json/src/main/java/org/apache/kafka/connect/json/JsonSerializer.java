@@ -36,6 +36,7 @@ public class JsonSerializer implements Serializer<JsonNode> {
     /**
      * Default constructor needed by Kafka
      */
+    @SuppressWarnings("deprecation")
     public JsonSerializer() {
         this(Collections.emptySet(), JsonNodeFactory.withExactBigDecimals(true));
     }

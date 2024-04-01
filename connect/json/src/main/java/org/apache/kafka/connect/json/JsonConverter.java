@@ -192,6 +192,7 @@ public class JsonConverter implements Converter, HeaderConverter {
     // names specified in the field
     private static final HashMap<String, LogicalTypeConverter> LOGICAL_CONVERTERS = new HashMap<>();
 
+    @SuppressWarnings("deprecation")
     private static final JsonNodeFactory JSON_NODE_FACTORY = JsonNodeFactory.withExactBigDecimals(true);
 
     static {
