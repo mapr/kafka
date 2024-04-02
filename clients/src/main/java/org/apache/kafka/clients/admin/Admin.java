@@ -20,6 +20,7 @@ package org.apache.kafka.clients.admin;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.mapr.GenericHFactory;
+import org.apache.kafka.clients.mapr.util.MaprKafkaUtils;
 import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Metric;
@@ -44,8 +45,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-
-import static org.apache.kafka.clients.mapr.util.MaprKafkaUtils.isMapr;
 
 /**
  * The administrative client for Kafka, which supports managing and inspecting topics, brokers, configurations and ACLs.
@@ -138,7 +137,7 @@ public interface Admin extends AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     static Admin create(Properties props) {
-        if (isMapr(props)) {
+        if (MaprKafkaUtils.isMapr(props)) {
             return GenericHFactory.runMethod("com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl",
                     "createInternal",
                     new Object [] {new AdminClientConfig(props, true)},
@@ -157,7 +156,7 @@ public interface Admin extends AutoCloseable {
      * @return The new KafkaAdminClient.
      */
     static Admin create(Map<String, Object> conf) {
-        if (isMapr(conf)) {
+        if (MaprKafkaUtils.isMapr(conf)) {
             return GenericHFactory.runMethod("com.mapr.kafka.eventstreams.impl.admin.MarlinAdminClientImpl",
                     "createInternal",
                     new Object [] {new AdminClientConfig(conf, true)},
@@ -1017,6 +1016,40 @@ public interface Admin extends AutoCloseable {
      * @return The ListConsumerGroupOffsetsResult
      */
     ListConsumerGroupOffsetsResult listConsumerGroupOffsets(Map<String, ListConsumerGroupOffsetsSpec> groupSpecs, ListConsumerGroupOffsetsOptions options);
+
+    /**
+     * @return If it is MapR Admin or not
+     */
+    default boolean isMapr() {
+        // By default false. True only in MapR Admin
+        return false;
+    }
+
+    /**
+     * List the consumer group offsets available in the provided stream for the specified consumer groups.
+     *
+     * @param groupSpecs Map of consumer group ids to a spec that specifies the topic partitions of the group to list offsets for.
+     *
+     * @param options The options to use when listing the consumer group offsets.
+     * @return The ListConsumerGroupOffsetsResult
+     */
+    default ListConsumerGroupOffsetsResult listConsumerGroupOffsets(String stream, Map<String, ListConsumerGroupOffsetsSpec> groupSpecs, ListConsumerGroupOffsetsOptions options) {
+        // By default ignoring mapr stream. This is implemented only in MapR Admin
+        return listConsumerGroupOffsets(groupSpecs, options);
+    }
+
+    /**
+     * List the consumer group offsets available in the provided stream for the specified groups with the default options.
+     * <p>
+     * This is a convenience method for
+     * {@link #listConsumerGroupOffsets(String, Map, ListConsumerGroupOffsetsOptions)} with default options.
+     *
+     * @param groupSpecs Map of consumer group ids to a spec that specifies the topic partitions of the group to list offsets for.
+     * @return The ListConsumerGroupOffsetsResult.
+     */
+    default ListConsumerGroupOffsetsResult listConsumerGroupOffsets(String stream, Map<String, ListConsumerGroupOffsetsSpec> groupSpecs) {
+        return listConsumerGroupOffsets(stream, groupSpecs, new ListConsumerGroupOffsetsOptions());
+    }
 
     /**
      * List the consumer group offsets available in the cluster for the specified groups with the default options.

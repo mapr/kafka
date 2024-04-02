@@ -652,6 +652,17 @@ public class MarlinAdminClientImpl extends AdminClient {
     return listConsumerGroupOffsets(defaultStreamName, groupSpecs);
   }
 
+  @Override
+  public boolean isMapr() {
+    return true;
+  }
+
+  @Override
+  public ListConsumerGroupOffsetsResult listConsumerGroupOffsets(String stream, Map<String, ListConsumerGroupOffsetsSpec> groupSpecs,
+                                                                 ListConsumerGroupOffsetsOptions options) {
+    return listConsumerGroupOffsets(stream, groupSpecs);
+  }
+
   // used by kwp
  public ListConsumerGroupOffsetsResult listConsumerGroupOffsets(String stream, String groupId) {
     return listConsumerGroupOffsets(stream, Collections.singletonMap(groupId, new ListConsumerGroupOffsetsSpec()));

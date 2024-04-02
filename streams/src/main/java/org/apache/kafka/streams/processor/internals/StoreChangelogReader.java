@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.InvalidOffsetException;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.IsolationLevel;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
@@ -721,6 +722,39 @@ public class StoreChangelogReader implements ChangelogReader {
         tasks.forEach(t -> t.maybeInitTaskTimeoutOrThrow(now, cause));
     }
 
+    private Map<TopicPartition, Long> getCommittedOffsets(String groupId, ListConsumerGroupOffsetsSpec spec) throws ExecutionException, InterruptedException {
+        Map<TopicPartition, OffsetAndMetadata> committedOffsets;
+        Map<String, ListConsumerGroupOffsetsSpec> groupSpecs = Collections.singletonMap(groupId, spec);
+
+        if (!adminClient.isMapr()) {
+            committedOffsets = adminClient.listConsumerGroupOffsets(groupSpecs)
+                    .partitionsToOffsetAndMetadata(groupId).get();
+        } else {
+            // Assuming that no short-named topic is arrived
+            committedOffsets = new HashMap<>();
+            Collection<TopicPartition> partitions = spec.topicPartitions();
+            for (TopicPartition partition: partitions) {
+                // So it will be defaulted to 0L later
+                committedOffsets.put(partition, null);
+            }
+            Set<String> streams = partitions.stream()
+                    .map(TopicPartition::topic)
+                    .filter(t -> t.contains(":"))
+                    .map(t -> t.split(":")[0])
+                    .collect(Collectors.toSet());
+            for (String stream: streams) {
+                committedOffsets.putAll(
+                        adminClient.listConsumerGroupOffsets(stream, groupSpecs).partitionsToOffsetAndMetadata(groupId).get()
+                );
+            }
+            committedOffsets.keySet().retainAll(partitions);
+        }
+
+        return committedOffsets.entrySet()
+                .stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue() == null ? 0L : e.getValue().offset()));
+    }
+
     private Map<TopicPartition, Long> committedOffsetForChangelogs(final Map<TaskId, Task> tasks, final Set<TopicPartition> partitions) {
         if (partitions.isEmpty()) {
             return Collections.emptyMap();
@@ -732,10 +766,7 @@ public class StoreChangelogReader implements ChangelogReader {
                     .requireStable(true);
             final ListConsumerGroupOffsetsSpec spec = new ListConsumerGroupOffsetsSpec()
                     .topicPartitions(new ArrayList<>(partitions));
-            final Map<TopicPartition, Long> committedOffsets = adminClient.listConsumerGroupOffsets(Collections.singletonMap(groupId, spec))
-                    .partitionsToOffsetAndMetadata(groupId).get().entrySet()
-                    .stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue() == null ? 0L : e.getValue().offset()));
+            final Map<TopicPartition, Long> committedOffsets = getCommittedOffsets(groupId, spec);
 
             clearTaskTimeout(getTasksFromPartitions(tasks, partitions));
             return committedOffsets;
