@@ -466,6 +466,11 @@ public class StreamsConfig extends AbstractConfig {
     public static final String APPLICATION_ID_CONFIG = "application.id";
     private static final String APPLICATION_ID_DOC = "An identifier for the stream processing application. Must be unique within the Kafka cluster. It is used as 1) the default client-id prefix, 2) the group-id for membership management, 3) the changelog topic prefix.";
 
+    /** {@code internal.topic.exclude.appid} */
+    @SuppressWarnings("WeakerAccess")
+    public static final String INTERNAL_TOPIC_EXCLUDE_APPID_CONFIG = "internal.topic.exclude.appid";
+    private static final String INTERNAL_TOPIC_EXCLUDE_APPID_DOC = "Whether to exclude app id from internal topic name or not. It would still be in internal stream name.";
+
     /**{@code application.server} */
     @SuppressWarnings("WeakerAccess")
     public static final String APPLICATION_SERVER_CONFIG = "application.server";
@@ -989,6 +994,11 @@ public class StreamsConfig extends AbstractConfig {
                     "",
                     Importance.LOW,
                     APPLICATION_SERVER_DOC)
+            .define(INTERNAL_TOPIC_EXCLUDE_APPID_CONFIG,
+                    Type.BOOLEAN,
+                    false,
+                    Importance.LOW,
+                    INTERNAL_TOPIC_EXCLUDE_APPID_DOC)
             .define(BUFFERED_RECORDS_PER_PARTITION_CONFIG,
                     Type.INT,
                     1000,
@@ -1413,14 +1423,22 @@ public class StreamsConfig extends AbstractConfig {
     topics in internal mapr stream. See ProcessorStatemanager#maybeUseCompactedStream for compacted case
      */
     private static Map<?, ?> maybeMaprOverride(Map<?, ?> props) {
-        if (isMapr(props)) {
+        Map<?, ?> copy = new HashMap<>(props);
+        if (isMapr(copy)) {
             @SuppressWarnings("unchecked")
-            Map<String, Object> uncheckedProps = ((Map<String, Object>)props);
+            Map<String, Object> uncheckedProps = ((Map<String, Object>)copy);
             String applicationId = (String) uncheckedProps.get(APPLICATION_ID_CONFIG);
-            String maprPrefix = storage(applicationId).internalStream + ":" + applicationId;
-            uncheckedProps.compute(InternalConfig.TOPIC_PREFIX_ALTERNATIVE, (k, v) -> v == null ? maprPrefix : maprPrefix + v);
+            StringBuilder maprPrefix = new StringBuilder(storage(applicationId).internalStream + ":");
+            // App id might be so long that total topic length exceeds the allowed limit (259)
+            // For such cases, providing an opportunity to exclude app id from topic name to shorten the total length
+            // App id is already included in stream name so uniqueness won't be lost
+            Object topicExcludeAppId = uncheckedProps.get(INTERNAL_TOPIC_EXCLUDE_APPID_CONFIG);
+            if (!("true".equals(topicExcludeAppId) || Boolean.TRUE.equals(topicExcludeAppId))) {
+                maprPrefix.append(applicationId);
+            }
+            uncheckedProps.compute(InternalConfig.TOPIC_PREFIX_ALTERNATIVE, (k, v) -> v == null ? maprPrefix.toString() : maprPrefix.toString() + v);
         }
-        return props;
+        return copy;
     }
 
     private void verifyEOSTransactionTimeoutCompatibility() {
