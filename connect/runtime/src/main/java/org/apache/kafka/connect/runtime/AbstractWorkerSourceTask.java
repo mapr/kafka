@@ -266,7 +266,14 @@ public abstract class AbstractWorkerSourceTask extends WorkerTask {
     }
 
     @Override
-    protected void initializeAndStart() {
+    public void initializeAndStart() {
+        maybeRunImpersonated(workerConfig, taskConfig, () -> {
+            initializeAndStartInternal();
+            return null;
+        });
+    }
+
+    protected void initializeAndStartInternal() {
         retryWithToleranceOperator.reporters(errorReportersSupplier.get());
         prepareToInitializeTask();
         offsetStore.start();

@@ -317,7 +317,14 @@ class WorkerSinkTask extends WorkerTask {
      * Initializes and starts the SinkTask.
      */
     @Override
-    protected void initializeAndStart() {
+    public void initializeAndStart() {
+        maybeRunImpersonated(workerConfig, taskConfig, () -> {
+            initializeAndStartInternal();
+            return null;
+        });
+    }
+
+    protected void initializeAndStartInternal() {
         SinkConnectorConfig.validate(taskConfig);
         retryWithToleranceOperator.reporters(errorReportersSupplier.get());
 
