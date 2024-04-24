@@ -386,6 +386,9 @@ public class Plugins {
         // Configure the Converter using only the old configuration mechanism ...
         String configPrefix = classPropertyName + ".";
         Map<String, Object> converterConfig = config.originalsWithPrefix(configPrefix);
+        if (config.getBoolean(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG)) {
+            converterConfig.put("maprsasl.auth", "true");
+        }
         log.debug("Configuring the {} converter with configuration keys:{}{}",
                   isKeyConverter ? "key" : "value", System.lineSeparator(), converterConfig.keySet());
 
@@ -412,10 +415,6 @@ public class Plugins {
             klass = pluginClass(delegatingLoader, className, Converter.class);
         } catch (ClassNotFoundException e) {
             throw new ConnectException("Failed to load internal converter class " + className);
-        }
-
-        if (Boolean.parseBoolean(converterConfig.get(RestServerConfig.AUTHENTICATION_ENABLE_CONFIG))) {
-            converterConfig.put("maprsasl.auth", "true");
         }
 
         Converter plugin;
