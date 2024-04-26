@@ -162,6 +162,12 @@ public class MirrorMakerConfig extends AbstractConfig {
         }
     }
 
+    private void maybeSetUseBrokers(Map<String, String> props) {
+        if (props.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
+            props.put(CommonClientConfigs.USE_BROKERS_CONFIG, "true");
+        }
+    }
+
     // loads properties of the form cluster.x.y.z
     Map<String, String> clusterProps(String cluster) {
         Map<String, String> props = new HashMap<>();
@@ -169,6 +175,7 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putAll(stringsWithPrefixStripped(cluster + "."));
 
         maybeSetDefaultStreams(props);
+        maybeSetUseBrokers(props);
 
         for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
             String v = props.get(k);
@@ -197,6 +204,7 @@ public class MirrorMakerConfig extends AbstractConfig {
         Map<String, String> props = new HashMap<>();
         props.putAll(clusterProps(sourceAndTarget.target()));
         maybeSetDefaultStreams(props);
+        maybeSetUseBrokers(props);
 
         // Accept common top-level configs that are otherwise ignored by MM2.
         // N.B. all other worker properties should be configured for specific herders,
@@ -218,16 +226,6 @@ public class MirrorMakerConfig extends AbstractConfig {
         // fill in reasonable defaults
         props.putIfAbsent(CommonClientConfigs.CLIENT_ID_CONFIG, sourceAndTarget.toString());
         props.putIfAbsent(GROUP_ID_CONFIG, sourceAndTarget.source() + "-mm2");
-        props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
-                + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
-                + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, "mm2-configs."
-                + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
-        props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
-        props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
-
         String stream = props.get("stream");
         if (stream != null) {
             props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, stream
@@ -236,7 +234,17 @@ public class MirrorMakerConfig extends AbstractConfig {
                     + ":mm2-status." + sourceAndTarget.source() + ".internal");
             props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, stream
                     + ":mm2-configs." + sourceAndTarget.source() + ".internal");
+        } else {
+        props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
+                + sourceAndTarget.source() + ".internal");
+        props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
+                + sourceAndTarget.source() + ".internal");
+        props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, "mm2-configs."
+                + sourceAndTarget.source() + ".internal");
         }
+        props.putIfAbsent(KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
+        props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
+        props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
 
         return props;
     }

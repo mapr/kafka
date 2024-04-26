@@ -124,9 +124,14 @@ public class MirrorClientConfig extends AbstractConfig {
             null,
             Importance.HIGH,
             CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
-        // security support
-        .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
-            Type.STRING,
+            .define(CommonClientConfigs.USE_BROKERS_CONFIG,
+                    Type.BOOLEAN,
+                    CommonClientConfigs.DEFAULT_USE_BROKERS,
+                    Importance.HIGH,
+                    CommonClientConfigs.USE_BROKERS_DOC)
+            // security support
+            .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+                    Type.STRING,
             CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
             in(Utils.enumOptions(SecurityProtocol.class)),
             Importance.MEDIUM,
