@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.mapr.util.MaprKafkaUtils;
 import org.apache.kafka.common.IsolationLevel;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.PartitionStates;
@@ -1194,13 +1195,27 @@ public class SubscriptionState {
 
         }
     }
-
+    // Checks a single partition to be in assignment/subscription/pattern subscription
+    // In case of failure, iterates through all cluster names in mapr-clusters.conf file and tries to find
+    // a /mapr/<cluster_name><topic> match
+    // "/mapr/" string is assumed to be fixed based on KAFKA-1046
     public void throwIfNotSubscribedOrAssigned(TopicPartition partition) {
-        String topic = partition.topic();
-        if (!(isAssigned(partition) || subscription().contains(topic))) {
-            log.error("Partition {} is not assigned", partition);
-            throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
-                    partition.topic(), partition.partition()));
+        if (isSubscribedOrAssigned(partition)) {
+            return;
         }
+        for (String clusterName: MaprKafkaUtils.listClusterNames()) {
+            if (isSubscribedOrAssigned(new TopicPartition("/mapr/" + clusterName + partition.topic(), partition.partition()))) {
+                return;
+            }
+        }
+        log.error("Partition {} is not assigned", partition);
+        throw new IllegalStateException(String.format("No current assignment for partition %s-%d",
+                partition.topic(), partition.partition()));
+    }
+
+    // Checks a single partition to be in assignment/subscription/pattern subscription
+    public boolean isSubscribedOrAssigned(TopicPartition partition) {
+        String topic = partition.topic();
+        return isAssigned(partition) || subscription().contains(topic) || matchesSubscribedPattern(topic);
     }
 }

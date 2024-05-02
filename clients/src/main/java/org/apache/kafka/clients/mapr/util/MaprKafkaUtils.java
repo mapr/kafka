@@ -6,7 +6,12 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.utils.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +25,12 @@ import java.util.stream.Collectors;
 
 public class MaprKafkaUtils {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MaprKafkaUtils.class);
+
+    private static final boolean IS_OS_WINDOWS = System.getProperty("os.name").toLowerCase().startsWith("windows");
+    public static final String MAPR_HOME = findMapRHome();
+    public static final String MAPR_CLUSTERS_FILE = MAPR_HOME + "/conf/mapr-clusters.conf";
+    private static List<String> clusterNames = null;
 
     /**
     * Currently deciding which branch to load by {@link CommonClientConfigs#USE_BROKERS_CONFIG}.
@@ -111,4 +122,31 @@ public class MaprKafkaUtils {
         }
         return result;
     }
+
+    public static String findMapRHome() {
+        String maprHome = System.getenv("MAPR_HOME");
+        if (maprHome == null) {
+            LOG.warn("Environment variable MAPR_HOME is null");
+            maprHome = System.getProperty("mapr.home.dir");
+            if (maprHome == null) {
+                LOG.warn("System property mapr.home.dir is null");
+                maprHome = IS_OS_WINDOWS ? "C:/opt/mapr" : "/opt/mapr";
+                LOG.warn("Setting MapR home as {} by default", maprHome);
+            }
+        }
+        return maprHome;
+    }
+
+    public static List<String> listClusterNames() {
+        try {
+            if (clusterNames == null) {
+                clusterNames = Files.lines(Paths.get(MAPR_CLUSTERS_FILE))
+                        .map(l -> l.split("\\s")[0]).collect(Collectors.toList());
+            }
+            return clusterNames;
+        } catch (IOException e) {
+            throw new KafkaException("Could not listClusterNames from " + MAPR_CLUSTERS_FILE, e);
+        }
+    }
+
 }
