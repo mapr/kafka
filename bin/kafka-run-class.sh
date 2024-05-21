@@ -64,7 +64,7 @@ fi
 CLASSPATH=$(echo $CLASSPATH |sed 's/\/opt\/mapr\/lib\/guava-14.0.1.jar//')
 
 # JDK 17 specific, see https://openjdk.org/jeps/396
-KAFKA_OPTS="${KAFKA_OPTS} --add-opens java.base/java.net=ALL-UNNAMED"
+KAFKA_OPTS="${KAFKA_OPTS} --add-opens java.base/java.net=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED"
 
 base_dir=$(dirname $0)/..
 
