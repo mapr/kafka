@@ -22,6 +22,7 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.internals.BrokerSecurityConfigs;
 import org.apache.kafka.common.config.types.Password;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.runtime.rest.RestServer;
 import org.apache.kafka.connect.runtime.rest.RestServerConfig;
@@ -31,9 +32,9 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.security.Security;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
@@ -41,17 +42,32 @@ import java.util.regex.Pattern;
  */
 public class SSLUtils {
 
-    private static final Map<String, Object> MAPR_SSL_CONFIGS = new HashMap<>();
-    static {
-        try (SslConfig sslConfig = WebSecurityManager.getSslConfig()) {
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, sslConfig.getServerKeystoreType());
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, sslConfig.getServerKeystoreLocation());
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerKeystorePassword())));
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, sslConfig.getServerTruststoreType());
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, sslConfig.getServerTruststoreLocation());
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerTruststorePassword())));
-            MAPR_SSL_CONFIGS.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, new Password(new String(sslConfig.getServerKeyPassword())));
+    private static SslConfig sslConfig = null;
+
+    private static SslConfig getSslConfig() {
+        if (sslConfig == null) {
+            // This gets the config from SCOPE_ALL, including server configs not available for non-admin users
+            sslConfig = WebSecurityManager.getSslConfig();
         }
+        return sslConfig;
+    }
+
+    private static void putIfBlank(Map<String, Object> map, String key, Supplier<Object> supplier) {
+        Object value = map.get(key);
+        if ((value instanceof String && Utils.isBlank((String)value))
+                || (value instanceof  Password && Utils.isBlank(((Password)value).value()))) {
+            map.put(key, supplier.get());
+        }
+    }
+
+    private static void setMaprSslConfigsIfNeeded(Map<String, Object> sslConfigs) {
+        putIfBlank(sslConfigs, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, () -> getSslConfig().getServerKeystoreType());
+        putIfBlank(sslConfigs, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, () -> getSslConfig().getServerKeystoreLocation());
+        putIfBlank(sslConfigs, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, () -> new Password(new String(getSslConfig().getServerKeystorePassword())));
+        putIfBlank(sslConfigs, SslConfigs.SSL_KEY_PASSWORD_CONFIG, () -> new Password(new String(getSslConfig().getServerKeyPassword())));
+        putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, () -> getSslConfig().getServerTruststoreType());
+        putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, () -> getSslConfig().getServerTruststoreLocation());
+        putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, () -> getSslConfig().getServerTruststorePassword());
     }
 
     private static final Pattern COMMA_WITH_WHITESPACE = Pattern.compile("\\s*,\\s*");
@@ -62,7 +78,7 @@ public class SSLUtils {
      */
     public static SslContextFactory createServerSideSslContextFactory(AbstractConfig config, String prefix) {
         Map<String, Object> sslConfigValues = config.valuesWithPrefixAllOrNothing(prefix);
-        MAPR_SSL_CONFIGS.forEach(sslConfigValues::putIfAbsent);
+        setMaprSslConfigsIfNeeded(sslConfigValues);
 
         final SslContextFactory.Server ssl = new SslContextFactory.Server();
 
@@ -86,7 +102,7 @@ public class SSLUtils {
      */
     public static SslContextFactory createClientSideSslContextFactory(AbstractConfig config) {
         Map<String, Object> sslConfigValues = config.valuesWithPrefixAllOrNothing("listeners.https.");
-        MAPR_SSL_CONFIGS.forEach(sslConfigValues::putIfAbsent);
+        setMaprSslConfigsIfNeeded(sslConfigValues);
 
         final SslContextFactory.Client ssl = new SslContextFactory.Client();
 
