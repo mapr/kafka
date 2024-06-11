@@ -54,7 +54,7 @@ public class SSLUtils {
 
     private static void putIfBlank(Map<String, Object> map, String key, Supplier<Object> supplier) {
         Object value = map.get(key);
-        if ((value instanceof String && Utils.isBlank((String)value))
+        if (value == null || (value instanceof String && Utils.isBlank((String)value))
                 || (value instanceof  Password && Utils.isBlank(((Password)value).value()))) {
             map.put(key, supplier.get());
         }
@@ -67,7 +67,7 @@ public class SSLUtils {
         putIfBlank(sslConfigs, SslConfigs.SSL_KEY_PASSWORD_CONFIG, () -> new Password(new String(getSslConfig().getServerKeyPassword())));
         putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, () -> getSslConfig().getServerTruststoreType());
         putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, () -> getSslConfig().getServerTruststoreLocation());
-        putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, () -> getSslConfig().getServerTruststorePassword());
+        putIfBlank(sslConfigs, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, () -> new Password(new String(getSslConfig().getServerTruststorePassword())));
     }
 
     private static final Pattern COMMA_WITH_WHITESPACE = Pattern.compile("\\s*,\\s*");
