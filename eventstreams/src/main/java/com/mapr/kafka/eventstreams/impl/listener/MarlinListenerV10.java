@@ -25,18 +25,18 @@ public class MarlinListenerV10<K,V> extends MarlinListener<K,V> {
         new MarlinListenerImplV10(config, interceptors, DeserializerToCDCOpenFormatType(valueDeserializer)));
 
     MarlinConfigDefaults mConfDef = MarlinConfigDefaults.getDefaultInstance();
-    List<ConsumerPartitionAssignor> assignors = config.getConfiguredInstances(mConfDef.getPartitionAssignmentStrategy(),
-        ConsumerPartitionAssignor.class);
-    if (assignors.size() > 1) {
-      log.warn("Multiple partition assignors are not supported in MapR Consumer. Only the first assignor " +
-              "in the list will be used");
-    }
     // TODO Marlin: core should be able to handle null group id as it is default value.
     // Currently JVM will just crush if you pass null here
     Optional<String> groupId = Optional.ofNullable(config.getString(mConfDef.getGroupID())).filter(s -> !s.isEmpty());
     if (groupId.isPresent()) {
       _groupMetadata = new ConsumerGroupMetadata(groupId.get());
       if (config.getBoolean(mConfDef.getClientSidePartitionAssignment())) {
+        List<ConsumerPartitionAssignor> assignors = config.getConfiguredInstances(mConfDef.getPartitionAssignmentStrategy(),
+                ConsumerPartitionAssignor.class);
+        if (assignors.size() > 1) {
+          log.warn("Multiple partition assignors are not supported in MapR Consumer. Only the first assignor " +
+                  "in the list will be used");
+        }
         if (assignors.size() == 0) {
           throw new KafkaException(
               "Client-side partition assignment requires config partition.assignment.strategy to be set.");
