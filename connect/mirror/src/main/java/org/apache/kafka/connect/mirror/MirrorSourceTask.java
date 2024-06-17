@@ -209,8 +209,11 @@ public class MirrorSourceTask extends SourceTask {
     // updates partition state and queues up OffsetSync if necessary
     private void maybeQueueOffsetSyncs(TopicPartition topicPartition, long upstreamOffset,
                                        long downstreamOffset) {
-        PartitionState partitionState =
-            partitionStates.computeIfAbsent(topicPartition, x -> new PartitionState(maxOffsetLag));
+        PartitionState partitionState;
+        synchronized (partitionStates) {
+            partitionState =
+                    partitionStates.computeIfAbsent(topicPartition, x -> new PartitionState(maxOffsetLag));
+        }
         if (partitionState.update(upstreamOffset, downstreamOffset)) {
             OffsetSync offsetSync = new OffsetSync(topicPartition, upstreamOffset, downstreamOffset);
             synchronized (this) {
