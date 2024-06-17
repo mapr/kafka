@@ -34,6 +34,7 @@ import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.server.util.{CommandDefaultOptions, CommandLineUtils}
 import org.apache.kafka.tools.api.RecordReader
 
+import java.time.Duration
 import scala.annotation.nowarn
 
 @nowarn("cat=deprecation")
@@ -97,6 +98,10 @@ object ConsoleProducer extends Logging {
       val config = new ProducerConfig(args)
       val input = System.in
       val producer = new KafkaProducer[Array[Byte], Array[Byte]](producerProps(config))
+      Runtime.getRuntime.addShutdownHook(new Thread(() => {
+        producer.flush();
+        producer.close(Duration.ofSeconds(60))
+      }))
       try loopReader(producer, newReader(config.readerClass, getReaderProps(config)), input, config.sync)
       finally producer.close()
       Exit.exit(0)
