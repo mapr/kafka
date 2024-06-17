@@ -22,10 +22,7 @@ import java.util.{Collections, Optional, Properties}
 import joptsimple._
 import kafka.utils._
 import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.admin.CreatePartitionsOptions
-import org.apache.kafka.clients.admin.CreateTopicsOptions
-import org.apache.kafka.clients.admin.DeleteTopicsOptions
-import org.apache.kafka.clients.admin.{Admin, ListTopicsOptions, NewPartitions, NewTopic, PartitionReassignment, Config => JConfig}
+import org.apache.kafka.clients.admin.{Admin, CreatePartitionsOptions, CreateTopicsOptions, DeleteTopicsOptions, ListTopicsOptions, NewPartitions, NewTopic, PartitionReassignment, Config => JConfig}
 import org.apache.kafka.common.{TopicCollection, TopicPartition, TopicPartitionInfo, Uuid}
 import org.apache.kafka.common.config.ConfigResource.Type
 import org.apache.kafka.common.config.{ConfigResource, TopicConfig}
@@ -356,10 +353,20 @@ object TopicCommand extends Logging {
     }
 
     def deleteTopic(opts: TopicCommandOptions): Unit = {
-      val topics = getTopics(opts.topic, opts.excludeInternalTopics)
+      val topics = if (!opts.useBrokers) getMaprTopics(opts.topic, opts.excludeInternalTopics) else getTopics(opts.topic, opts.excludeInternalTopics)
       ensureTopicExists(topics, opts.topic, !opts.ifExists)
       adminClient.deleteTopics(topics.asJavaCollection, new DeleteTopicsOptions().retryOnQuotaViolation(false))
         .all().get()
+    }
+
+    def getMaprTopics(topic: Option[String], excludeInternalTopics: Boolean = false): Seq[String] = {
+      val allTopics = if (topic.get.contains(":")) {
+        val stream = topic.get.split(":")(0)
+        adminClient.listTopics(stream).names().get().asScala.map(t => stream + ":" + t).toSeq
+      } else {
+        adminClient.listTopics().names().get().asScala.toSeq
+      }
+      doGetTopics(allTopics.sorted, topic, excludeInternalTopics)
     }
 
     def getTopics(topicIncludeList: Option[String], excludeInternalTopics: Boolean = false): Seq[String] = {
@@ -573,6 +580,7 @@ object TopicCommand extends Logging {
     def hasDescribeOption: Boolean = has(describeOpt)
     def hasDeleteOption: Boolean = has(deleteOpt)
 
+    def useBrokers: Boolean = has(useBrokersOpt);
     def bootstrapServer: Option[String] = valueAsOption(bootstrapServerOpt)
     def commandConfig: Properties = {
       val props = if (has(commandConfigOpt)) Utils.loadProps(options.valueOf(commandConfigOpt)) else new Properties()
