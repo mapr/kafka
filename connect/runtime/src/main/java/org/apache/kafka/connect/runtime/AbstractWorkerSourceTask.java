@@ -302,6 +302,8 @@ public abstract class AbstractWorkerSourceTask extends WorkerTask {
         // but closing user-pluggable classes like interceptors may lag indefinitely. So, we
         // call close on a separate thread in order to avoid blocking the herder's tick thread.
         closeExecutor.execute(() -> closeProducer(Duration.ZERO));
+
+        task.cancel();
     }
 
     @Override

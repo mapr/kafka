@@ -49,4 +49,9 @@ public interface Task {
      * Stop this task.
      */
     void stop();
+
+    /**
+     * Cancel this task immediately, waking up from any ongoing polls
+     */
+    default void cancel () { }
 }
