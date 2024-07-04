@@ -9,8 +9,8 @@ release:     1
 prefix:      /
 group:       MapR
 buildarch:   noarch
-requires:    mapr-client >= 7.7.0
-conflicts:   mapr-core < 7.7.0
+requires:    mapr-client >= 7.2.0
+conflicts:   mapr-core < 7.2.0
 AutoReqProv: no
 
 
