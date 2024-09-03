@@ -2844,8 +2844,8 @@ project(':connect:runtime') {
     compileOnly (libs.maprSecurityWeb) {
       exclude module: 'httpclient'
     }
-    implementation libs.bcFips
-    implementation libs.bctlsFips
+    compileOnly libs.bcFips
+    compileOnly libs.bctlsFips
     implementation libs.jpam
 
     // We use this library to generate OpenAPI docs for the REST API, but we don't want or need it at compile

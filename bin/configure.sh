@@ -46,6 +46,11 @@ MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
 # Do we need version here? Different connectors have different versions...
 KAFKA_CONNECT_RESTART_SRC=${KAFKA_CONNECT_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/kafka-connect-10.2.6.restart}
 
+FIPS_ENABLED="false"
+if [[ "$(fips-mode-setup --check 2>/dev/null)" =~ "FIPS mode is enabled" ]] ; then
+	FIPS_ENABLED="true"
+fi
+
 function write_version_file() {
     if [ -f ${KAFKA_VERSION_FILE} ]; then
         rm -f ${KAFKA_VERSION_FILE}
@@ -116,6 +121,12 @@ function create_properties_file_with_ssl_config() {
         cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
 		listeners=https://$(hostname -f):${KAFKA_CONNECT_PORT}
 		EOL
+	if [ "$FIPS_ENABLED" == "true" ] ; then
+		cat >>${KAFKA_CONNECT_PROPERTIES} <<-EOL
+			ssl.keystore.type=BCFKS
+			ssl.truststore.type=BCFKS
+			EOL
+	fi
 }
 
 
