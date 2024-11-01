@@ -48,8 +48,11 @@ should_include_file() {
 # This will set MAPR_HOME, etc.
 source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
 
+HADOOP_VERSION="$(cat ${MAPR_HOME}/hadoop/hadoopversion)"
+HADOOP_HOME="${MAPR_HOME}/hadoop/hadoop-${HADOOP_VERSION}"
+
 # Set up MapR Java classpath
-CLASSPATH="${MAPR_CONF}:$(get_mapr_core_jars):$(get_log4j12_jars):$(get_mapr_app_jars):$(get_external_jars)"
+CLASSPATH="${MAPR_CONF}:${HADOOP_HOME}/etc/hadoop:$(get_mapr_core_jars):$(get_log4j12_jars):$(get_mapr_app_jars):$(get_external_jars)"
 # Add mapr-security-web.jar
 for file in "${BASEMAPR:-/opt/mapr}"/lib/mapr-security-web-*.jar
 do
