@@ -3,7 +3,8 @@
 GIT_COMMIT=$(git log -1 --pretty=format:"%H")
 INSTALLATION_PREFIX=${INSTALLATION_PREFIX:-"/opt/mapr"}
 PKG_NAME=${PKG_NAME:-"kafka"}
-PKG_VERSION=${PKG_VERSION:-"3.6.1.0"}
+# Take 4-digit version from gradle.properties
+PKG_VERSION=$(awk -F= '$1 == "version" { match($2, /(\.?[0-9]+){4}/); print substr($2, RSTART, RLENGTH) }' gradle.properties)
 PKG_3DIGIT_VERSION=$(echo "$PKG_VERSION" | cut -d '.' -f 1-3)
 TIMESTAMP=${TIMESTAMP:-$(sh -c 'date "+%Y%m%d%H%M"')}
 PKG_INSTALL_ROOT=${PKG_INSTALL_ROOT:-"${INSTALLATION_PREFIX}/${PKG_NAME}/${PKG_NAME}-${PKG_3DIGIT_VERSION}"}
