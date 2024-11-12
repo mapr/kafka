@@ -900,6 +900,7 @@ project(':core') {
       // We are removing Zookeeper's dependency on logback so we have a singular logging backend.
       exclude module: 'logback-classic'
       exclude module: 'logback-core'
+      exclude module: 'commons-io'
     }
     // ZooKeeperMain depends on commons-cli but declares the dependency as `provided`
     implementation libs.commonsCli
