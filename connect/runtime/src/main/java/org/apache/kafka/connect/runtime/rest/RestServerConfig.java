@@ -131,8 +131,7 @@ public abstract class RestServerConfig extends AbstractConfig {
     public static final String AUTHENTICATION_ENABLE_DOC =
             "Enable authentication. MapR supports multiple authentication methods at same time: Basic and MapR SASL";
     public static final String HADOOP_AUTHENTICATION_TYPES_CONFIG = "hadoop.http.authentication.types";
-    public static final List<String> HADOOP_AUTHENTICATION_TYPES_DEFAULT =
-            Collections.unmodifiableList(Arrays.asList("maprauth", "basic"));
+    public static final List<String> HADOOP_AUTHENTICATION_TYPES_DEFAULT = Collections.emptyList();
     public static final String HADOOP_AUTHENTICATION_TYPES_DOC =
             "A list of hadoop authentication types for MultiMechsAuthenticationHandler";
 
