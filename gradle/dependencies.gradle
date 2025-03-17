@@ -80,7 +80,7 @@ versions += [
   bcpkix: "1.75",
   caffeine: "2.9.3", // 3.x supports JDK 11 and above
   checkstyle: "8.36.2",
-  commonsCli: "1.4",
+  commonsCli: "1.9.0",
   commonsValidator: "1.7",
   dropwizardMetrics: "4.1.12.1",
   gradle: "8.2.1",
