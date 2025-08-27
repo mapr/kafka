@@ -1,13 +1,13 @@
 %undefine __check_files
 
-summary:     Ezmeral Ecosystem Pack: Kafka
+summary:     HPE DataFabric Ecosystem Pack: Apache Kafka
 license:     Hewlett Packard Enterprise, CopyRight
-Vendor:      Hewlett Packard Enterprise, <ezmeral_software_support@hpe.com>
+Vendor:      Hewlett Packard Enterprise
 name:        mapr-kafka
 version:     __RELEASE_VERSION__
 release:     1
 prefix:      /
-group:       MapR
+group:       HPE
 buildarch:   noarch
 requires:    mapr-client >= 7.2.0
 conflicts:   mapr-core < 7.2.0
@@ -15,7 +15,7 @@ AutoReqProv: no
 
 
 %description
-Ezmeral Ecosystem Pack: Kafka Package
+Apache Kafka distribution included in HPE DataFabric Software Ecosystem Pack
 Tag: __RELEASE_BRANCH__
 Commit: __GIT_COMMIT__
 
