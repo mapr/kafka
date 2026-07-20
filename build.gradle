@@ -119,6 +119,10 @@ allprojects {
        url System.getenv('MAPR_MAVEN_REPO')
        allowInsecureProtocol = true
     }
+    maven {
+       url System.getenv('MAPR_RELEASES_REPO')
+       allowInsecureProtocol = true
+    }
   }
 
   dependencyUpdates {

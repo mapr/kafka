@@ -89,7 +89,7 @@ versions += [
   jackson: "2.16.2",
   jacoco: "0.8.10",
   javassist: "3.29.2-GA",
-  jetty: "9.4.57.v20241219",
+  jetty: "9.4.60.v20260717-df",
   jersey: "2.39.1",
   jline: "3.22.0",
   jmh: "1.36",
