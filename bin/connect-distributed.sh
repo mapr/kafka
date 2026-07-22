@@ -92,6 +92,14 @@ if [ $CONF_STREAM_DEFAULT ] || [ $OFFSET_STREAM_DEFAULT ]; then
                 echo "[$now] ERROR You do not have permission to create streams for storage.topic. Please fix the permission issue or change default values of config.storage.topic and offset.storage.topic in connect-distributed.properties" >> $logFile
                 exit 1
         fi
+        now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+        echo "[$now] INFO Enabling log compaction on stream /var/mapr/.__mapr_connect" >> $logFile
+        output="$(maprcli stream edit -path /var/mapr/.__mapr_connect -compact true 2>&1)"
+        if [[ $output == *"Permission denied"* ]]; then
+                now=`date +%Y-%m-%d\ %H:%M:%S.$(( $(date +%-N) / 1000000 ))`
+                echo "[$now] ERROR You do not have permission to edit streams for storage.topic. Please fix the permission issue or change default values of config.storage.topic and offset.storage.topic in connect-distributed.properties" >> $logFile
+                exit 1
+        fi
 fi
 
 # Add connect plugins to classpath
