@@ -71,7 +71,7 @@ public class FileOffsetBackingStore extends MemoryOffsetBackingStore {
         log.info("Stopped FileOffsetBackingStore");
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     private void load() {
         try (ValidatingObjectInputStream is = new ValidatingObjectInputStream(Files.newInputStream(file.toPath()))) {
             is.accept(HashMap.class, byte[].class);
