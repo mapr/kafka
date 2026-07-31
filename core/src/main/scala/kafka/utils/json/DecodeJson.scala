@@ -93,7 +93,7 @@ object DecodeJson {
 
   implicit def decodeMap[V, M[K, +V] <: Map[K, V]](implicit decodeJson: DecodeJson[V], factory: Factory[(String, V), M[String, V]]): DecodeJson[M[String, V]] = (node: JsonNode) => {
     if (node.isObject)
-      decodeIterator(node.fields.asScala)(e => decodeJson.decodeEither(e.getValue).map(v => (e.getKey, v)))
+      decodeIterator(node.properties().iterator().asScala)(e => decodeJson.decodeEither(e.getValue).map(v => (e.getKey, v)))
     else Left(s"Expected JSON object, received $node")
   }
 

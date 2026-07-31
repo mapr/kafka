@@ -299,8 +299,7 @@ public class OAuthBearerUnsecuredJws implements OAuthBearerToken {
             JsonNode jsonNode = new ObjectMapper().readTree(decode);
             if (jsonNode == null)
                 throw new OAuthBearerIllegalTokenException(OAuthBearerValidationResult.newFailure("malformed JSON"));
-            for (Iterator<Entry<String, JsonNode>> iterator = jsonNode.fields(); iterator.hasNext();) {
-                Entry<String, JsonNode> entry = iterator.next();
+            for (Entry<String, JsonNode> entry: jsonNode.properties()) {
                 retval.put(entry.getKey(), convert(entry.getValue()));
             }
             return Collections.unmodifiableMap(retval);

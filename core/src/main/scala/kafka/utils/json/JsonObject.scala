@@ -35,7 +35,7 @@ class JsonObject private[json] (protected val node: ObjectNode) extends JsonValu
 
   def get(name: String): Option[JsonValue] = Option(node.get(name)).map(JsonValue(_))
 
-  def iterator: Iterator[(String, JsonValue)] = node.fields.asScala.map { entry =>
+  def iterator: Iterator[(String, JsonValue)] = node.properties().iterator().asScala.map { entry =>
     (entry.getKey, JsonValue(entry.getValue))
   }
 
