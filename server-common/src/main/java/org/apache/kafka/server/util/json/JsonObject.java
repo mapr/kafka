@@ -52,11 +52,7 @@ public class JsonObject implements JsonValue {
     }
 
     public Iterator<Map.Entry<String, JsonValue>> iterator() {
-        Iterator<Map.Entry<String, JsonNode>> iterator = node.fields();
-        Stream<Map.Entry<String, JsonNode>> stream = StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
-
-        Stream<Map.Entry<String, JsonValue>> results = stream.map(entry ->
+        Stream<Map.Entry<String, JsonValue>> results = node.propertyStream().map(entry ->
                 new AbstractMap.SimpleEntry<>(entry.getKey(), JsonValue.apply(entry.getValue()))
         );
         return results.collect(Collectors.toList()).iterator();

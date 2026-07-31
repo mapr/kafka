@@ -142,21 +142,19 @@ allprojects {
   }
 
   configurations.all {
+    exclude group: 'io.netty'
     // zinc is the Scala incremental compiler, it has a configuration for its own dependencies
     // that are unrelated to the project dependencies, we should not change them
     if (name != "zinc") {
       resolutionStrategy {
         force(
+          libs.commonsLang3,
           // be explicit about the javassist dependency version instead of relying on the transitive version
           libs.javassist,
           // ensure we have a single version in the classpath despite transitive dependencies
           libs.scalaLibrary,
           libs.scalaReflect,
           libs.jacksonAnnotations,
-          // be explicit about the Netty dependency version instead of relying on the version set by
-          // ZooKeeper (potentially older and containing CVEs)
-          libs.nettyHandler,
-          libs.nettyTransportNativeEpoll,
           libs.hadoopCommon,
 	  // be explicit about the reload4j version instead of relying on the transitive versions
 	  libs.log4j,
@@ -894,7 +892,7 @@ project(':core') {
     implementation libs.scalaReflect
     implementation libs.scalaLogging
     implementation libs.slf4jApi
-    implementation(libs.zookeeper) {
+    compileOnlyApi(libs.zookeeper) {
       // Dropwizard Metrics are required by ZooKeeper as of v3.6.0,
       // but the library should *not* be used in Kafka code
       implementation libs.dropwizardMetrics

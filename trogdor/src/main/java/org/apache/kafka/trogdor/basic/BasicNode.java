@@ -47,9 +47,7 @@ public class BasicNode implements Node {
         String hostname = "localhost";
         Set<String> tags = Collections.emptySet();
         Map<String, String> config = new HashMap<>();
-        for (Iterator<Map.Entry<String, JsonNode>> iter = root.fields();
-             iter.hasNext(); ) {
-            Map.Entry<String, JsonNode> entry = iter.next();
+        for (Map.Entry<String, JsonNode> entry: root.properties()) {
             String key = entry.getKey();
             JsonNode node = entry.getValue();
             if (key.equals("hostname")) {
