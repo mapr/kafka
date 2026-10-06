@@ -90,7 +90,7 @@ versions += [
   jacksonAnnotations: "2.22",
   jacoco: "0.8.10",
   javassist: "3.29.2-GA",
-  jetty: "9.4.63.v20260812-df",
+  jetty: "9.4.64.v20261006-df",
   jersey: "2.39.1",
   jline: "3.30.15",
   jmh: "1.36",
